@@ -2,6 +2,10 @@
 import logging
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
+
+from rest_framework.response import Response
+from rest_framework import status, serializers
+
 from django.contrib.auth import update_last_login
 
 from .otp_logic.services import register_user, OTPService
@@ -16,11 +20,6 @@ from .serializers import (RegisterSerializer,
                         )
 
 from .otp_logic.utils import  get_tokens_for_user
-
-
-from rest_framework.response import Response
-from rest_framework import status, serializers
-
 
 
 logger = logging.getLogger(__name__)
@@ -39,7 +38,6 @@ class RegisterView(APIView):
             # If we reach here, the transaction is committed successfully
             return Response({"success": True,"message": "Registration successful. Please check your email for the verification OTP."},
                 status=status.HTTP_201_CREATED)
-
         except serializers.ValidationError:
             raise
 
@@ -109,7 +107,6 @@ class EmailOTPSendView(APIView):
         try:
             OTPService.send_email_otp(serializer.validated_data["email"])
             return Response({"success": True,"message": "OTP sent successfully.",},status=status.HTTP_200_OK,)
-
         except serializers.ValidationError:
             raise
 
@@ -130,9 +127,7 @@ class EmailOTPVerifyView(APIView):
 
         try:
             OTPService.verify_email_otp(**serializer.validated_data)
-            
             return Response({"success": True,"message": "Email verified successfully.",},status=status.HTTP_200_OK)
-
         except serializers.ValidationError:
             raise
 
@@ -185,3 +180,8 @@ class PasswordResetOTPSendView(APIView):
 
 class PasswordResetOTPVerifyView(APIView):
     permission_classes = [AllowAny]
+
+    def post(self, request)-> Response:
+        serializer = PasswordResetOTPVerifySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        pass
