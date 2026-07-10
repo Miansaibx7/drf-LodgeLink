@@ -17,7 +17,7 @@ def generate_otp() -> str:
     return str(secrets.randbelow(900000) + 100000)
 
 
-# Send OTP Email
+# Reusable function
 def _send_email(*,email: str,subject: str, message: str) -> bool:
     """Generic email sender."""
     try:
