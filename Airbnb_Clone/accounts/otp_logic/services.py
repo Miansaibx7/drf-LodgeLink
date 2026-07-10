@@ -7,11 +7,15 @@ from django.db import transaction
 from rest_framework import serializers
 
 from ..models import EmailOTP,PasswordResetOTP
-from .utils import generate_otp, send_email_otp
+from .utils import generate_otp, send_email_otp, send_password_reset_email
 
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
+
+
+def _normalize_email(email: str) -> str:
+    return email.lower().strip()
 
 
 def _create_email_otp(user: Any) -> str:
@@ -20,6 +24,12 @@ def _create_email_otp(user: Any) -> str:
     EmailOTP.objects.update_or_create(user=user,defaults={"code": otp,"attempts": 0,},)
     return otp
 
+
+def _create_password_reset_otp(user: Any) -> str:
+    """Create or replace password reset OTP."""
+    otp = generate_otp()
+    PasswordResetOTP.objects.update_or_create(user=user,defaults={"code": otp,"attempts": 0,})
+    return otp
 
 
 def send_registration_otp(user: Any) -> bool:
@@ -54,7 +64,7 @@ class OTPService:
     @staticmethod
     def send_email_otp(email: str) -> bool:
         """Generate and send a fresh OTP."""
-        email = email.lower().strip()
+        email = _normalize_email(email)
 
         try:
             user = User.objects.get(email=email)
@@ -79,7 +89,7 @@ class OTPService:
     def verify_email_otp(email: str, code: str) -> Any:
         """Verify a user's email OTP."""
 
-        email = email.lower().strip()
+        email = _normalize_email(email)
         try:
             otp = (EmailOTP.objects.select_for_update().select_related("user").get(user__email=email,code=code))
 
@@ -92,6 +102,7 @@ class OTPService:
 
                 if latest_otp:
                     latest_otp.increment_attempts()
+
             except User.DoesNotExist:
                 pass
 
@@ -116,11 +127,11 @@ class OTPService:
         logger.info("Email verified successfully for %s",user.email)
         return user
     
-
+    
     @staticmethod
     def resend_email_otp(email: str) -> bool:
         """Delete the previous OTP, generate a new one, and send it."""
-        email = email.lower().strip()
+        email = _normalize_email(email)
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
@@ -144,7 +155,7 @@ class OTPService:
     @staticmethod
     def send_password_reset_otp(email: str) -> bool:
      """Generate and send a password reset OTP."""
-     email = email.lower().strip()
+     email = _normalize_email(email)
      try:
          user = User.objects.get(email=email)
      except User.DoesNotExist:
@@ -152,8 +163,7 @@ class OTPService:
 
         raise serializers.ValidationError({"email": "No account found with this email."})
 
-     otp = generate_otp()
-     PasswordResetOTP.objects.update_or_create(user=user,defaults={"code": otp,"attempts": 0,})
+     otp = _create_password_reset_otp(user)
      email_sent = send_password_reset_email(email=user.email,otp=otp,)
      
      if not email_sent:
@@ -162,7 +172,6 @@ class OTPService:
      
      logger.info("Password reset OTP sent successfully to %s", user.email,)
      return True
-    
 
 
     @staticmethod
@@ -170,7 +179,7 @@ class OTPService:
     def verify_password_reset_otp(email: str,code: str,new_password: str,) -> bool:
      """Verify password reset OTP and update the user's password."""
      
-     email = email.lower().strip()
+     email = _normalize_email(email)
      
      try:
         otp = (PasswordResetOTP.objects.select_for_update().select_related("user")
@@ -193,7 +202,6 @@ class OTPService:
      
      if otp.is_blocked():
         otp.delete()
-
         raise serializers.ValidationError({"code": "Too many invalid attempts. Please request a new OTP."})
      
      if otp.is_expired():
@@ -205,7 +213,5 @@ class OTPService:
      user.save(update_fields=["password",])
      
      otp.delete()
-     logger.info("Password reset successfully for %s",user.email,)
+     logger.info("Password reset successfully for %s",user.email)
      return True
-
-
