@@ -1,8 +1,8 @@
 
 import logging
-from django.contrib.auth import update_last_login
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
+from django.contrib.auth import update_last_login
 
 from .otp_logic.services import register_user, OTPService
 
@@ -12,6 +12,7 @@ from .serializers import (RegisterSerializer,
                         EmailOTPVerifySerializer,
                         ResendEmailOTPSerializer,
                         PasswordResetOTPSendSerializer,
+                        PasswordResetOTPVerifySerializer,
                         )
 
 from .otp_logic.utils import  get_tokens_for_user
@@ -180,3 +181,7 @@ class PasswordResetOTPSendView(APIView):
 
             return Response({"success": False,"message": ("An unexpected error occurred. " "Please try again later.")},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+class PasswordResetOTPVerifyView(APIView):
+    permission_classes = [AllowAny]
