@@ -1,0 +1,172 @@
+
+import logging
+from django.contrib.auth import update_last_login
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
+
+from .otp_logic.services import register_user, OTPService
+
+from .serializers import (RegisterSerializer,
+                        LoginSerializer,
+                        EmailOTPSendSerializer,
+                        EmailOTPVerifySerializer,
+                        ResendEmailOTPSerializer,
+                        PasswordResetOTPSendSerializer,
+                        )
+
+from .otp_logic.utils import  get_tokens_for_user
+
+
+from rest_framework.response import Response
+from rest_framework import status, serializers
+
+
+
+logger = logging.getLogger(__name__)
+
+
+class RegisterView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request)-> Response:
+        serializer = RegisterSerializer(data=request.data)
+        # Automatically handles 400 errors if data is invalid
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            register_user(serializer)
+            # If we reach here, the transaction is committed successfully
+            return Response({"success": True,"message": "Registration successful. Please check your email for the verification OTP."},
+                status=status.HTTP_201_CREATED)
+
+        except serializers.ValidationError:
+            raise
+
+        except Exception:
+            logger.exception("Unexpected error during registration.")
+
+            return Response({"success": False,"message": "An unexpected error occurred. Please try again later.",},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    
+
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request)-> Response:
+        try:
+            serializer = LoginSerializer(data=request.data,context={"request": request})
+
+            #  This automatically handles invalid credentials and unverified users.
+            # It will throw a 400 Bad Request if anything fails.
+            serializer.is_valid(raise_exception=True)
+
+            # Grab the user object that we safely attached inside the serializer
+            user = serializer.validated_data["user"]
+
+            # Update last login time
+            update_last_login(None, user)
+
+            # Generate JWT Tokens and log success
+            tokens = get_tokens_for_user(user)
+            logger.info("User %s logged in successfully.", user.email)
+
+            return Response(
+                {
+                    "success": True,
+                    "message": "Login successful.",
+                    "tokens": tokens,
+                    "user": {
+                        "id": user.id,
+                        "email": user.email,
+                        "name": user.name,
+                        "is_verified": user.is_verified,
+                    },
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        except serializers.ValidationError:
+            raise
+
+        except Exception:
+            logger.exception("Unexpected error during login.")
+
+            return Response({"success": False,"message": ("An unexpected error occurred. ""Please try again later.")},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,)
+        
+
+
+class EmailOTPSendView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request) -> Response:
+
+        serializer = EmailOTPSendSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            OTPService.send_email_otp(serializer.validated_data["email"])
+            return Response({"success": True,"message": "OTP sent successfully.",},status=status.HTTP_200_OK,)
+
+        except serializers.ValidationError:
+            raise
+
+        except Exception:
+            logger.exception("Unexpected error while sending OTP.")
+
+            return Response({"success": False,"message": "An unexpected error occurred. Please try again later.",},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,)
+
+
+
+class EmailOTPVerifyView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request) -> Response:
+        serializer = EmailOTPVerifySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            OTPService.verify_email_otp(**serializer.validated_data)
+            
+            return Response({"success": True,"message": "Email verified successfully.",},status=status.HTTP_200_OK)
+
+        except serializers.ValidationError:
+            raise
+
+        except Exception:
+            logger.exception("Unexpected error during email verification.")
+
+            return Response({"success": False,"message": "An unexpected error occurred. Please try again later.",},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+
+class ResendEmailOTPView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request)-> Response:
+        serializer = ResendEmailOTPSerializer(data = request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            OTPService.resend_email_otp(serializer.validated_data["email"])
+            return Response({"success": True,"message": "OTP resent successfully."},status=status.HTTP_200_OK)
+        except serializers.ValidationError:
+            raise
+
+        except Exception:
+            logger.exception("Unexpected error while resending OTP.")
+
+            return Response({"success": False,"message": "An unexpected error occurred. Please try again later."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+
+
+class PasswordResetOTPSendView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request)-> Response:
+        serializer = PasswordResetOTPSendSerializer(data = request.data)
+        serializer.is_valid(raise_exception=True)
