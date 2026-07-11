@@ -225,3 +225,35 @@ class ChangePasswordView(APIView):
 
             return Response({"success": False,"message": ("An unexpected error occurred. ""Please try again later.")},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+
+
+class BaseOAuthLoginView(APIView):
+    permission_classes = [AllowAny]
+    serializer_class = None
+
+    def post(self, request)-> Response:
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            user = serializer.validated_data["user"]
+            update_last_login(None,user)
+            tokens = get_tokens_for_user(user)
+            logger.info("OAuth login successful for %s",user.email)
+
+            return Response({"success": True,"message": "Login successful.","tokens": tokens,
+                    "user": {
+                        "id": user.id,
+                        "email": user.email,
+                        "name": user.name,
+                        "is_verified": user.is_verified,
+                    },
+                },status=status.HTTP_200_OK)
+        except serializers.ValidationError:
+            raise
+
+        except Exception:
+            logger.exception("Unexpected OAuth login error.")
+
+            return Response({"success": False,"message": ("An unexpected error occurred. ""Please try again later.")},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
