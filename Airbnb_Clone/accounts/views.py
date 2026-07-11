@@ -17,7 +17,8 @@ from .serializers import (RegisterSerializer,
                         ResendEmailOTPSerializer,
                         PasswordResetOTPSendSerializer,
                         PasswordResetOTPVerifySerializer,
-                        ChangePasswordSerializer
+                        ChangePasswordSerializer,
+                        GoogleLoginSerializer,
                         )
 
 from .otp_logic.utils import  get_tokens_for_user
@@ -257,3 +258,7 @@ class BaseOAuthLoginView(APIView):
 
             return Response({"success": False,"message": ("An unexpected error occurred. ""Please try again later.")},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class GoogleLoginView(BaseOAuthLoginView):
+    serializer_class = GoogleLoginSerializer
