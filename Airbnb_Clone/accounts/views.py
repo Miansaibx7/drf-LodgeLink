@@ -204,4 +204,7 @@ class ChangePasswordView(APIView):
     def post(self, request):
         serializer = ChangePasswordSerializer(data = request.data)
         serializer.is_valid(raise_exception=True)
-        pass
+        try:
+            OTPService.change_password()
+        except serializers.ValidationError:
+            raise
