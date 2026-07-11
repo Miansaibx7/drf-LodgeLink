@@ -17,6 +17,7 @@ from .serializers import (RegisterSerializer,
                         ResendEmailOTPSerializer,
                         PasswordResetOTPSendSerializer,
                         PasswordResetOTPVerifySerializer,
+                        ChangePasswordSerializer
                         )
 
 from .otp_logic.utils import  get_tokens_for_user
@@ -195,3 +196,12 @@ class PasswordResetOTPVerifyView(APIView):
 
             return Response({"success": False,"message": "An unexpected error occurred. Please try again later."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ChangePasswordView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data = request.data)
+        serializer.is_valid(raise_exception=True)
+        pass
