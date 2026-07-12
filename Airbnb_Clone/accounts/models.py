@@ -122,3 +122,18 @@ class PasswordResetOTP(BaseOTP):
     def __str__(self):
         return f"{self.user.email} - Password Reset"
     
+
+class UserProfile(models.Model):
+
+    user = models.OneToOneField(User,on_delete=models.CASCADE)
+    first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=100)
+    phone_number = models.CharField(max_length=20, blank=True)
+    avatar = models.ImageField(upload_to="avatars/",blank=True,null=True)
+    country = models.CharField(max_length=100, blank=True)
+    timezone = models.CharField(max_length=100, blank=True)
+    language = models.CharField(max_length=20,default="en")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
