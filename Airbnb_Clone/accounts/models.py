@@ -147,3 +147,21 @@ class UserSession(models.Model):
     last_activity = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
+
+
+class AuditLog(models.Model):
+
+    ACTIONS = (
+        ("REGISTER","Register"),
+        ("LOGIN","Login"),
+        ("LOGOUT","Logout"),
+        ("PASSWORD_CHANGE","Password Change"),
+        ("PASSWORD_RESET","Password Reset"),
+        ("EMAIL_VERIFY","Email Verify"),
+    )
+
+    user = models.ForeignKey(User,on_delete=models.SET_NULL,null=True)
+    action = models.CharField(max_length=50,choices=ACTIONS)
+    ip_address = models.GenericIPAddressField()
+    user_agent = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
