@@ -165,3 +165,17 @@ class AuditLog(models.Model):
     ip_address = models.GenericIPAddressField()
     user_agent = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class LoginAttempt(models.Model):
+
+    email = models.EmailField()
+    attempts = models.PositiveIntegerField(default=0)
+    blocked_until = models.DateTimeField(null=True,blank=True)
+
+
+class TwoFactorAuth(models.Model):
+
+    user = models.OneToOneField(User,on_delete=models.CASCADE)
+    secret_key = models.CharField(max_length=255)
+    enabled = models.BooleanField(default=False)
