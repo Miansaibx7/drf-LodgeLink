@@ -137,3 +137,13 @@ class UserProfile(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
+class UserSession(models.Model):
+
+    user = models.ForeignKey(User,on_delete=models.CASCADE)
+    refresh_token_jti = models.CharField(max_length=255,unique=True)
+    ip_address = models.GenericIPAddressField()
+    user_agent = models.TextField()
+    device_name = models.CharField(max_length=255,blank=True)
+    last_activity = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
