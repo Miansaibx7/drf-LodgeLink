@@ -206,13 +206,6 @@ class PasswordResetOTPVerifyView(APIView):
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request):
-        serializer = ChangePasswordSerializer(data = request.data)
-        serializer.is_valid(raise_exception=True)
-        try:
-            OTPService.change_password()
-        except serializers.ValidationError:
-            raise
     def post(self, request) -> Response:
         serializer = ChangePasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
