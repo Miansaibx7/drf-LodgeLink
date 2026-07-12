@@ -179,3 +179,11 @@ class TwoFactorAuth(models.Model):
     user = models.OneToOneField(User,on_delete=models.CASCADE)
     secret_key = models.CharField(max_length=255)
     enabled = models.BooleanField(default=False)
+
+
+class AccountDeletionRequest(models.Model):
+
+    user = models.ForeignKey(User,on_delete=models.CASCADE)
+    reason = models.TextField(blank=True)
+    scheduled_for = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
