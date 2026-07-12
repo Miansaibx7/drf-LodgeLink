@@ -6,7 +6,7 @@ from rest_framework.permissions import AllowAny,IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status, serializers
 
-from django.contrib.auth import update_last_login
+from django.contrib.auth.models import update_last_login
 
 from .otp_logic.services import register_user, OTPService
 
