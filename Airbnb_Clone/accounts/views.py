@@ -273,4 +273,7 @@ class GitHubLoginView(BaseOAuthLoginView):
 
 class FacebookLoginView(BaseOAuthLoginView):
     serializer_class = FacebookLoginSerializer
-    
+
+
+class LinkedInLoginView(BaseOAuthLoginView):
+    serializer_class = LinkedInLoginSerializer
