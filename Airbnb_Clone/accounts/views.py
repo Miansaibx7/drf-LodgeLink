@@ -19,7 +19,9 @@ from .serializers import (RegisterSerializer,
                         PasswordResetOTPVerifySerializer,
                         ChangePasswordSerializer,
                         GoogleLoginSerializer,
-                        GitHubLoginSerializer
+                        GitHubLoginSerializer,
+                        FacebookLoginSerializer,
+                        LinkedInLoginSerializer
                         )
 
 from .otp_logic.utils import  get_tokens_for_user
@@ -267,3 +269,8 @@ class GoogleLoginView(BaseOAuthLoginView):
 
 class GitHubLoginView(BaseOAuthLoginView):
     serializer_class = GitHubLoginSerializer
+
+
+class FacebookLoginView(BaseOAuthLoginView):
+    serializer_class = FacebookLoginSerializer
+    
