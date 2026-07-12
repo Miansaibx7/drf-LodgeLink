@@ -126,8 +126,8 @@ class PasswordResetOTP(BaseOTP):
 class UserProfile(models.Model):
 
     user = models.OneToOneField(User,on_delete=models.CASCADE)
-    first_name = models.CharField(max_length=100)
-    last_name = models.CharField(max_length=100)
+    first_name = models.CharField(max_length=100, blank=True)
+    last_name = models.CharField(max_length=100, blank=True)
     phone_number = models.CharField(max_length=20, blank=True)
     avatar = models.ImageField(upload_to="avatars/",blank=True,null=True)
     country = models.CharField(max_length=100, blank=True)
