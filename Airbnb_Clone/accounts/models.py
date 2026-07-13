@@ -103,7 +103,7 @@ class BaseOTP(models.Model):
         """Block the OTP for a specified number of minutes."""
         self.blocked_until = timezone.now() + timedelta(minutes=minutes)
         self.save(update_fields=["blocked_until"])
-        
+
     @property
     def is_blocked(self):
         if self.blocked_until:
@@ -207,6 +207,32 @@ class TwoFactorAuth(models.Model):
     secret_key = models.CharField(max_length=255)
     enabled = models.BooleanField(default=False)
     
+class TwoFactorAuth(models.Model):
+    """Store 2FA secrets and status."""
+    user = models.OneToOneField(User,on_delete=models.CASCADE,related_name='two_factor_auth')
+    secret_key = models.CharField(max_length=255)
+    enabled = models.BooleanField(default=False)
+    enabled_at = models.DateTimeField(null=True, blank=True)
+    disabled_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Two-Factor Authentication"
+        verbose_name_plural = "Two-Factor Authentications"
+
+    def __str__(self):
+        return f"{self.user.email} - {'Enabled' if self.enabled else 'Disabled'}"
+
+    def enable(self, secret):
+        self.secret_key = secret
+        self.enabled = True
+        self.enabled_at = timezone.now()
+        self.disabled_at = None
+        self.save()
+
+    def disable(self):
+        self.enabled = False
+        self.disabled_at = timezone.now()
+        self.save()
 
 
 class AccountDeletionRequest(models.Model):
