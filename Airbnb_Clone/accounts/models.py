@@ -224,7 +224,7 @@ class TwoFactorAuth(models.Model):
         self.disabled_at = None
         self.save()
 
-    def disable(self):
+    def disable(self)->bool:
         self.enabled = False
         self.disabled_at = timezone.now()
         self.save()
