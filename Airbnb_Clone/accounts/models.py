@@ -98,9 +98,16 @@ class BaseOTP(models.Model):
     @property
     def is_expired(self):
         return timezone.now() >= (self.created_at + timedelta(minutes=self.OTP_EXPIRY_MINUTES))
-
+    
+    def block_until(self, minutes=1440):  # 1440 minutes = 24 hours
+        """Block the OTP for a specified number of minutes."""
+        self.blocked_until = timezone.now() + timedelta(minutes=minutes)
+        self.save(update_fields=["blocked_until"])
+        
     @property
     def is_blocked(self):
+        if self.blocked_until:
+            return timezone.now() < self.blocked_until
         return self.attempts >= self.MAX_ATTEMPTS
 
     def increment_attempts(self):
