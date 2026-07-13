@@ -239,11 +239,8 @@ class AccountDeletionRequest(models.Model):
 
 class AccountDeletionRequest(models.Model):
     """Request to delete a user account (GDPR compliance)."""
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='deletion_requests',
-    )
+    
+    user = models.ForeignKey(User,on_delete=models.CASCADE,related_name='deletion_requests')
     reason = models.TextField(blank=True)
     scheduled_for = models.DateTimeField()
     completed = models.BooleanField(default=False)
