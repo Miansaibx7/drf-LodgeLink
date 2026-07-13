@@ -201,6 +201,37 @@ class LoginAttempt(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
+class LoginAttempt(models.Model):
+    """Track failed login attempts per email."""
+    email = models.EmailField()
+    attempts = models.PositiveIntegerField(default=0)
+    blocked_until = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Login Attempt"
+        verbose_name_plural = "Login Attempts"
+        constraints = [
+            models.UniqueConstraint(fields=['email'], name='unique_login_attempt_email')
+        ]
+        indexes = [
+            models.Index(fields=['email']),
+        ]
+
+    def __str__(self):
+        return f"{self.email} - {self.attempts} attempts"
+
+    def is_blocked(self):
+        return self.blocked_until and timezone.now() < self.blocked_until
+
+    def increment(self):
+        """Increment attempt count and block if threshold exceeded."""
+        self.attempts += 1
+        if self.attempts >= 5:
+            self.blocked_until = timezone.now() + timedelta(minutes=15)
+        self.save()
+
 class TwoFactorAuth(models.Model):
     """Store 2FA secrets and status."""
 
