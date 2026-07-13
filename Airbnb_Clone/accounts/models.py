@@ -20,7 +20,7 @@ class UserManager(BaseUserManager):
         else:
             user.set_unusable_password()
         try:
-         user.save(using=self._db)
+            user.save(using=self._db)
         except IntegrityError:
          raise ValueError("A user with this email already exists.")
         return user
