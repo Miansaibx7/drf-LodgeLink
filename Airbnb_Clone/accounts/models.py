@@ -1,8 +1,8 @@
-from django.db import models, IntegrityError
+from django.db import models, IntegrityError,transaction
 
 from django.contrib.auth.models import (AbstractBaseUser,BaseUserManager,PermissionsMixin,)
 from django.core.validators import RegexValidator, EmailValidator
-from django.db import transaction
+
 from datetime import timedelta
 from django.utils import timezone
 
