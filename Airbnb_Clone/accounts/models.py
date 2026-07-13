@@ -251,7 +251,7 @@ class AccountDeletionRequest(models.Model):
     def __str__(self):
         return f"{self.user.email} - Deletion scheduled for {self.scheduled_for}"
 
-    def complete(self):
+    def complete(self)->bool:
         """Mark the deletion request as completed."""
         self.completed = True
         self.completed_at = timezone.now()
