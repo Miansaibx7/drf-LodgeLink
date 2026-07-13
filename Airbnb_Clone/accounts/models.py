@@ -104,10 +104,10 @@ class BaseOTP(models.Model):
 
     def increment_attempts(self):
         self.attempts += 1
-        self.save(update_fields=["attempts"])
-
-        if self.is_blocked():
-          self.delete()
+        if self.is_blocked:   #  property
+            self.delete()     #  Delete without saving first
+        else:
+            self.save(update_fields=["attempts"])
 
 
 
