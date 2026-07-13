@@ -1,7 +1,7 @@
 from django.db import models, IntegrityError
 
 from django.contrib.auth.models import (AbstractBaseUser,BaseUserManager,PermissionsMixin,)
-from django.core.validators import RegexValidator
+from django.core.validators import RegexValidator, EmailValidator
 from datetime import timedelta
 from django.utils import timezone
 
@@ -26,10 +26,10 @@ class UserManager(BaseUserManager):
         return user
 
     def create_superuser(self, email, password=None, **extra_fields):
-        extra_fields['is_staff'] = True
-        extra_fields['is_superuser'] = True
-        extra_fields['is_verified'] = True
-        extra_fields['is_active'] = True
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_verified', True)
+        extra_fields.setdefault('is_active', True)
 
         if extra_fields.get("is_staff") is not True:
             raise ValueError("Superuser must have is_staff=True.")
@@ -45,7 +45,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     """Custom user model using email authentication."""
 
     username = None
-    email = models.EmailField(unique=True, db_index=True)
+    email = models.EmailField(unique=True, db_index=True, validators=[EmailValidator()])
     first_name = models.CharField(max_length=150, blank=True)
     last_name = models.CharField(max_length=150, blank=True)
     
