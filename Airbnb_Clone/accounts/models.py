@@ -194,7 +194,7 @@ class AuditLog(models.Model):
 
 class LoginAttempt(models.Model):
     """Track failed login attempts per email."""
-    
+
     email = models.EmailField()
     attempts = models.PositiveIntegerField(default=0)
     blocked_until = models.DateTimeField(null=True, blank=True)
@@ -213,7 +213,7 @@ class LoginAttempt(models.Model):
     def is_blocked(self):
         return self.blocked_until and timezone.now() < self.blocked_until
 
-    def increment(self):
+    def increment(self)->bool:
         """Increment attempt count and block if threshold exceeded."""
         self.attempts += 1
         if self.attempts >= 5:
