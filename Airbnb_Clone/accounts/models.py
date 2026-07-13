@@ -154,13 +154,18 @@ class UserSession(models.Model):
 class AuditLog(models.Model):
 
     ACTIONS = (
-        ("REGISTER","Register"),
-        ("LOGIN","Login"),
-        ("LOGOUT","Logout"),
-        ("PASSWORD_CHANGE","Password Change"),
-        ("PASSWORD_RESET","Password Reset"),
-        ("EMAIL_VERIFY","Email Verify"),
-    )
+    ("REGISTER", "Register"),
+    ("LOGIN", "Login"),
+    ("LOGOUT", "Logout"),
+    ("EMAIL_VERIFY", "Email Verify"),
+    ("OTP_SENT", "OTP Sent"),
+    ("PASSWORD_RESET", "Password Reset"),
+    ("PASSWORD_CHANGE", "Password Change"),
+    ("OAUTH_LOGIN", "OAuth Login"),
+    ("2FA_ENABLED", "2FA Enabled"),
+    ("2FA_DISABLED", "2FA Disabled"),
+    ("ACCOUNT_DELETE", "Account Delete"),
+)
 
     user = models.ForeignKey(User,on_delete=models.SET_NULL,null=True)
     action = models.CharField(max_length=50,choices=ACTIONS)
@@ -183,6 +188,7 @@ class TwoFactorAuth(models.Model):
     user = models.OneToOneField(User,on_delete=models.CASCADE)
     secret_key = models.CharField(max_length=255)
     enabled = models.BooleanField(default=False)
+    
 
 
 class AccountDeletionRequest(models.Model):
