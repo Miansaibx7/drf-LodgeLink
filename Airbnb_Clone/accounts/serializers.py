@@ -167,6 +167,10 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
             user.set_unusable_password()
             user.save()
 
+        if not created and not user.name:
+            user.name = user_info.get("name", "")
+            user.save(update_fields=["name"])
+
         attrs['user'] = user
         return attrs
 
