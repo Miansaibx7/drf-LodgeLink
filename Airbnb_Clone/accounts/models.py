@@ -147,6 +147,8 @@ class UserSession(models.Model):
     last_activity = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
+    login_at = models.DateTimeField(auto_now_add=True)
+    logout_at = models.DateTimeField(null=True, blank=True)
 
 
 class AuditLog(models.Model):
