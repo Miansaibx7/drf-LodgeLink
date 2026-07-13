@@ -203,7 +203,7 @@ class LoginAttempt(models.Model):
 
 class TwoFactorAuth(models.Model):
     """Store 2FA secrets and status."""
-    
+
     user = models.OneToOneField(User,on_delete=models.CASCADE,related_name='two_factor_auth')
     secret_key = models.CharField(max_length=255)
     enabled = models.BooleanField(default=False)
@@ -236,3 +236,33 @@ class AccountDeletionRequest(models.Model):
     reason = models.TextField(blank=True)
     scheduled_for = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+class AccountDeletionRequest(models.Model):
+    """Request to delete a user account (GDPR compliance)."""
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='deletion_requests',
+    )
+    reason = models.TextField(blank=True)
+    scheduled_for = models.DateTimeField()
+    completed = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Account Deletion Request"
+        verbose_name_plural = "Account Deletion Requests"
+        indexes = [
+            models.Index(fields=["scheduled_for"]),
+            models.Index(fields=["completed"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} - Deletion scheduled for {self.scheduled_for}"
+
+    def complete(self):
+        """Mark the deletion request as completed."""
+        self.completed = True
+        self.completed_at = timezone.now()
+        self.save()
