@@ -45,24 +45,33 @@ class User(AbstractBaseUser, PermissionsMixin):
     """Custom user model using email authentication."""
 
     username = None
-    email = models.EmailField(unique=True,db_index=True,)
+    email = models.EmailField(unique=True, db_index=True)
+    first_name = models.CharField(max_length=150, blank=True)
+    last_name = models.CharField(max_length=150, blank=True)
+    
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
+    
     date_joined = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
+    
     objects = UserManager()
 
     class Meta:
         ordering = ["-date_joined"]
         verbose_name = "User"
         verbose_name_plural = "Users"
+        indexes = [
+            models.Index(fields=["is_active"]),
+            models.Index(fields=["is_verified"]),
+        ]
 
     def __str__(self):
         return self.email
-
 
 
 class BaseOTP(models.Model):
