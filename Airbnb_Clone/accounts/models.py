@@ -74,7 +74,7 @@ class BaseOTP(models.Model):
 
     user = models.OneToOneField(User,on_delete=models.CASCADE,)
     code = models.CharField(max_length=OTP_LENGTH,validators=[RegexValidator(regex=r"^\d{6}$",
-                                                            message="OTP must contain exactly 6 digits.",)],)
+                                                            message="OTP must contain exactly 6 digits.",)])
     attempts = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True,)
 
