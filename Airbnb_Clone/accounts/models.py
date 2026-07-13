@@ -203,6 +203,7 @@ class LoginAttempt(models.Model):
 
 class TwoFactorAuth(models.Model):
     """Store 2FA secrets and status."""
+    
     user = models.OneToOneField(User,on_delete=models.CASCADE,related_name='two_factor_auth')
     secret_key = models.CharField(max_length=255)
     enabled = models.BooleanField(default=False)
