@@ -220,6 +220,7 @@ class LoginAttempt(models.Model):
             self.blocked_until = timezone.now() + timedelta(minutes=15)
         self.save()
 
+
 class TwoFactorAuth(models.Model):
     """Store 2FA secrets and status."""
 
