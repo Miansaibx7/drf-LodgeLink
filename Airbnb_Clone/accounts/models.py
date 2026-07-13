@@ -193,16 +193,8 @@ class AuditLog(models.Model):
 
 
 class LoginAttempt(models.Model):
-
-    email = models.EmailField()
-    attempts = models.PositiveIntegerField(default=0)
-    blocked_until = models.DateTimeField(null=True,blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-
-class LoginAttempt(models.Model):
     """Track failed login attempts per email."""
+    
     email = models.EmailField()
     attempts = models.PositiveIntegerField(default=0)
     blocked_until = models.DateTimeField(null=True, blank=True)
@@ -212,12 +204,8 @@ class LoginAttempt(models.Model):
     class Meta:
         verbose_name = "Login Attempt"
         verbose_name_plural = "Login Attempts"
-        constraints = [
-            models.UniqueConstraint(fields=['email'], name='unique_login_attempt_email')
-        ]
-        indexes = [
-            models.Index(fields=['email']),
-        ]
+        constraints = [models.UniqueConstraint(fields=['email'], name='unique_login_attempt_email')]
+        indexes = [models.Index(fields=['email'])]
 
     def __str__(self):
         return f"{self.email} - {self.attempts} attempts"
