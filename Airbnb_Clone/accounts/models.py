@@ -174,6 +174,8 @@ class LoginAttempt(models.Model):
     email = models.EmailField()
     attempts = models.PositiveIntegerField(default=0)
     blocked_until = models.DateTimeField(null=True,blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 class TwoFactorAuth(models.Model):
