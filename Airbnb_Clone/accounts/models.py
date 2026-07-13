@@ -217,7 +217,7 @@ class TwoFactorAuth(models.Model):
     def __str__(self):
         return f"{self.user.email} - {'Enabled' if self.enabled else 'Disabled'}"
 
-    def enable(self, secret):
+    def enable(self, secret)->bool:
         self.secret_key = secret
         self.enabled = True
         self.enabled_at = timezone.now()
