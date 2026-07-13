@@ -2,6 +2,7 @@ from django.db import models, IntegrityError
 
 from django.contrib.auth.models import (AbstractBaseUser,BaseUserManager,PermissionsMixin,)
 from django.core.validators import RegexValidator, EmailValidator
+from django.db import transaction
 from datetime import timedelta
 from django.utils import timezone
 
@@ -103,11 +104,12 @@ class BaseOTP(models.Model):
         return self.attempts >= self.MAX_ATTEMPTS
 
     def increment_attempts(self):
-        self.attempts += 1
-        if self.is_blocked:   #  property
-            self.delete()     #  Delete without saving first
-        else:
-            self.save(update_fields=["attempts"])
+        with transaction.atomic():
+            self.attempts += 1
+            if self.is_blocked:   #  property
+                self.delete()     #  Delete without saving first
+            else:
+                self.save(update_fields=["attempts"])
 
 
 
