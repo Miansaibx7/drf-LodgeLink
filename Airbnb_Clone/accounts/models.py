@@ -328,6 +328,7 @@ class AccountDeletionRequest(models.Model):
     scheduled_for = models.DateTimeField()
     completed = models.BooleanField(default=False)
     completed_at = models.DateTimeField(null=True, blank=True)
+    cancelled = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -361,6 +362,8 @@ class SocialAccount(TimeStampedModel):
 
     user = models.ForeignKey(User,on_delete=models.CASCADE,related_name="social_accounts")
 
+    provider_email = models.EmailField(blank=True)
+    avatar_url = models.URLField(blank=True)
     provider = models.CharField(max_length=20, choices=PROVIDERS, db_index=True)
     provider_user_id = models.CharField(max_length=255, db_index=True)
 
