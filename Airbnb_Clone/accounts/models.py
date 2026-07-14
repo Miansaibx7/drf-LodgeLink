@@ -360,8 +360,7 @@ class SocialAccount(TimeStampedModel):
     class Meta:
         unique_together = (
             "provider",
-            "provider_user_id",
-        )
+            "provider_user_id")
         indexes = [models.Index(fields=["provider"]),
                    models.Index(fields=["user"])
         ]
