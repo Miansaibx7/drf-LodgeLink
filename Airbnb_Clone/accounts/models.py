@@ -97,7 +97,8 @@ class BaseOTP(models.Model):
     code = models.CharField(max_length=OTP_LENGTH,validators=[RegexValidator(regex=r"^\d{6}$",
                                                             message="OTP must contain exactly 6 digits.",)])
     attempts = models.PositiveSmallIntegerField(default=0)
-    created_at = models.DateTimeField(auto_now_add=True,)
+    created_at = models.DateTimeField(auto_now_add=True)
+    blocked_until = models.DateTimeField(null=True,blank=True)
 
     class Meta:
         abstract = True
@@ -200,7 +201,7 @@ class UserSession(TimeStampedModel):
     def __str__(self):
         return f"{self.user.email} - {self.device_name or 'Unknown Device'}"
 
-    def logout(self)-> str:
+    def logout(self)-> None:
         """Mark session as inactive and set logout time."""
         self.is_active = False
         self.logout_at = timezone.now()
@@ -290,14 +291,14 @@ class TwoFactorAuth(models.Model):
     def __str__(self):
         return f"{self.user.email} - {'Enabled' if self.enabled else 'Disabled'}"
 
-    def enable(self, secret)-> bool:
+    def enable(self, secret: str)-> None:
         self.secret_key = secret
         self.enabled = True
         self.enabled_at = timezone.now()
         self.disabled_at = None
         self.save()
 
-    def disable(self)-> bool:
+    def disable(self)-> None:
         self.enabled = False
         self.disabled_at = timezone.now()
         self.save()
@@ -325,7 +326,7 @@ class AccountDeletionRequest(models.Model):
     def __str__(self):
         return f"{self.user.email} - Deletion scheduled for {self.scheduled_for}"
 
-    def complete(self)-> bool:
+    def complete(self)-> None:
         """Mark the deletion request as completed."""
         self.completed = True
         self.completed_at = timezone.now()
