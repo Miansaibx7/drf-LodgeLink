@@ -170,30 +170,8 @@ class UserSession(models.Model):
 
 
 class AuditLog(models.Model):
-
-    ACTIONS = (
-    ("REGISTER", "Register"),
-    ("LOGIN", "Login"),
-    ("LOGOUT", "Logout"),
-    ("EMAIL_VERIFY", "Email Verify"),
-    ("OTP_SENT", "OTP Sent"),
-    ("PASSWORD_RESET", "Password Reset"),
-    ("PASSWORD_CHANGE", "Password Change"),
-    ("OAUTH_LOGIN", "OAuth Login"),
-    ("2FA_ENABLED", "2FA Enabled"),
-    ("2FA_DISABLED", "2FA Disabled"),
-    ("ACCOUNT_DELETE", "Account Delete"),
-)
-
-    user = models.ForeignKey(User,on_delete=models.SET_NULL,null=True)
-    action = models.CharField(max_length=50,choices=ACTIONS)
-    ip_address = models.GenericIPAddressField()
-    user_agent = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-
-class AuditLog(models.Model):
     """Log all important user actions."""
-    
+
     ACTIONS = (
         ("REGISTER", "Register"),
         ("LOGIN", "Login"),
@@ -208,12 +186,7 @@ class AuditLog(models.Model):
         ("ACCOUNT_DELETE", "Account Delete"),
     )
 
-    user = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='audit_logs',
-    )
+    user = models.ForeignKey(User,on_delete=models.SET_NULL,null=True,related_name='audit_logs')
     action = models.CharField(max_length=50, choices=ACTIONS)
     ip_address = models.GenericIPAddressField()
     user_agent = models.TextField()
