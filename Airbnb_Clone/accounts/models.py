@@ -232,6 +232,8 @@ class AuditLog(models.Model):
 
     action = models.CharField(max_length=50, choices=ACTIONS)
     ip_address = models.GenericIPAddressField()
+    metadata = models.JSONField(default=dict,blank=True)
+
     user_agent = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -336,3 +338,24 @@ class AccountDeletionRequest(models.Model):
         self.completed = True
         self.completed_at = timezone.now()
         self.save()
+
+
+class SocialAccount(TimeStampedModel):
+
+    PROVIDERS = (
+        ("google", "Google"),
+        ("github", "GitHub"),
+        ("facebook", "Facebook"),
+        ("linkedin", "LinkedIn"),
+    )
+
+    user = models.ForeignKey(User,on_delete=models.CASCADE,related_name="social_accounts")
+    
+    provider = models.CharField(max_length=20,choices=PROVIDERS)
+    provider_user_id = models.CharField(max_length=255)
+
+    class Meta:
+        unique_together = (
+            "provider",
+            "provider_user_id",
+        )
