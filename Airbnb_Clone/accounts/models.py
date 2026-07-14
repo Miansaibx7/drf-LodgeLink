@@ -62,7 +62,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     last_name = models.CharField(max_length=150, blank=True)
     
     is_verified = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     
     date_joined = models.DateTimeField(auto_now_add=True)
@@ -97,6 +97,7 @@ class BaseOTP(models.Model):
     code = models.CharField(max_length=OTP_LENGTH,validators=[RegexValidator(regex=r"^\d{6}$",
                                                             message="OTP must contain exactly 6 digits.",)])
     attempts = models.PositiveSmallIntegerField(default=0)
+
     created_at = models.DateTimeField(auto_now_add=True)
     blocked_until = models.DateTimeField(null=True,blank=True)
 
@@ -288,7 +289,7 @@ class TwoFactorAuth(models.Model):
 
     secret_key = models.CharField(max_length=255)
     backup_codes = models.JSONField(default=list,blank=True)
-    
+
     enabled = models.BooleanField(default=False)
     enabled_at = models.DateTimeField(null=True, blank=True)
     disabled_at = models.DateTimeField(null=True, blank=True)
@@ -361,3 +362,6 @@ class SocialAccount(TimeStampedModel):
             "provider",
             "provider_user_id",
         )
+        indexes = [models.Index(fields=["provider"]),
+                   models.Index(fields=["user"])
+        ]
