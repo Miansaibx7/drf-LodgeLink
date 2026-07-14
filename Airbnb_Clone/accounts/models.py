@@ -124,10 +124,8 @@ class BaseOTP(models.Model):
     def increment_attempts(self) -> None:
         with transaction.atomic():
             self.attempts += 1
-
             if self.attempts >= self.MAX_ATTEMPTS and not self.blocked_until:
                 self.blocked_until = timezone.now() + timedelta(minutes=15)
-
             self.save(update_fields=["attempts", "blocked_until"])
 
 
@@ -279,10 +277,8 @@ class LoginAttempt(models.Model):
     def increment(self, minutes: int = 15, max_attempts: int = 5) -> None:
         """Increment attempt count and block if threshold exceeded."""
         self.attempts += 1
-
         if self.attempts >= max_attempts:
             self.blocked_until = timezone.now() + timedelta(minutes=minutes)
-
         self.save()
 
 class TwoFactorAuth(models.Model):
