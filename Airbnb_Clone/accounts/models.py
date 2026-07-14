@@ -164,27 +164,11 @@ class UserProfile(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
-class UserSession(models.Model):
-
-    user = models.ForeignKey(User,on_delete=models.CASCADE)
-    refresh_token_jti = models.CharField(max_length=255,unique=True)
-    ip_address = models.GenericIPAddressField()
-    user_agent = models.TextField()
-    device_name = models.CharField(max_length=255,blank=True)
-    last_activity = models.DateTimeField(auto_now=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_active = models.BooleanField(default=True)
-    login_at = models.DateTimeField(auto_now_add=True)
-    logout_at = models.DateTimeField(null=True, blank=True)
-
-
 class UserSession(TimeStampedModel):
     """Track active user sessions."""
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='sessions',
-    )
+
+    user = models.ForeignKey(User,on_delete=models.CASCADE,related_name='sessions')
+
     refresh_token_jti = models.CharField(max_length=255, unique=True)
     ip_address = models.GenericIPAddressField()
     user_agent = models.TextField()
@@ -231,6 +215,7 @@ class AuditLog(models.Model):
     )
 
     user = models.ForeignKey(User,on_delete=models.SET_NULL,null=True,related_name='audit_logs')
+
     action = models.CharField(max_length=50, choices=ACTIONS)
     ip_address = models.GenericIPAddressField()
     user_agent = models.TextField()
@@ -282,6 +267,7 @@ class TwoFactorAuth(models.Model):
     """Store 2FA secrets and status."""
 
     user = models.OneToOneField(User,on_delete=models.CASCADE,related_name='two_factor_auth')
+
     secret_key = models.CharField(max_length=255)
     enabled = models.BooleanField(default=False)
     enabled_at = models.DateTimeField(null=True, blank=True)
@@ -311,6 +297,7 @@ class AccountDeletionRequest(models.Model):
     """Request to delete a user account (GDPR compliance)."""
 
     user = models.ForeignKey(User,on_delete=models.CASCADE,related_name='deletion_requests')
+    
     reason = models.TextField(blank=True)
     scheduled_for = models.DateTimeField()
     completed = models.BooleanField(default=False)
