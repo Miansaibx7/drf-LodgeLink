@@ -287,6 +287,8 @@ class TwoFactorAuth(models.Model):
     user = models.OneToOneField(User,on_delete=models.CASCADE,related_name='two_factor_auth')
 
     secret_key = models.CharField(max_length=255)
+    backup_codes = models.JSONField(default=list,blank=True)
+    
     enabled = models.BooleanField(default=False)
     enabled_at = models.DateTimeField(null=True, blank=True)
     disabled_at = models.DateTimeField(null=True, blank=True)
