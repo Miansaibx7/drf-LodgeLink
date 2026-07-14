@@ -183,7 +183,7 @@ class UserSession(TimeStampedModel):
     refresh_token_jti = models.CharField(max_length=255, unique=True)
     browser = models.CharField(max_length=100,blank=True)
     operating_system = models.CharField(max_length=100,blank=True)
-    
+
     ip_address = models.GenericIPAddressField()
     user_agent = models.TextField()
     device_name = models.CharField(max_length=255, blank=True)
@@ -254,14 +254,16 @@ class LoginAttempt(models.Model):
     email = models.EmailField()
     attempts = models.PositiveIntegerField(default=0)
     blocked_until = models.DateTimeField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = "Login Attempt"
         verbose_name_plural = "Login Attempts"
-        constraints = [models.UniqueConstraint(fields=['email'], name='unique_login_attempt_email')]
+        constraints = [models.UniqueConstraint(fields=["email", "ip_address"],name="unique_login_attempt")]
         indexes = [models.Index(fields=['email'])]
+        
 
     def __str__(self):
         return f"{self.email} - {self.attempts} attempts"
