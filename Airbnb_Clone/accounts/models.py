@@ -67,7 +67,6 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
 
-    date_joined = models.DateTimeField(auto_now_add=True)
     
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
@@ -75,7 +74,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     objects = UserManager()
 
     class Meta:
-        ordering = ["-date_joined"]
+        ordering = ["-created_at"]   # use created_at for ordering
         verbose_name = "User"
         verbose_name_plural = "Users"
         indexes = [
