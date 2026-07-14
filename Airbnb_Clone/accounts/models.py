@@ -94,7 +94,7 @@ class BaseOTP(models.Model):
     MAX_ATTEMPTS = 5
 
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    
+
     code = models.CharField(max_length=OTP_LENGTH,validators=[RegexValidator(regex=r"^\d{6}$",
                            message="OTP must contain exactly 6 digits.")])
     attempts = models.PositiveSmallIntegerField(default=0)
@@ -249,36 +249,41 @@ class AuditLog(models.Model):
         return f"{self.user.email if self.user else 'Anonymous'} - {self.action} at {self.created_at}"
 
 
-class LoginAttempt(models.Model):
-    """Track failed login attempts per email."""
 
-    email = models.EmailField()
+class LoginAttempt(models.Model):
+    """Track failed login attempts per email and IP."""
+
+    email = models.EmailField(db_index=True)
+    ip_address = models.GenericIPAddressField(db_index=True)
     attempts = models.PositiveIntegerField(default=0)
-    blocked_until = models.DateTimeField(null=True, blank=True)
-    ip_address = models.GenericIPAddressField()
+    blocked_until = models.DateTimeField(null=True, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = "Login Attempt"
         verbose_name_plural = "Login Attempts"
-        constraints = [models.UniqueConstraint(fields=["email", "ip_address"],name="unique_login_attempt")]
-        indexes = [models.Index(fields=['email'])]
-        
+        ordering = ["-updated_at"]
+        constraints = [models.UniqueConstraint(
+                fields=["email", "ip_address"],
+                name="unique_login_attempt",)]
+        indexes = [models.Index(fields=["email"]),models.Index(fields=["ip_address"]),
+                models.Index(fields=["blocked_until"])]
 
     def __str__(self):
         return f"{self.email} - {self.attempts} attempts"
 
-    def is_blocked(self)-> float:
-        return self.blocked_until and timezone.now() < self.blocked_until
+    def is_blocked(self) -> bool:
+        return bool(self.blocked_until and timezone.now() < self.blocked_until)
 
-    def increment(self)-> bool:
+    def increment(self, minutes: int = 15, max_attempts: int = 5) -> None:
         """Increment attempt count and block if threshold exceeded."""
         self.attempts += 1
-        if self.attempts >= 5:
-            self.blocked_until = timezone.now() + timedelta(minutes=15)
-        self.save()
 
+        if self.attempts >= max_attempts:
+            self.blocked_until = timezone.now() + timedelta(minutes=minutes)
+
+        self.save()
 
 class TwoFactorAuth(models.Model):
     """Store 2FA secrets and status."""
