@@ -108,21 +108,21 @@ class BaseOTP(models.Model):
         return self.user.email
 
     @property
-    def is_expired(self)-> float:
+    def is_expired(self)-> bool:
         return timezone.now() >= (self.created_at + timedelta(minutes=self.OTP_EXPIRY_MINUTES))
     
-    def block_until(self, minutes=1440)-> float:  # 1440 minutes = 24 hours
+    def block_until(self, minutes=1440)-> None:  # 1440 minutes = 24 hours
         """Block the OTP for a specified number of minutes."""
         self.blocked_until = timezone.now() + timedelta(minutes=minutes)
         self.save(update_fields=["blocked_until"])
 
     @property
-    def is_blocked(self)-> float:
+    def is_blocked(self)-> bool:
         if self.blocked_until:
             return timezone.now() < self.blocked_until
         return self.attempts >= self.MAX_ATTEMPTS
 
-    def increment_attempts(self)-> str:
+    def increment_attempts(self)-> None:
         with transaction.atomic():
             self.attempts += 1
             if self.is_blocked:   #  property
@@ -350,7 +350,7 @@ class SocialAccount(TimeStampedModel):
     )
 
     user = models.ForeignKey(User,on_delete=models.CASCADE,related_name="social_accounts")
-    
+
     provider = models.CharField(max_length=20,choices=PROVIDERS)
     provider_user_id = models.CharField(max_length=255)
 
