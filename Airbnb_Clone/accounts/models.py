@@ -342,7 +342,9 @@ class AccountDeletionRequest(models.Model):
         self.save()
 
 
+
 class SocialAccount(TimeStampedModel):
+    """Store linked OAuth accounts."""
 
     PROVIDERS = (
         ("google", "Google"),
@@ -353,13 +355,19 @@ class SocialAccount(TimeStampedModel):
 
     user = models.ForeignKey(User,on_delete=models.CASCADE,related_name="social_accounts")
 
-    provider = models.CharField(max_length=20,choices=PROVIDERS)
-    provider_user_id = models.CharField(max_length=255)
+    provider = models.CharField(max_length=20, choices=PROVIDERS, db_index=True)
+    provider_user_id = models.CharField(max_length=255, db_index=True)
 
     class Meta:
-        unique_together = (
-            "provider",
-            "provider_user_id")
+        verbose_name = "Social Account"
+        verbose_name_plural = "Social Accounts"
+        ordering = ["-created_at"]
+        constraints = [models.UniqueConstraint(
+                fields=["provider", "provider_user_id"],
+                name="unique_social_account_provider_user")]
         indexes = [models.Index(fields=["provider"]),
-                   models.Index(fields=["user"])
-        ]
+            models.Index(fields=["provider_user_id"]),
+            models.Index(fields=["user"])]
+
+    def __str__(self):
+        return f"{self.user.email} - {self.provider}"
