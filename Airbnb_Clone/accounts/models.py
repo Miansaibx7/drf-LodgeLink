@@ -7,6 +7,7 @@ from datetime import timedelta
 from django.utils import timezone
 
 
+
 class TimeStampedModel(models.Model):
     """Abstract model that provides created_at and updated_at timestamps."""
     created_at = models.DateTimeField(auto_now_add=True)
@@ -16,10 +17,11 @@ class TimeStampedModel(models.Model):
         abstract = True
 
 
+
 class UserManager(BaseUserManager):
     """Custom manager for email authentication."""
 
-    def create_user(self, email, password=None, **extra_fields):
+    def create_user(self, email, password=None, **extra_fields)-> str:
         if not email:
             raise ValueError("Email address is required.")
 
@@ -35,7 +37,7 @@ class UserManager(BaseUserManager):
          raise ValueError("A user with this email already exists.")
         return user
 
-    def create_superuser(self, email, password=None, **extra_fields):
+    def create_superuser(self, email, password=None, **extra_fields)-> str:
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_verified', True)
@@ -105,21 +107,21 @@ class BaseOTP(models.Model):
         return self.user.email
 
     @property
-    def is_expired(self):
+    def is_expired(self)-> float:
         return timezone.now() >= (self.created_at + timedelta(minutes=self.OTP_EXPIRY_MINUTES))
     
-    def block_until(self, minutes=1440):  # 1440 minutes = 24 hours
+    def block_until(self, minutes=1440)-> float:  # 1440 minutes = 24 hours
         """Block the OTP for a specified number of minutes."""
         self.blocked_until = timezone.now() + timedelta(minutes=minutes)
         self.save(update_fields=["blocked_until"])
 
     @property
-    def is_blocked(self):
+    def is_blocked(self)-> float:
         if self.blocked_until:
             return timezone.now() < self.blocked_until
         return self.attempts >= self.MAX_ATTEMPTS
 
-    def increment_attempts(self):
+    def increment_attempts(self)-> str:
         with transaction.atomic():
             self.attempts += 1
             if self.is_blocked:   #  property
@@ -198,7 +200,7 @@ class UserSession(TimeStampedModel):
     def __str__(self):
         return f"{self.user.email} - {self.device_name or 'Unknown Device'}"
 
-    def logout(self):
+    def logout(self)-> str:
         """Mark session as inactive and set logout time."""
         self.is_active = False
         self.logout_at = timezone.now()
@@ -260,10 +262,10 @@ class LoginAttempt(models.Model):
     def __str__(self):
         return f"{self.email} - {self.attempts} attempts"
 
-    def is_blocked(self):
+    def is_blocked(self)-> float:
         return self.blocked_until and timezone.now() < self.blocked_until
 
-    def increment(self)->bool:
+    def increment(self)-> bool:
         """Increment attempt count and block if threshold exceeded."""
         self.attempts += 1
         if self.attempts >= 5:
@@ -288,14 +290,14 @@ class TwoFactorAuth(models.Model):
     def __str__(self):
         return f"{self.user.email} - {'Enabled' if self.enabled else 'Disabled'}"
 
-    def enable(self, secret)->bool:
+    def enable(self, secret)-> bool:
         self.secret_key = secret
         self.enabled = True
         self.enabled_at = timezone.now()
         self.disabled_at = None
         self.save()
 
-    def disable(self)->bool:
+    def disable(self)-> bool:
         self.enabled = False
         self.disabled_at = timezone.now()
         self.save()
@@ -323,7 +325,7 @@ class AccountDeletionRequest(models.Model):
     def __str__(self):
         return f"{self.user.email} - Deletion scheduled for {self.scheduled_for}"
 
-    def complete(self)->bool:
+    def complete(self)-> bool:
         """Mark the deletion request as completed."""
         self.completed = True
         self.completed_at = timezone.now()
