@@ -7,6 +7,9 @@ from datetime import timedelta
 from django.utils import timezone
 
 
+
+
+
 class UserManager(BaseUserManager):
     """Custom manager for email authentication."""
 
@@ -167,6 +170,41 @@ class UserSession(models.Model):
     is_active = models.BooleanField(default=True)
     login_at = models.DateTimeField(auto_now_add=True)
     logout_at = models.DateTimeField(null=True, blank=True)
+
+
+class UserSession(TimeStampedModel):
+    """Track active user sessions."""
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='sessions',
+    )
+    refresh_token_jti = models.CharField(max_length=255, unique=True)
+    ip_address = models.GenericIPAddressField()
+    user_agent = models.TextField()
+    device_name = models.CharField(max_length=255, blank=True)
+    last_activity = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    login_at = models.DateTimeField(auto_now_add=True)
+    logout_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "User Session"
+        verbose_name_plural = "User Sessions"
+        indexes = [
+            models.Index(fields=["user", "is_active"]),
+            models.Index(fields=["refresh_token_jti"]),
+            models.Index(fields=["-last_activity"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} - {self.device_name or 'Unknown Device'}"
+
+    def logout(self):
+        """Mark session as inactive and set logout time."""
+        self.is_active = False
+        self.logout_at = timezone.now()
+        self.save(update_fields=["is_active", "logout_at"])
 
 
 class AuditLog(models.Model):
