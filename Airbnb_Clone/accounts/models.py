@@ -3,6 +3,8 @@ from django.db import models, IntegrityError,transaction
 from django.contrib.auth.models import (AbstractBaseUser,BaseUserManager,PermissionsMixin,)
 from django.core.validators import RegexValidator, EmailValidator
 
+from django.contrib.auth.hashers import make_password
+
 from datetime import timedelta
 from django.utils import timezone
 
@@ -34,7 +36,7 @@ class UserManager(BaseUserManager):
         try:
             user.save(using=self._db)
         except IntegrityError:
-         raise ValueError("A user with this email already exists.")
+           raise ValueError("A user with this email already exists.")
         return user
 
     def create_superuser(self, email, password=None, **extra_fields)-> "User":
@@ -65,9 +67,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
 
-    @property
-    def date_joined(self):
-        return self.created_at
+    date_joined = models.DateTimeField(auto_now_add=True)
     
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
@@ -99,6 +99,7 @@ class BaseOTP(models.Model):
 
     code = models.CharField(max_length=OTP_LENGTH,validators=[RegexValidator(regex=r"^\d{6}$",
                            message="OTP must contain exactly 6 digits.")])
+    otp_hash = make_password()
     attempts = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     blocked_until = models.DateTimeField(null=True, blank=True)
