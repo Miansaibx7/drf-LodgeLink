@@ -51,7 +51,7 @@ class UserManager(BaseUserManager):
 
 
 
-class User(AbstractBaseUser, PermissionsMixin):
+class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     """Custom user model using email authentication."""
 
     username = None
@@ -64,7 +64,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_staff = models.BooleanField(default=False)
     
     date_joined = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
@@ -82,6 +81,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
 
 
 class BaseOTP(models.Model):
