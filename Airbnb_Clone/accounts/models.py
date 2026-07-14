@@ -163,6 +163,35 @@ class UserProfile(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+class UserProfile(TimeStampedModel):
+    """
+    Extended user profile information.
+    """
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='profile',
+    )
+    phone_number = models.CharField(max_length=20, blank=True)
+    avatar = models.ImageField(
+        upload_to="avatars/",
+        blank=True,
+        null=True,
+    )
+    country = models.CharField(max_length=100, blank=True)
+    timezone = models.CharField(max_length=100, default="UTC")
+    language = models.CharField(max_length=7, default="en")  # Could use LANGUAGES setting
+
+    class Meta:
+        verbose_name = "User Profile"
+        verbose_name_plural = "User Profiles"
+        indexes = [
+            models.Index(fields=["user"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} - Profile"
+
 
 class UserSession(TimeStampedModel):
     """Track active user sessions."""
@@ -297,7 +326,7 @@ class AccountDeletionRequest(models.Model):
     """Request to delete a user account (GDPR compliance)."""
 
     user = models.ForeignKey(User,on_delete=models.CASCADE,related_name='deletion_requests')
-    
+
     reason = models.TextField(blank=True)
     scheduled_for = models.DateTimeField()
     completed = models.BooleanField(default=False)
