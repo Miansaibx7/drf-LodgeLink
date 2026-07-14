@@ -21,7 +21,7 @@ class TimeStampedModel(models.Model):
 class UserManager(BaseUserManager):
     """Custom manager for email authentication."""
 
-    def create_user(self, email, password=None, **extra_fields)-> str:
+    def create_user(self, email, password=None, **extra_fields)-> "User":
         if not email:
             raise ValueError("Email address is required.")
 
@@ -37,7 +37,7 @@ class UserManager(BaseUserManager):
          raise ValueError("A user with this email already exists.")
         return user
 
-    def create_superuser(self, email, password=None, **extra_fields)-> str:
+    def create_superuser(self, email, password=None, **extra_fields)-> "User":
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         extra_fields.setdefault('is_verified', True)
@@ -181,6 +181,9 @@ class UserSession(TimeStampedModel):
     user = models.ForeignKey(User,on_delete=models.CASCADE,related_name='sessions')
 
     refresh_token_jti = models.CharField(max_length=255, unique=True)
+    browser = models.CharField(max_length=100,blank=True)
+    operating_system = models.CharField(max_length=100,blank=True)
+    
     ip_address = models.GenericIPAddressField()
     user_agent = models.TextField()
     device_name = models.CharField(max_length=255, blank=True)
