@@ -164,20 +164,12 @@ class UserProfile(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 class UserProfile(TimeStampedModel):
-    """
-    Extended user profile information.
-    """
-    user = models.OneToOneField(
-        User,
-        on_delete=models.CASCADE,
-        related_name='profile',
-    )
+    """Extended user profile information."""
+
+    user = models.OneToOneField(User,on_delete=models.CASCADE,related_name='profile')
+
     phone_number = models.CharField(max_length=20, blank=True)
-    avatar = models.ImageField(
-        upload_to="avatars/",
-        blank=True,
-        null=True,
-    )
+    avatar = models.ImageField(upload_to="avatars/",blank=True,null=True,)
     country = models.CharField(max_length=100, blank=True)
     timezone = models.CharField(max_length=100, default="UTC")
     language = models.CharField(max_length=7, default="en")  # Could use LANGUAGES setting
