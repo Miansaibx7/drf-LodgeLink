@@ -186,6 +186,8 @@ class UserSession(TimeStampedModel):
     ip_address = models.GenericIPAddressField()
     user_agent = models.TextField()
     device_name = models.CharField(max_length=255, blank=True)
+    location = models.CharField(max_length=255,blank=True)
+
     last_activity = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
     login_at = models.DateTimeField(auto_now_add=True)
