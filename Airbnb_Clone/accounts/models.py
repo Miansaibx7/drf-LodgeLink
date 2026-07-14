@@ -93,13 +93,13 @@ class BaseOTP(models.Model):
     OTP_EXPIRY_MINUTES = 10
     MAX_ATTEMPTS = 5
 
-    user = models.OneToOneField(User,on_delete=models.CASCADE,)
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    
     code = models.CharField(max_length=OTP_LENGTH,validators=[RegexValidator(regex=r"^\d{6}$",
-                                                            message="OTP must contain exactly 6 digits.",)])
+                           message="OTP must contain exactly 6 digits.")])
     attempts = models.PositiveSmallIntegerField(default=0)
-
     created_at = models.DateTimeField(auto_now_add=True)
-    blocked_until = models.DateTimeField(null=True,blank=True)
+    blocked_until = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         abstract = True
@@ -108,29 +108,27 @@ class BaseOTP(models.Model):
     def __str__(self):
         return self.user.email
 
-    @property
-    def is_expired(self)-> bool:
+    def is_expired(self) -> bool:
         return timezone.now() >= (self.created_at + timedelta(minutes=self.OTP_EXPIRY_MINUTES))
-    
-    def block_until(self, minutes=1440)-> None:  # 1440 minutes = 24 hours
+
+    def block_until(self, minutes: int = 1440) -> None: # 1440 minutes = 24 hours
         """Block the OTP for a specified number of minutes."""
         self.blocked_until = timezone.now() + timedelta(minutes=minutes)
         self.save(update_fields=["blocked_until"])
 
-    @property
-    def is_blocked(self)-> bool:
+    def is_blocked(self) -> bool:
         if self.blocked_until:
             return timezone.now() < self.blocked_until
         return self.attempts >= self.MAX_ATTEMPTS
 
-    def increment_attempts(self)-> None:
+    def increment_attempts(self) -> None:
         with transaction.atomic():
             self.attempts += 1
-            if self.is_blocked:   #  property
-                self.delete()     #  Delete without saving first
-            else:
-                self.save(update_fields=["attempts"])
 
+            if self.attempts >= self.MAX_ATTEMPTS and not self.blocked_until:
+                self.blocked_until = timezone.now() + timedelta(minutes=15)
+
+            self.save(update_fields=["attempts", "blocked_until"])
 
 
 class EmailOTP(BaseOTP):
