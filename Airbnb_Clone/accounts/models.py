@@ -1,4 +1,5 @@
 from django.db import models, IntegrityError,transaction
+from rest_framework import serializers
 
 from django.contrib.auth.models import (AbstractBaseUser,BaseUserManager,PermissionsMixin,)
 from django.core.validators import RegexValidator, EmailValidator
@@ -33,8 +34,10 @@ class UserManager(BaseUserManager):
             user.set_password(password)
         else:
             user.set_unusable_password()
-            
-        user.save(using=self._db)
+        try:
+            user.save(using=self._db)
+        except IntegrityError:
+           raise serializers.ValidationError({"email": "A user with this email already exists."})
         return user
 
     def create_superuser(self, email, password=None, **extra_fields)-> "User":
