@@ -27,7 +27,7 @@ class UserManager(BaseUserManager):
         if not email:
             raise ValueError("Email address is required.")
 
-        email = self.normalize_email(email)
+        email = self.normalize_email(email).lower().strip()
         user = self.model(email=email, **extra_fields,)
         if password:
             user.set_password(password)
@@ -137,7 +137,7 @@ class BaseOTP(models.Model):
         now = timezone.now()
         if self.blocked_until and now >= self.blocked_until:
             # Block expired – clear the block and reset attempts atomically.
-            BaseOTP.objects.filter(pk=self.pk).update(blocked_until=None,attempts=0)
+            self.__class__.objects.filter(pk=self.pk).update(blocked_until=None,attempts=0)
             self.refresh_from_db()
             return False
         if self.blocked_until and now < self.blocked_until:
@@ -169,7 +169,7 @@ class BaseOTP(models.Model):
         """Atomically increment attempts and set block if needed."""
         with transaction.atomic():
             # Use F() to avoid race conditions
-            updated = BaseOTP.objects.filter(pk=self.pk).update(attempts=models.F("attempts") + 1)
+            updated = self.__class__.objects.filter(pk=self.pk).update(attempts=models.F("attempts") + 1)
             if updated:
                 self.refresh_from_db()
                 if self.attempts >= self.MAX_ATTEMPTS and not self.blocked_until:
