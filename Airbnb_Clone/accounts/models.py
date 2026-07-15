@@ -205,7 +205,8 @@ class UserProfile(TimeStampedModel):
 
     user = models.OneToOneField(User,on_delete=models.CASCADE,related_name='profile')
 
-    phone_number = models.CharField(max_length=20, blank=True)
+    phone_number = models.CharField(max_length=20, blank=True,validators=[RegexValidator(regex=r'^\+?[0-9]{7,15}$',
+                                                        message='Invalid phone number.')])
     avatar = models.ImageField(upload_to="avatars/",blank=True,null=True,)
     country = models.CharField(max_length=100, blank=True)
     timezone = models.CharField(max_length=100, default="UTC")
@@ -227,7 +228,7 @@ class UserSession(TimeStampedModel):
 
     user = models.ForeignKey(User,on_delete=models.CASCADE,related_name='sessions')
 
-    refresh_token_jti = models.CharField(max_length=255, unique=True)
+    refresh_token_jti = models.CharField(max_length=255, unique=True,db_index=True)
     browser = models.CharField(max_length=100,blank=True)
     operating_system = models.CharField(max_length=100,blank=True)
 
