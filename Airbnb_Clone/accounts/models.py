@@ -174,6 +174,7 @@ class BaseOTP(models.Model):
     def increment_attempts(self) -> None:
         """Atomically increment attempts and apply a block if threshold reached.
         Uses select_for_update to avoid race conditions."""
+        self.reset_block_if_expired()  
         with transaction.atomic():
             obj = self.__class__.all_objects.select_for_update().get(pk=self.pk)
             obj.attempts += 1
@@ -344,7 +345,7 @@ class LoginAttempt(models.Model):
             obj.attempts += 1
             if obj.attempts >= max_attempts and not obj.blocked_until:
                 obj.blocked_until = timezone.now() + timedelta(minutes=minutes)
-            obj.save()
+            obj.save(update_fields=["attempts", "blocked_until"])
         # Refresh the current instance so it reflects the DB state
         self.refresh_from_db()
 
