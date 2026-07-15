@@ -310,10 +310,8 @@ class LoginAttempt(models.Model):
         return bool(self.blocked_until and timezone.now() < self.blocked_until)
 
     def increment(self, minutes: int = 15, max_attempts: int = 5) -> None:
-        """
-        Atomically increment attempt count and block if threshold exceeded.
-        Uses an UPDATE query to avoid race conditions.
-        """
+        """Atomically increment attempt count and block if threshold exceeded.
+        Uses an UPDATE query to avoid race conditions."""
         with transaction.atomic():
             # Lock the row to prevent concurrent updates
             obj = LoginAttempt.objects.select_for_update().get(pk=self.pk)
