@@ -299,9 +299,9 @@ class LoginAttempt(models.Model):
         ordering = ["-updated_at"]
         constraints = [models.UniqueConstraint(
                 fields=["email", "ip_address"],
-                name="unique_login_attempt",)]
+                name="unique_login_attempt")]
         indexes = [models.Index(fields=["email"]),models.Index(fields=["ip_address"]),
-                models.Index(fields=["blocked_until"])]
+            models.Index(fields=["blocked_until"])]
 
     def __str__(self):
         return f"{self.email} - {self.attempts} attempts"
@@ -310,11 +310,21 @@ class LoginAttempt(models.Model):
         return bool(self.blocked_until and timezone.now() < self.blocked_until)
 
     def increment(self, minutes: int = 15, max_attempts: int = 5) -> None:
-        """Increment attempt count and block if threshold exceeded."""
-        self.attempts += 1
-        if self.attempts >= max_attempts:
-            self.blocked_until = timezone.now() + timedelta(minutes=minutes)
-        self.save()
+        """
+        Atomically increment attempt count and block if threshold exceeded.
+        Uses an UPDATE query to avoid race conditions.
+        """
+        with transaction.atomic():
+            # Lock the row to prevent concurrent updates
+            obj = LoginAttempt.objects.select_for_update().get(pk=self.pk)
+            obj.attempts += 1
+            if obj.attempts >= max_attempts and not obj.blocked_until:
+                obj.blocked_until = timezone.now() + timedelta(minutes=minutes)
+            obj.save()
+        # Refresh the current instance so it reflects the DB state
+        self.refresh_from_db()
+
+
 
 class TwoFactorAuth(models.Model):
     """Store 2FA secrets and status."""
