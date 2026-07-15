@@ -87,6 +87,20 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
 
 
 
+class ActiveOTPManager(models.Manager):
+    """Manager that only returns OTPs that are not expired or blocked."""
+    def get_queryset(self):
+        now = timezone.now()
+        return super().get_queryset().filter(
+            created_at__gte=now - timedelta(minutes=self.model.OTP_EXPIRY_MINUTES),).exclude(blocked_until__gt=now,
+        ).exclude(attempts__gte=self.model.MAX_ATTEMPTS)
+
+    def get_active_for_user(self, user):
+        """Return the latest active OTP for a given user."""
+        return self.get_queryset().filter(user=user).order_by('-created_at').first()
+
+
+
 class BaseOTP(models.Model):
     """Abstract model for all OTP types.
     Stores only a **hashed** OTP, never the raw code."""
@@ -103,6 +117,8 @@ class BaseOTP(models.Model):
     attempts = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     blocked_until = models.DateTimeField(null=True, blank=True)
+
+    objects = ActiveOTPManager()
 
     class Meta:
         abstract = True
@@ -366,10 +382,8 @@ class TwoFactorAuth(models.Model):
         self.save(update_fields=["backup_code_hashes"])
 
     def consume_backup_code(self, raw_code: str) -> bool:
-        """
-        Check a raw backup code against stored hashes.
-        If valid, remove that hash (one‑time use) and return True.
-        """
+        """Check a raw backup code against stored hashes.
+        If valid, remove that hash (one‑time use) and return True."""
         for i, hash_val in enumerate(self.backup_code_hashes):
             if check_password(raw_code, hash_val):
                 # Code used – remove it from the list
