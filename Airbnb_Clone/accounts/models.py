@@ -33,10 +33,8 @@ class UserManager(BaseUserManager):
             user.set_password(password)
         else:
             user.set_unusable_password()
-        try:
-            user.save(using=self._db)
-        except IntegrityError:
-           raise ValueError("A user with this email already exists.")
+            
+        user.save(using=self._db)
         return user
 
     def create_superuser(self, email, password=None, **extra_fields)-> "User":
