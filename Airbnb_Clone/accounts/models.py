@@ -88,20 +88,17 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
 
 
 class BaseOTP(models.Model):
-    """
-    Abstract model for all OTP types.
-    Stores only a **hashed** OTP, never the raw code.
-    """
+    """Abstract model for all OTP types.
+    Stores only a **hashed** OTP, never the raw code."""
     OTP_LENGTH = 6
     OTP_EXPIRY_MINUTES = 10
     MAX_ATTEMPTS = 5
 
     user = models.ForeignKey(User,on_delete=models.CASCADE,
         # One user can have multiple OTPs (e.g., password reset requests),
-        # so we use ForeignKey instead of OneToOneField.
         # A manager method will fetch the latest active OTP.
     )
-    # Hashed OTP value (e.g., using Django's make_password)
+    # Hashed OTP value ( using Django's make_password)
     otp_hash = models.CharField(max_length=128)
     attempts = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
