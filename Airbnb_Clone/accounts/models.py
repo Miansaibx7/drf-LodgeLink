@@ -3,7 +3,7 @@ from django.db import models, IntegrityError,transaction
 from django.contrib.auth.models import (AbstractBaseUser,BaseUserManager,PermissionsMixin,)
 from django.core.validators import RegexValidator, EmailValidator
 
-from django.contrib.auth.hashers import make_password
+from django.contrib.auth.hashers import check_password,make_password
 
 from datetime import timedelta
 from django.utils import timezone
