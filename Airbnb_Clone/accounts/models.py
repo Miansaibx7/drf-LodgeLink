@@ -27,7 +27,7 @@ class UserManager(BaseUserManager):
         if not email:
             raise ValueError("Email address is required.")
 
-        email = self.normalize_email(email).lower().strip()
+        email = self.normalize_email(email).strip()
         user = self.model(email=email, **extra_fields,)
         if password:
             user.set_password(password)
@@ -92,9 +92,10 @@ class ActiveOTPManager(models.Manager):
     # A manager method will fetch the latest active OTP.
     def get_queryset(self):
         now = timezone.now()
-        return super().get_queryset().filter(
-            created_at__gte=now - timedelta(minutes=self.model.OTP_EXPIRY_MINUTES),).exclude(blocked_until__gt=now,
-        ).exclude(attempts__gte=self.model.MAX_ATTEMPTS)
+        threshold = now - timedelta(minutes=self.model.OTP_EXPIRY_MINUTES)
+        return super().get_queryset().filter(created_at__gte=threshold).filter(
+            models.Q(blocked_until__isnull=True) | models.Q(blocked_until__lte=now)
+        )
 
     def get_active_for_user(self, user):
         """Return the latest active OTP for a given user."""
@@ -201,6 +202,7 @@ class PasswordResetOTP(BaseOTP):
     class Meta:
         verbose_name = "Password Reset OTP"
         verbose_name_plural = "Password Reset OTPs"
+        indexes = [models.Index(fields=["user", "-created_at"])]
 
     def __str__(self):
         return f"{self.user.email} - Password Reset"
@@ -287,7 +289,7 @@ class AuditLog(models.Model):
     user = models.ForeignKey(User,on_delete=models.SET_NULL,null=True,related_name='audit_logs')
 
     action = models.CharField(max_length=50, choices=ACTIONS)
-    ip_address = models.GenericIPAddressField()
+    ip_address = models.GenericIPAddressField(null=True,blank=True)
     metadata = models.JSONField(default=dict,blank=True)
 
     user_agent = models.TextField()
@@ -432,8 +434,7 @@ class AccountDeletionRequest(models.Model):
         """Mark the deletion request as completed."""
         self.completed = True
         self.completed_at = timezone.now()
-        self.save()
-
+        self.save(update_fields=["completed", "completed_at"])
 
 
 class SocialAccount(TimeStampedModel):
