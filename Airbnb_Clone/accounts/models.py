@@ -468,16 +468,25 @@ class SocialAccount(TimeStampedModel):
 
 
 class UserDevice(TimeStampedModel):
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="devices")
 
-    user = models.ForeignKey(User,on_delete=models.CASCADE,related_name="devices")
-
-    device_id = models.CharField(max_length=255,unique=True)
-    device_name = models.CharField(max_length=255,blank=True)    
-    browser = models.CharField(max_length=100,blank=True)
-
-    operating_system = models.CharField(max_length=100,blank=True)
+    device_id = models.CharField(max_length=255, unique=True, db_index=True)
+    device_name = models.CharField(max_length=255, blank=True)
+    browser = models.CharField(max_length=100, blank=True)
+    operating_system = models.CharField(max_length=100, blank=True)
     trusted = models.BooleanField(default=False)
-    last_login = models.DateTimeField(null=True,blank=True)
+    last_login = models.DateTimeField(null=True, blank=True)
 
     class Meta:
+        verbose_name = "User Device"
+        verbose_name_plural = "User Devices"
         ordering = ["-last_login"]
+        indexes = [
+            models.Index(fields=["user"]),
+            models.Index(fields=["device_id"]),
+            models.Index(fields=["trusted"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} - {self.device_name or self.device_id}"
