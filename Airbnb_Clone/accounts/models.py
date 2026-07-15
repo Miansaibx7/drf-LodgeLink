@@ -325,18 +325,21 @@ class LoginAttempt(models.Model):
 
 
 class TwoFactorAuth(models.Model):
-    """Store 2FA secrets and status."""
+    """Store 2FA secrets and status.
+    The TOTP secret is encrypted at rest using a Fernet field (or you can use django-encrypted-model-fields)."""
 
     user = models.OneToOneField(User,on_delete=models.CASCADE,related_name='two_factor_auth')
 
-    secret_key = models.CharField(max_length=255)
-    backup_codes = models.JSONField(default=list,blank=True)
-    
+    # For production, replace CharField with an encrypted field
+    secret_key = models.CharField(max_length=255)  # ** MUST BE ENCRYPTED IN PRODUCTION **
+
+    # Store hashes of backup codes (list of strings)
+    backup_code_hashes = models.JSONField(default=list, blank=True)
 
     enabled = models.BooleanField(default=False)
     enabled_at = models.DateTimeField(null=True, blank=True)
     disabled_at = models.DateTimeField(null=True, blank=True)
-    last_used_at = models.DateTimeField(null=True,blank=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Two-Factor Authentication"
@@ -345,17 +348,37 @@ class TwoFactorAuth(models.Model):
     def __str__(self):
         return f"{self.user.email} - {'Enabled' if self.enabled else 'Disabled'}"
 
-    def enable(self, secret: str)-> None:
+    def enable(self, secret: str) -> None:
         self.secret_key = secret
         self.enabled = True
         self.enabled_at = timezone.now()
         self.disabled_at = None
         self.save()
 
-    def disable(self)-> None:
+    def disable(self) -> None:
         self.enabled = False
         self.disabled_at = timezone.now()
         self.save()
+
+    def set_backup_codes(self, raw_codes: list) -> None:
+        """Hash a list of plaintext backup codes and store them."""
+        self.backup_code_hashes = [make_password(code) for code in raw_codes]
+        self.save(update_fields=["backup_code_hashes"])
+
+    def consume_backup_code(self, raw_code: str) -> bool:
+        """
+        Check a raw backup code against stored hashes.
+        If valid, remove that hash (one‑time use) and return True.
+        """
+        for i, hash_val in enumerate(self.backup_code_hashes):
+            if check_password(raw_code, hash_val):
+                # Code used – remove it from the list
+                self.backup_code_hashes.pop(i)
+                self.save(update_fields=["backup_code_hashes"])
+                return True
+        return False
+
+    
 
 
 class AccountDeletionRequest(models.Model):
