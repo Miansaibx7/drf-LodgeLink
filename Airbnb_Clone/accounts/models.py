@@ -183,6 +183,7 @@ class EmailOTP(BaseOTP):
     class Meta:
         verbose_name = "Email OTP"
         verbose_name_plural = "Email OTPs"
+        indexes = [models.Index(fields=["user", "-created_at"])]
 
     def __str__(self):
         return f"{self.user.email} - Email Verification"
