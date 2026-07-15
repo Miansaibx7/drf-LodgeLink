@@ -444,8 +444,7 @@ class SocialAccount(TimeStampedModel):
         ("linkedin", "LinkedIn"),
     )
 
-    user = models.ForeignKey(User,on_delete=models.CASCADE,related_name="social_accounts")
-
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="social_accounts")
     provider_email = models.EmailField(blank=True)
     avatar_url = models.URLField(blank=True)
     provider = models.CharField(max_length=20, choices=PROVIDERS, db_index=True)
@@ -455,11 +454,15 @@ class SocialAccount(TimeStampedModel):
         verbose_name = "Social Account"
         verbose_name_plural = "Social Accounts"
         ordering = ["-created_at"]
-        constraints = [models.UniqueConstraint(
+        constraints = [
+            models.UniqueConstraint(
                 fields=["provider", "provider_user_id"],
-                name="unique_social_account_provider_user")]
-        indexes = [models.Index(fields=["provider"]),
-            models.Index(fields=["provider_user_id"]),
+                name="unique_social_account_provider_user"),
+            models.UniqueConstraint(
+                fields=["user", "provider"],
+                name="unique_user_provider_social_account",
+            )]
+        indexes = [models.Index(fields=["provider"]),models.Index(fields=["provider_user_id"]),
             models.Index(fields=["user"])]
 
     def __str__(self):
@@ -468,7 +471,7 @@ class SocialAccount(TimeStampedModel):
 
 
 class UserDevice(TimeStampedModel):
-    
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="devices")
 
     device_id = models.CharField(max_length=255, unique=True, db_index=True)
