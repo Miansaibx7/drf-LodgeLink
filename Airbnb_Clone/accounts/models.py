@@ -87,18 +87,29 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
 
 
 
+    # def block_until(self, minutes: int = 1440) -> None: # 1440 minutes = 24 hours
+    #     """Block the OTP for a specified number of minutes."""
+    #     self.blocked_until = timezone.now() + timedelta(minutes=minutes)
+    #     self.save(update_fields=["blocked_until"])
+    
+    
+    
 class BaseOTP(models.Model):
-    """Abstract model for all OTP types."""
-
+    """
+    Abstract model for all OTP types.
+    Stores only a **hashed** OTP, never the raw code.
+    """
     OTP_LENGTH = 6
     OTP_EXPIRY_MINUTES = 10
     MAX_ATTEMPTS = 5
 
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-
-    code = models.CharField(max_length=OTP_LENGTH,validators=[RegexValidator(regex=r"^\d{6}$",
-                           message="OTP must contain exactly 6 digits.")])
-    otp_hash = make_password()
+    user = models.ForeignKey(User,on_delete=models.CASCADE,
+        # One user can have multiple OTPs (e.g., password reset requests),
+        # so we use ForeignKey instead of OneToOneField.
+        # A manager method will fetch the latest active OTP.
+    )
+    # Hashed OTP value (e.g., using Django's make_password)
+    otp_hash = models.CharField(max_length=128)
     attempts = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     blocked_until = models.DateTimeField(null=True, blank=True)
@@ -108,29 +119,64 @@ class BaseOTP(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return self.user.email
-    
+        return f"{self.user.email} OTP"
+
     @property
     def is_expired(self) -> bool:
         return timezone.now() >= (self.created_at + timedelta(minutes=self.OTP_EXPIRY_MINUTES))
 
-    def block_until(self, minutes: int = 1440) -> None: # 1440 minutes = 24 hours
-        """Block the OTP for a specified number of minutes."""
-        self.blocked_until = timezone.now() + timedelta(minutes=minutes)
-        self.save(update_fields=["blocked_until"])
-    
     @property
     def is_blocked(self) -> bool:
-        if self.blocked_until:
-            return timezone.now() < self.blocked_until
+        """Check if OTP is currently blocked, and auto-reset if block expired."""
+        now = timezone.now()
+        if self.blocked_until and now >= self.blocked_until:
+            # Block expired – clear the block and reset attempts atomically.
+            BaseOTP.objects.filter(pk=self.pk).update(blocked_until=None,attempts=0)
+            self.refresh_from_db()
+            return False
+        if self.blocked_until and now < self.blocked_until:
+            return True
         return self.attempts >= self.MAX_ATTEMPTS
+    
+
+    def set_otp(self, raw_otp: str) -> None:
+        """Hash and store a new OTP, reset attempts."""
+        self.otp_hash = make_password(raw_otp)
+        self.attempts = 0
+        self.blocked_until = None
+        self.save(update_fields=["otp_hash", "attempts", "blocked_until"])
+
+    def verify_otp(self, raw_otp: str) -> bool:
+        """
+        Check the raw OTP against the stored hash.
+        Increment attempts on failure, reset on success.
+        """
+        from django.contrib.auth.hashers import check_password
+
+        if self.is_expired or self.is_blocked:
+            return False
+
+        if check_password(raw_otp, self.otp_hash):
+            # Success: delete the OTP (one-time use) or mark as used.
+            self.delete()
+            return True
+
+        # Failure: increment attempts
+        self.increment_attempts()
+        return False
 
     def increment_attempts(self) -> None:
+        """Atomically increment attempts and set block if needed."""
         with transaction.atomic():
-            self.attempts += 1
-            if self.attempts >= self.MAX_ATTEMPTS and not self.blocked_until:
-                self.blocked_until = timezone.now() + timedelta(minutes=15)
-            self.save(update_fields=["attempts", "blocked_until"])
+            # Use F() to avoid race conditions
+            updated = BaseOTP.objects.filter(pk=self.pk).update(
+                attempts=models.F("attempts") + 1
+            )
+            if updated:
+                self.refresh_from_db()
+                if self.attempts >= self.MAX_ATTEMPTS and not self.blocked_until:
+                    self.blocked_until = timezone.now() + timedelta(minutes=15)
+                    self.save(update_fields=["blocked_until"])
 
 
 class EmailOTP(BaseOTP):
