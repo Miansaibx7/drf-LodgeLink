@@ -65,20 +65,24 @@ class LoginSerializer(serializers.Serializer):
     def validate(self, attrs):
         email = attrs.get('email')
         password = attrs.get('password')
+        #  Django's default `authenticate()` immediately returns None if `is_active=False`.
+        # We must check the user's database status before calling authenticate() to give 
+        # accurate error messages about verification.
+        try:
+            user_obj = User.objects.get(email=email.lower().strip())
+            if not user_obj.is_active:
+                raise serializers.ValidationError("Account is inactive. Please verify your email.")
+            if not user_obj.is_verified:
+                raise serializers.ValidationError("Email not verified. Please check your inbox for the OTP.")
+        except User.DoesNotExist:
+            pass  # Let authenticate() handle the generic failure below to prevent user enumeration
 
         user = authenticate(request=self.context.get('request'), email=email, password=password)
         if not user:
             raise serializers.ValidationError({"detail": "Invalid email or password."})
 
-        if not user.is_active:
-            raise serializers.ValidationError("Account is inactive. Please verify your email.")
-
-        if not user.is_verified:
-            raise serializers.ValidationError("Email not verified. Please check your inbox for the OTP.")
-
         attrs['user'] = user
-        return attrs
-    
+        return attrs   
 
 
 class BaseOTPSendSerializer(serializers.Serializer):
