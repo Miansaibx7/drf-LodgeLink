@@ -517,6 +517,7 @@ class UserDevice(TimeStampedModel):
         verbose_name = "User Device"
         verbose_name_plural = "User Devices"
         ordering = ["-last_login"]
+        constraints = [models.UniqueConstraint(fields=["user", "device_id"],name="unique_user_device")]
         indexes = [
             # Removed redundant models.Index for "user" (covered by ForeignKey) 
             # and "device_id" (covered by unique=True). Kept only "trusted".
