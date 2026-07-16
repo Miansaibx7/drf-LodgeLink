@@ -191,13 +191,11 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("Email not provided by the User.")
             
         name = user_info.get("name", "")
-
-        # FIX: Completely restructured to fix the "Unverified Existing User" bug 
+        # Completely restructured to fix the "Unverified Existing User" bug 
         # and reduce database writes (from 2 inserts/updates down to 1).
         try:
             user = User.objects.get(email=email)
             update_fields = []
-            
             # Update name if it was missing
             if not user.name and name:
                 user.name = name
@@ -215,15 +213,10 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
 
         except User.DoesNotExist:
             # Single database write for a new OAuth user
-            user = User(
-                email=email,
-                name=name,
-                is_active=True,
-                is_verified=True
-            )
+            user = User(email=email,name=name,is_active=True,is_verified=True)
             user.set_unusable_password()
             user.save()
-
+            
         attrs['user'] = user
         return attrs
 
