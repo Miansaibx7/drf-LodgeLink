@@ -33,12 +33,10 @@ class UserManager(BaseUserManager):
             user.set_password(password)
         else:
             user.set_unusable_password()
-        try:
-            user.save(using=self._db)
-        except IntegrityError:
-            # Replaced DRF serializers.ValidationError with a standard Python ValueError
-            # to prevent coupling the database model to the API layer.
-            raise ValueError("A user with this email already exists.")
+
+        # REMOVED: IntegrityError catch.RegisterSerializer already
+        # validates email uniqueness. Catching it here masks real DB issues
+        user.save(using=self._db)
         return user
 
     def create_superuser(self, email, password=None, **extra_fields)-> "User":
