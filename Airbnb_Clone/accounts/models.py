@@ -1,6 +1,6 @@
 from django.db import models,transaction
 
-from django.contrib.auth.models import (AbstractBaseUser,BaseUserManager,PermissionsMixin,)
+from django.contrib.auth.models import (AbstractBaseUser,BaseUserManager,PermissionsMixin)
 from django.core.validators import RegexValidator, EmailValidator
 
 from django.contrib.auth.hashers import check_password,make_password
@@ -34,7 +34,7 @@ class UserManager(BaseUserManager):
         else:
             user.set_unusable_password()
 
-        # REMOVED: IntegrityError catch.RegisterSerializer already
+        # IntegrityError catch.RegisterSerializer already
         # validates email uniqueness. Catching it here masks real DB issues
         user.save(using=self._db)
         return user
