@@ -174,23 +174,45 @@ class BaseOTP(models.Model):
         self.save(update_fields=["otp_hash", "attempts", "blocked_until", "created_at"])
 
     def verify_otp(self, raw_otp: str) -> bool:
-        # First, clear any expired block
-        self.reset_block_if_expired()
+        """Verifies the OTP atomically to prevent race condition brute-forcing."""
+        with transaction.atomic():
+            try:
+                # Lock the DB row to block concurrent HTTP validation requests
+                obj = self.__class__.all_objects.select_for_update().get(pk=self.pk)
+            except self.__class__.DoesNotExist:
+                return False
 
-        if self.is_expired or self.is_blocked:
-            return False
-        if check_password(raw_otp, self.otp_hash):
-            self.delete()                         # one‑time use
-            return True
-        self.increment_attempts()
+            # First, clear any expired block on the locked instance
+            if obj.blocked_until and timezone.now() >= obj.blocked_until:
+                obj.blocked_until = None
+                obj.attempts = 0
+                obj.save(update_fields=["blocked_until", "attempts"])
+
+            if obj.is_expired or obj.is_blocked:
+                return False
+
+            if check_password(raw_otp, obj.otp_hash):
+                obj.delete()                          # one‑time use
+                return True
+            # Handle failed attempt safely within the lock
+            obj.attempts += 1
+            if obj.attempts >= self.MAX_ATTEMPTS and not obj.blocked_until:
+                obj.blocked_until = timezone.now() + timedelta(minutes=self.BLOCK_MINUTES)
+            obj.save(update_fields=["attempts", "blocked_until"])
+
+        self.refresh_from_db()
         return False
 
     def increment_attempts(self) -> None:
         """Atomically increment attempts and apply a block if threshold reached.
         Uses select_for_update to avoid race conditions."""
-        self.reset_block_if_expired()  
         with transaction.atomic():
             obj = self.__class__.all_objects.select_for_update().get(pk=self.pk)
+            # Clear block if expired before incrementing
+            if obj.blocked_until and timezone.now() >= obj.blocked_until:
+                obj.blocked_until = None
+                obj.attempts = 0
+
             obj.attempts += 1
             if obj.attempts >= self.MAX_ATTEMPTS and not obj.blocked_until:
                 obj.blocked_until = timezone.now() + timedelta(minutes=self.BLOCK_MINUTES)
@@ -199,10 +221,9 @@ class BaseOTP(models.Model):
             self.refresh_from_db()
 
 
-
 class EmailOTP(BaseOTP):
-
-    class Meta:
+    # Inherits BaseOTP.Meta to ensure ordering=["-created_at"] isn't lost
+    class Meta(BaseOTP.Meta):
         verbose_name = "Email OTP"
         verbose_name_plural = "Email OTPs"
         indexes = [models.Index(fields=["user", "-created_at"])]
@@ -211,10 +232,9 @@ class EmailOTP(BaseOTP):
         return f"{self.user.email} - Email Verification"
 
 
-
 class PasswordResetOTP(BaseOTP):
-    
-    class Meta:
+    # Inherits BaseOTP.Meta to ensure ordering=["-created_at"] isn't lost
+    class Meta(BaseOTP.Meta):
         verbose_name = "Password Reset OTP"
         verbose_name_plural = "Password Reset OTPs"
         indexes = [models.Index(fields=["user", "-created_at"])]
