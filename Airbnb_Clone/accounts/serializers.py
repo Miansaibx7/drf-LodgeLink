@@ -189,19 +189,40 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
         email = user_info.get('email')
         if not email:
             raise serializers.ValidationError("Email not provided by the User.")
+            
+        name = user_info.get("name", "")
 
-        # Get or create user
-        user, created = User.objects.get_or_create(email=email,
-            defaults={ "name": user_info.get("name", ""),'is_active': True, 'is_verified': True}
-        )
+        # FIX: Completely restructured to fix the "Unverified Existing User" bug 
+        # and reduce database writes (from 2 inserts/updates down to 1).
+        try:
+            user = User.objects.get(email=email)
+            update_fields = []
+            
+            # Update name if it was missing
+            if not user.name and name:
+                user.name = name
+                update_fields.append("name")
+                
+            # If a user registered manually but never verified their email, 
+            # logging in via OAuth proves email ownership. Verify them now.
+            if not user.is_active or not user.is_verified:
+                user.is_active = True
+                user.is_verified = True
+                update_fields.extend(["is_active", "is_verified"])
+                
+            if update_fields:
+                user.save(update_fields=update_fields)
 
-        if created:
+        except User.DoesNotExist:
+            # Single database write for a new OAuth user
+            user = User(
+                email=email,
+                name=name,
+                is_active=True,
+                is_verified=True
+            )
             user.set_unusable_password()
             user.save()
-
-        if not created and not user.name:
-            user.name = user_info.get("name", "")
-            user.save(update_fields=["name"])
 
         attrs['user'] = user
         return attrs
@@ -209,7 +230,6 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
     def get_user_info(self, access_token):
         """Override in subclass to fetch user info from specific provider."""
         raise NotImplementedError("Subclasses must implement get_user_info()")
-
 
 
 
