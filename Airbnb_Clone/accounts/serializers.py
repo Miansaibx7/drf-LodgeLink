@@ -144,43 +144,8 @@ class ChangePasswordSerializer(serializers.Serializer):
 
     def validate_old_password(self, value):
         request = self.context.get("request")
-
         if request is None:
             raise serializers.ValidationError("Request context is required.")
-        user = request.user
-
-        if not user.check_password(value):
-            raise serializers.ValidationError("Current password is incorrect.")
-        return value
-
-    def validate(self, attrs):
-        if attrs["new_password"] != attrs["confirm_password"]:
-            raise serializers.ValidationError({"confirm_password":"Passwords do not match."})
-
-        if attrs["old_password"] == attrs["new_password"]:
-            raise serializers.ValidationError({"new_password":"New password cannot be the same as the old password."})
-        return attrs
-
-    def save(self):
-        request = self.context.get("request")
-        if request is None:
-            raise serializers.ValidationError("Request context is required.")
-
-        user = request.user
-        user.set_password(self.validated_data["new_password"])
-        user.save(update_fields=["password"])
-        return user
-class ChangePasswordSerializer(serializers.Serializer):
-    old_password = serializers.CharField(write_only=True, trim_whitespace=False)
-    # FIX: Moved validate_password to the validate() method below
-    new_password = serializers.CharField(write_only=True, trim_whitespace=False)
-    confirm_password = serializers.CharField(write_only=True, trim_whitespace=False)
-
-    def validate_old_password(self, value):
-        request = self.context.get("request")
-        if request is None:
-            raise serializers.ValidationError("Request context is required.")
-        
         user = request.user
         if not user.check_password(value):
             raise serializers.ValidationError("Current password is incorrect.")
@@ -192,21 +157,18 @@ class ChangePasswordSerializer(serializers.Serializer):
 
         if attrs["old_password"] == attrs["new_password"]:
             raise serializers.ValidationError({"new_password": "New password cannot be the same as the old password."})
-            
-        # FIX: Validate the new password against the *actual* logged-in user instance
+        #  Validate the new password against the *actual* logged-in user instance
         user = self.context['request'].user
         try:
             validate_password(attrs['new_password'], user=user)
         except DjangoValidationError as e:
-            raise serializers.ValidationError({"new_password": list(e.messages)})
-            
+            raise serializers.ValidationError({"new_password": list(e.messages)})  
         return attrs
 
     def save(self):
         request = self.context.get("request")
         if request is None:
             raise serializers.ValidationError("Request context is required.")
-
         user = request.user
         user.set_password(self.validated_data["new_password"])
         user.save(update_fields=["password"])
