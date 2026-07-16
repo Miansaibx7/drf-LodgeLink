@@ -61,7 +61,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     """Custom user model using email authentication."""
 
     username = None
-    email = models.EmailField(unique=True, db_index=True, validators=[EmailValidator()])
+    email = models.EmailField(unique=True, validators=[EmailValidator()]) # unique=True automatically creates a database index
     first_name = models.CharField(max_length=150, blank=True)
     last_name = models.CharField(max_length=150, blank=True)
     
