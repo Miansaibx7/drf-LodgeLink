@@ -520,7 +520,9 @@ class UserDevice(TimeStampedModel):
         constraints = [models.UniqueConstraint(fields=["user", "device_id"],name="unique_user_device")]
         indexes = [
             # Removed redundant models.Index for "user" (covered by ForeignKey) 
-            # and "device_id" (covered by unique=True). Kept only "trusted".
+            # and "device_id" (covered by unique=True) but i remove it.
+            # Sometime we the DB store both user device_id at same time so that why.
+            # Kept only "trusted".
             models.Index(fields=["trusted"])
         ]
 
