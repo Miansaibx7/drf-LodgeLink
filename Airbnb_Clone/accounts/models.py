@@ -259,9 +259,7 @@ class UserProfile(TimeStampedModel):
     class Meta:
         verbose_name = "User Profile"
         verbose_name_plural = "User Profiles"
-        indexes = [
-            models.Index(fields=["user"]),
-        ]
+        # OneToOneField creates a unique database index automatically.
 
     def __str__(self):
         return f"{self.user.email} - Profile"
