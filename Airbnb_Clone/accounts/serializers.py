@@ -18,19 +18,22 @@ class RegisterSerializer(serializers.ModelSerializer):
         model= User
         fields = ('email','password','confirm_password')
 
+# validate email uniqueness and password confirmation
     def validate_email(self, value):
         value = value.lower().strip()
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError("User with this email already exists.")
         return value
-    
+
+# validate password confirmation
     def validate(self, attrs):
         password  = attrs.get('password')
         confirm_password = attrs.get('confirm_password')
         if password != confirm_password:
             raise serializers.ValidationError({"password": "Password fields didn't match."})
         return attrs
-    
+
+# create user and set is_active and is_verified to False  
     def create(self, validated_data):
         validated_data.pop("confirm_password")
         user = User.objects.create_user(**validated_data,
