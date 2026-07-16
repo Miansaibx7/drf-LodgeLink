@@ -122,6 +122,7 @@ class BaseOTP(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE) # One user can have multiple OTPs (password reset requests)
     otp_hash = models.CharField(max_length=255) # Hashed OTP value ( using Django's make_password)
     attempts = models.PositiveSmallIntegerField(default=0)
+
     # This allows set_otp() to actually update the timestamp.
     created_at = models.DateTimeField(default=timezone.now)
     blocked_until = models.DateTimeField(null=True, blank=True)
@@ -285,7 +286,7 @@ class UserSession(TimeStampedModel):
         verbose_name_plural = "User Sessions"
         indexes = [models.Index(fields=["user", "is_active"]),
             # because unique=True creates it automatically. Index(fields=["refresh_token_jti"]
-            models.Index(fields=["-last_activity"]),
+            models.Index(fields=["-last_activity"])
         ]
 
     def __str__(self):
@@ -296,6 +297,7 @@ class UserSession(TimeStampedModel):
         self.is_active = False
         self.logout_at = timezone.now()
         self.save(update_fields=["is_active", "logout_at"])
+
 
 
 class AuditLog(models.Model):
@@ -312,7 +314,7 @@ class AuditLog(models.Model):
         ("OAUTH_LOGIN", "OAuth Login"),
         ("2FA_ENABLED", "2FA Enabled"),
         ("2FA_DISABLED", "2FA Disabled"),
-        ("ACCOUNT_DELETE", "Account Delete"),
+        ("ACCOUNT_DELETE", "Account Delete")
     )
 
     user = models.ForeignKey(User,on_delete=models.SET_NULL,null=True,related_name='audit_logs')
@@ -330,7 +332,7 @@ class AuditLog(models.Model):
         indexes = [
             models.Index(fields=["user", "action"]),
             models.Index(fields=["-created_at"]),
-            models.Index(fields=["action"]),
+            models.Index(fields=["action"])
         ]
 
     def __str__(self):
