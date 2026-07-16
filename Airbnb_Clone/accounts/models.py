@@ -77,10 +77,8 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         ordering = ["-created_at"]   # use created_at for ordering
         verbose_name = "User"
         verbose_name_plural = "Users"
-        indexes = [
-            models.Index(fields=["is_active"]),
-            models.Index(fields=["is_verified"]),
-        ]
+        indexes = [models.Index(fields=["is_active"]),
+            models.Index(fields=["is_verified"])]
 
     def __str__(self):
         return self.email
