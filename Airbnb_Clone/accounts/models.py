@@ -287,9 +287,8 @@ class UserSession(TimeStampedModel):
     class Meta:
         verbose_name = "User Session"
         verbose_name_plural = "User Sessions"
-        indexes = [
-            models.Index(fields=["user", "is_active"]),
-            models.Index(fields=["refresh_token_jti"]),
+        indexes = [models.Index(fields=["user", "is_active"]),
+            # because unique=True creates it automatically. Index(fields=["refresh_token_jti"]
             models.Index(fields=["-last_activity"]),
         ]
 
@@ -484,23 +483,20 @@ class SocialAccount(TimeStampedModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="social_accounts")
     provider_email = models.EmailField(blank=True)
     avatar_url = models.URLField(blank=True)
-    provider = models.CharField(max_length=20, choices=PROVIDERS, db_index=True)
-    provider_user_id = models.CharField(max_length=255, db_index=True)
+    provider = models.CharField(max_length=20, choices=PROVIDERS)
+    provider_user_id = models.CharField(max_length=255)
 
     class Meta:
         verbose_name = "Social Account"
         verbose_name_plural = "Social Accounts"
         ordering = ["-created_at"]
         constraints = [
-            models.UniqueConstraint(
-                fields=["provider", "provider_user_id"],
-                name="unique_social_account_provider_user"),
-            models.UniqueConstraint(
-                fields=["user", "provider"],
-                name="unique_user_provider_social_account",
-            )]
-        indexes = [models.Index(fields=["provider"]),models.Index(fields=["provider_user_id"]),
-            models.Index(fields=["user"])]
+            # These constraints handle the indexing natively.
+            models.UniqueConstraint(fields=["provider", "provider_user_id"], name="unique_social_account_provider_user"),
+            models.UniqueConstraint(fields=["user", "provider"], name="unique_user_provider_social_account")
+        ]
+        # Removed Meta.indexes entirely. ForeignKey and UniqueConstraints 
+        # already cover user, provider, and provider_user_id.
 
     def __str__(self):
         return f"{self.user.email} - {self.provider}"
@@ -523,9 +519,9 @@ class UserDevice(TimeStampedModel):
         verbose_name_plural = "User Devices"
         ordering = ["-last_login"]
         indexes = [
-            models.Index(fields=["user"]),
-            models.Index(fields=["device_id"]),
-            models.Index(fields=["trusted"]),
+            # Removed redundant models.Index for "user" (covered by ForeignKey) 
+            # and "device_id" (covered by unique=True). Kept only "trusted".
+            models.Index(fields=["trusted"])
         ]
 
     def __str__(self):
