@@ -126,7 +126,8 @@ class BaseOTP(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE) # One user can have multiple OTPs (password reset requests)
     otp_hash = models.CharField(max_length=255) # Hashed OTP value ( using Django's make_password)
     attempts = models.PositiveSmallIntegerField(default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
+    # This allows set_otp() to actually update the timestamp.
+    created_at = models.DateTimeField(default=timezone.now)
     blocked_until = models.DateTimeField(null=True, blank=True)
 
     # Use an unfiltered manager for internal operations that must access all rows
