@@ -27,7 +27,7 @@ class UserManager(BaseUserManager):
         if not email:
             raise ValueError("Email address is required.")
 
-        email = self.normalize_email(email).strip()
+        email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields,)
         if password:
             user.set_password(password)
@@ -84,7 +84,8 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
         return self.email
 
     def save(self, *args, **kwargs):
-        self.email = self.email.lower().strip()
+        if self.email:
+            self.email = self.email.lower().strip()
         super().save(*args, **kwargs)
 
     def get_full_name(self)-> str:
