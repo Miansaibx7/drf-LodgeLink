@@ -11,7 +11,9 @@ User = get_user_model()
 class RegisterSerializer(serializers.ModelSerializer):
 
     email = serializers.EmailField(required=True)
-    password = serializers.CharField(write_only=True, required=True, validators=[validate_password], trim_whitespace=False)
+    # Removed `validators=[validate_password]` from here. It is now handled in `validate()` 
+    # to allow attribute similarity checks against the email.
+    password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
     confirm_password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
 
     class Meta:
@@ -27,10 +29,18 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 # validate password confirmation
     def validate(self, attrs):
-        password  = attrs.get('password')
+        password = attrs.get('password')
         confirm_password = attrs.get('confirm_password')
         if password != confirm_password:
-            raise serializers.ValidationError({"password": "Password fields didn't match."})
+            raise serializers.ValidationError({"confirm_password": "Password fields didn't match."})
+        # Validate password here, passing a dummy user object so Django can check 
+        # if the password is too similar to the user's email address.
+        user_instance = User(email=attrs.get('email'))
+        try:
+            validate_password(password, user=user_instance)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({"password": list(e.messages)})
+
         return attrs
 
 # create user and set is_active and is_verified to False  
@@ -41,7 +51,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         is_verified = False # Set the user as unverified until email verification
         )
         return user
-        
+
+    
     
 
 class LoginSerializer(serializers.Serializer):
@@ -244,8 +255,8 @@ class FacebookLoginSerializer(BaseOAuthLoginSerializer):
         
         except requests.exceptions.RequestException as exc:
            raise serializers.ValidationError(f"OAuth provider error: {str(exc)}")
-   
-        
+
+
 
 class LinkedInLoginSerializer(BaseOAuthLoginSerializer):
 
