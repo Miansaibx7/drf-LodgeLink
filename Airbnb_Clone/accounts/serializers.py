@@ -67,7 +67,9 @@ class LoginSerializer(serializers.Serializer):
         return attrs
     
 
+
 class BaseOTPSendSerializer(serializers.Serializer):
+
     email = serializers.EmailField(required=True)
 
     def validate_email(self, value):
@@ -183,6 +185,7 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
 
 
 
+
 class GoogleLoginSerializer(BaseOAuthLoginSerializer):
 
     def get_user_info(self, access_token):
@@ -226,6 +229,7 @@ class GitHubLoginSerializer(BaseOAuthLoginSerializer):
            raise serializers.ValidationError(f"OAuth provider error: {str(exc)}")
 
 
+
 class FacebookLoginSerializer(BaseOAuthLoginSerializer):
 
     def get_user_info(self, access_token):
@@ -240,6 +244,7 @@ class FacebookLoginSerializer(BaseOAuthLoginSerializer):
         
         except requests.exceptions.RequestException as exc:
            raise serializers.ValidationError(f"OAuth provider error: {str(exc)}")
+   
         
 
 class LinkedInLoginSerializer(BaseOAuthLoginSerializer):
