@@ -126,7 +126,31 @@ class PasswordResetOTPVerifySerializer(serializers.Serializer):
         if new_password != confirm_password:
             raise serializers.ValidationError({"new_password": "Passwords don't match."})
         return attrs
-    
+class PasswordResetOTPVerifySerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    code = serializers.CharField(
+        max_length=6, min_length=6, required=True,
+        validators=[RegexValidator(r'^\d{6}$', 'OTP must be exactly 6 digits.')]
+    )
+    # FIX: Moved validate_password to the validate() method below
+    new_password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
+    confirm_password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
+
+    def validate(self, attrs):
+        new_password = attrs.get('new_password')
+        confirm_password = attrs.get('confirm_password')
+        
+        if new_password != confirm_password:
+            raise serializers.ValidationError({"confirm_password": "Passwords don't match."})
+            
+        # FIX: Proper password validation for password resets
+        user_instance = User(email=attrs.get('email'))
+        try:
+            validate_password(new_password, user=user_instance)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError({"new_password": list(e.messages)})
+            
+        return attrs    
     
 
 class ChangePasswordSerializer(serializers.Serializer):
