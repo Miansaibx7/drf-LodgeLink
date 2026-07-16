@@ -506,7 +506,7 @@ class UserDevice(TimeStampedModel):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="devices")
 
-    device_id = models.CharField(max_length=255, unique=True)
+    device_id = models.CharField(max_length=255)
     device_name = models.CharField(max_length=255, blank=True)
     browser = models.CharField(max_length=100, blank=True)
     operating_system = models.CharField(max_length=100, blank=True)
