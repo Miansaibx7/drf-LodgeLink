@@ -117,6 +117,7 @@ class PasswordResetOTPVerifySerializer(serializers.Serializer):
     code = serializers.CharField(max_length=6, min_length=6,required=True,
         validators=[RegexValidator(r'^\d{6}$', 'OTP must be exactly 6 digits.')]
     )
+    # FIX: Moved validate_password to the validate() method below
     new_password = serializers.CharField(write_only=True,required=True, validators=[validate_password],trim_whitespace=False)
     confirm_password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
 
@@ -126,12 +127,7 @@ class PasswordResetOTPVerifySerializer(serializers.Serializer):
         if new_password != confirm_password:
             raise serializers.ValidationError({"new_password": "Passwords don't match."})
         return attrs
-class PasswordResetOTPVerifySerializer(serializers.Serializer):
-    email = serializers.EmailField(required=True)
-    code = serializers.CharField(
-        max_length=6, min_length=6, required=True,
-        validators=[RegexValidator(r'^\d{6}$', 'OTP must be exactly 6 digits.')]
-    )
+
     # FIX: Moved validate_password to the validate() method below
     new_password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
     confirm_password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
