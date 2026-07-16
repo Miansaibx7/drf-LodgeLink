@@ -23,14 +23,14 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ('email','password','confirm_password')
 
 # validate email uniqueness and password confirmation
-    def validate_email(self, value):
+    def validate_email(self, value)-> str:
         value = value.lower().strip()
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError("User with this email already exists.")
         return value
 
 # validate password confirmation
-    def validate(self, attrs):
+    def validate(self, attrs)-> str:
         password = attrs.get('password')
         confirm_password = attrs.get('confirm_password')
         if password != confirm_password:
@@ -46,7 +46,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
 # create user and set is_active and is_verified to False  
-    def create(self, validated_data):
+    def create(self, validated_data)-> str:
         validated_data.pop("confirm_password")
         user = User.objects.create_user(**validated_data,
         is_active = False,  # Set the user as inactive until email verification
@@ -62,7 +62,7 @@ class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
 
-    def validate(self, attrs):
+    def validate(self, attrs)-> str:
         email = attrs.get('email')
         password = attrs.get('password')
         #  Django's default `authenticate()` immediately returns None if `is_active=False`.
@@ -89,7 +89,7 @@ class BaseOTPSendSerializer(serializers.Serializer):
 
     email = serializers.EmailField(required=True)
 
-    def validate_email(self, value):
+    def validate_email(self, value)-> str:
         value = value.lower().strip()
         if not User.objects.filter(email=value).exists():
             raise serializers.ValidationError("No account found with this email.")
