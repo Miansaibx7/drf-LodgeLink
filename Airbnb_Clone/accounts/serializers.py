@@ -177,6 +177,7 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 # OAUTH LOGIN
 class BaseOAuthLoginSerializer(serializers.Serializer):
+    
     access_token = serializers.CharField(required=True)
 
     def validate(self, attrs):
@@ -223,7 +224,78 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
     def get_user_info(self, access_token):
         """Override in subclass to fetch user info from specific provider."""
         raise NotImplementedError("Subclasses must implement get_user_info()")
+class BaseOAuthLoginSerializer(serializers.Serializer):
+    access_token = serializers.CharField(required=True)
 
+    def validate(self, attrs):
+        access_token = attrs.get("access_token")
+
+        user_info = self.get_user_info(access_token)
+
+        if not user_info:
+            raise serializers.ValidationError(
+                {"detail": "Invalid or expired access token."}
+            )
+
+        email = user_info.get("email")
+
+        if not email:
+            raise serializers.ValidationError(
+                {"detail": "Email not provided by provider."}
+            )
+
+        email = email.lower().strip()
+
+        full_name = user_info.get("name", "").strip()
+
+        first_name = ""
+        last_name = ""
+
+        if full_name:
+            parts = full_name.split(maxsplit=1)
+            first_name = parts[0]
+            last_name = parts[1] if len(parts) > 1 else ""
+
+        try:
+            user = User.objects.get(email=email)
+
+            update_fields = []
+
+            if not user.first_name and first_name:
+                user.first_name = first_name
+                update_fields.append("first_name")
+
+            if not user.last_name and last_name:
+                user.last_name = last_name
+                update_fields.append("last_name")
+
+            if not user.is_active:
+                user.is_active = True
+                update_fields.append("is_active")
+
+            if not user.is_verified:
+                user.is_verified = True
+                update_fields.append("is_verified")
+
+            if update_fields:
+                user.save(update_fields=update_fields)
+
+        except User.DoesNotExist:
+
+            user = User.objects.create_user(
+                email=email,
+                first_name=first_name,
+                last_name=last_name,
+                is_active=True,
+                is_verified=True,
+            )
+
+        attrs["user"] = user
+
+        return attrs
+
+    def get_user_info(self, access_token):
+        raise NotImplementedError
 
 
 class GoogleLoginSerializer(BaseOAuthLoginSerializer):
