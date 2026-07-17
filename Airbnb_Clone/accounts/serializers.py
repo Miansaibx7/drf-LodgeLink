@@ -280,6 +280,7 @@ class GoogleLoginSerializer(BaseOAuthLoginSerializer):
             raise serializers.ValidationError(f"OAuth provider error: {str(exc)}")        
 
 
+
 class GitHubLoginSerializer(BaseOAuthLoginSerializer):
 
     def get_user_info(self, access_token):
