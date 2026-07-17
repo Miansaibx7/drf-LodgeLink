@@ -146,7 +146,7 @@ class ChangePasswordSerializer(serializers.Serializer):
     new_password = serializers.CharField(write_only=True,trim_whitespace=False)
     confirm_password = serializers.CharField(write_only=True, trim_whitespace=False)
 
-    def validate_old_password(self, value):
+    def validate_old_password(self, value: str) -> str:
         request = self.context.get("request")
         if request is None:
             raise serializers.ValidationError("Request context is required.")
