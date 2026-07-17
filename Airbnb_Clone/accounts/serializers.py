@@ -215,7 +215,6 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
                 user.last_name = last_name
                 update_fields.append("last_name")
                 
-            # Individual checks are the best approach. 
             # It ensures we only write to the database if the status was actually False.
             if not user.is_active:
                 user.is_active = True
