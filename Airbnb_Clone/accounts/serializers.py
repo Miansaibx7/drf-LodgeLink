@@ -93,7 +93,7 @@ class BaseOTPSendSerializer(serializers.Serializer):
 
     email = serializers.EmailField(required=True)
 
-    def validate_email(self, value)-> str:
+    def validate_email(self, value: str) -> str:
         value = value.lower().strip()
         if not User.objects.filter(email=value).exists():
             raise serializers.ValidationError("No account found with this email.")
