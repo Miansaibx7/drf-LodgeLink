@@ -5,8 +5,9 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 
 from django.core.validators import RegexValidator
 from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
+from rest_framework_simplejwt.exceptions import TokenError
 import requests
+from .models import UserDevice, UserProfile
 
 User = get_user_model()
 
@@ -23,14 +24,14 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ('email','password','confirm_password')
 
 # validate email uniqueness and password confirmation
-    def validate_email(self, value)-> str:
+    def validate_email(self, value)-> dict:
         value = value.lower().strip()
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError("User with this email already exists.")
         return value
 
 # validate password confirmation
-    def validate(self, attrs)-> str:
+    def validate(self, attrs)-> dict:
         password = attrs.get('password')
         confirm_password = attrs.get('confirm_password')
         if password != confirm_password:
@@ -46,7 +47,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
 # create user and set is_active and is_verified to False  
-    def create(self, validated_data)-> str:
+    def create(self, validated_data):
         validated_data.pop("confirm_password")
         user = User.objects.create_user(**validated_data,
         is_active = False,  # Set the user as inactive until email verification
@@ -352,3 +353,34 @@ class RefreshTokenSerializer(serializers.Serializer):
         except TokenError:
             raise serializers.ValidationError({"refresh": "Invalid refresh token."})
         return attrs
+    
+
+
+class UserDeviceSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = UserDevice
+        fields = (
+            "id",
+            "device_id",
+            "device_name",
+            "browser",
+            "operating_system",
+            "trusted",
+            "last_login",
+        )
+        read_only_fields = fields
+
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = UserProfile
+        fields = (
+            "phone_number",
+            "avatar",
+            "country",
+            "timezone",
+            "language",
+        )
