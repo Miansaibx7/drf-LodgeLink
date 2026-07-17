@@ -311,7 +311,10 @@ class GitHubLoginSerializer(BaseOAuthLoginSerializer):
             raise serializers.ValidationError(f"OAuth provider error: {str(exc)}")
 
 
+
 class FacebookLoginSerializer(BaseOAuthLoginSerializer):
+
+    provider = "facebook"
 
     def get_user_info(self, access_token):
         url = f'https://graph.facebook.com/me?fields=id,name,email&access_token={access_token}'
@@ -321,10 +324,13 @@ class FacebookLoginSerializer(BaseOAuthLoginSerializer):
             response.raise_for_status()
             data = response.json()
 
-            return {'email': data.get('email'),'name': data.get('name'),}
-        
+            return {
+                'email': data.get('email'),
+                'name': data.get('name'),
+                'id': data.get('id'),      # Facebook user ID
+            }
         except requests.exceptions.RequestException as exc:
-           raise serializers.ValidationError(f"OAuth provider error: {str(exc)}")
+            raise serializers.ValidationError(f"OAuth provider error: {str(exc)}")
 
 
 
