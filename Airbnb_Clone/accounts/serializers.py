@@ -33,7 +33,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
 # validate password confirmation
-    def validate(self, attrs)-> dict:
+    def validate(self, attrs: dict) -> dict:
         password = attrs.get('password')
         confirm_password = attrs.get('confirm_password')
         if password != confirm_password:
