@@ -325,11 +325,21 @@ class LinkedInLoginSerializer(BaseOAuthLoginSerializer):
 
 
 class LogoutSerializer(serializers.Serializer):
+
     refresh = serializers.CharField()
 
+    def validate_refresh(self, value):
+        try:
+            RefreshToken(value)
+        except TokenError:
+            raise serializers.ValidationError("Invalid refresh token.")
+        return value
+
     def save(self):
-        token = RefreshToken(self.validated_data["refresh"])
-        token.blacklist()
+        try:
+            RefreshToken(self.validated_data["refresh"]).blacklist()
+        except TokenError:
+            pass
 
 
 
