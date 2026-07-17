@@ -190,7 +190,7 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
         parts = full_name.strip().split(maxsplit=1)
         return parts[0], parts[1] if len(parts) > 1 else ""
 
-    def validate(self, attrs):
+    def validate(self, attrs: dict) -> dict:
         access_token = attrs.get('access_token')
         user_info = self.get_user_info(access_token)
 
