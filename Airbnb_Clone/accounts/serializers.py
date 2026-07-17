@@ -381,7 +381,7 @@ class LogoutSerializer(serializers.Serializer):
 class RefreshTokenSerializer(serializers.Serializer):
     refresh = serializers.CharField()
 
-    def validate(self, attrs):
+    def validate(self, attrs: dict) -> dict:
         try:
             RefreshToken(attrs["refresh"])
         except TokenError:
