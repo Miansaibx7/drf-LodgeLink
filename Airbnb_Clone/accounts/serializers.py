@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
+from typing import Any
 from django.core.exceptions import ValidationError as DjangoValidationError
 
 from django.core.validators import RegexValidator
@@ -48,7 +49,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
 # create user and set is_active and is_verified to False  
-    def create(self, validated_data):
+    def create(self, validated_data: dict) -> Any:
         validated_data.pop("confirm_password")
         user = User.objects.create_user(**validated_data,
         is_active = False,  # Set the user as inactive until email verification
