@@ -186,7 +186,7 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
     # Subclasses must set this to the provider name (e.g., 'google')
     provider = None
 
-    def _split_name(self, full_name):
+    def _split_name(self, full_name: str) -> tuple[str, str]:
         parts = full_name.strip().split(maxsplit=1)
         return parts[0], parts[1] if len(parts) > 1 else ""
 
