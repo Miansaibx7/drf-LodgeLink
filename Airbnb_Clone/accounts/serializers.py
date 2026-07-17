@@ -282,6 +282,8 @@ class GoogleLoginSerializer(BaseOAuthLoginSerializer):
 
 
 class GitHubLoginSerializer(BaseOAuthLoginSerializer):
+    
+    provider = "github"
 
     def get_user_info(self, access_token):
         url = 'https://api.github.com/user'
@@ -300,11 +302,13 @@ class GitHubLoginSerializer(BaseOAuthLoginSerializer):
                 primary_email = next((e for e in emails if e.get('primary')), emails[0] if emails else None)
                 email = primary_email.get('email') if primary_email else None
 
-            return {'email': email,'name': data.get('name') or data.get('login'),}
-        
+            return {
+                'email': email,
+                'name': data.get('name') or data.get('login'),
+                'id': str(data.get('id')),   # GitHub user ID as string
+            }
         except requests.exceptions.RequestException as exc:
-           raise serializers.ValidationError(f"OAuth provider error: {str(exc)}")
-
+            raise serializers.ValidationError(f"OAuth provider error: {str(exc)}")
 
 
 class FacebookLoginSerializer(BaseOAuthLoginSerializer):
