@@ -318,7 +318,7 @@ class FacebookLoginSerializer(BaseOAuthLoginSerializer):
 
     provider = "facebook"
 
-    def get_user_info(self, access_token):
+    def get_user_info(self, access_token: str) -> dict:
         url = f'https://graph.facebook.com/me?fields=id,name,email&access_token={access_token}'
 
         try:
