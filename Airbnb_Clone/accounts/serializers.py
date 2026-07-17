@@ -256,7 +256,7 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
         attrs['user'] = user
         return attrs
 
-    def get_user_info(self, access_token):
+    def get_user_info(self, access_token: str) -> dict:
         """Override in subclass to fetch user info from specific provider."""
         raise NotImplementedError("Subclasses must implement get_user_info()")
 
