@@ -287,7 +287,7 @@ class GitHubLoginSerializer(BaseOAuthLoginSerializer):
     
     provider = "github"
 
-    def get_user_info(self, access_token):
+    def get_user_info(self, access_token: str) -> dict:
         url = 'https://api.github.com/user'
         headers = {'Authorization': f'Bearer {access_token}','Accept': 'application/json'}
 
