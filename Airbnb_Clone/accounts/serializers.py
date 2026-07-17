@@ -7,7 +7,8 @@ from django.core.validators import RegexValidator
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 import requests
-from .models import UserDevice, UserProfile
+
+from .models import SocialAccount, UserDevice, UserProfile
 
 User = get_user_model()
 
@@ -183,6 +184,10 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
     # Subclasses must set this to the provider name (e.g., 'google')
     provider = None
 
+    def _split_name(self, full_name):
+        parts = full_name.strip().split(maxsplit=1)
+        return parts[0], parts[1] if len(parts) > 1 else ""
+
     def validate(self, attrs):
         access_token = attrs.get('access_token')
         user_info = self.get_user_info(access_token)
@@ -195,14 +200,13 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError({"detail": "Email not provided by provider."})
             
         email = email.lower().strip()
-        full_name = user_info.get("name", "").strip()
-        first_name = ""
-        last_name = ""
+        provider_user_id = user_info.get('id')
+        if not provider_user_id:
+            raise serializers.ValidationError({"detail": "Provider user ID not provided."})
 
-        if full_name:
-            parts = full_name.split(maxsplit=1)
-            first_name = parts[0]
-            last_name = parts[1] if len(parts) > 1 else ""
+        full_name = user_info.get('name', '').strip()
+        first_name, last_name = self._split_name(full_name)
+
 
         try:
             user = User.objects.get(email=email)
@@ -237,83 +241,10 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
                 is_active=True,is_verified=True)
             user.set_unusable_password()
             user.save()
-            
-        attrs['user'] = user
-        return attrs
-
-    def get_user_info(self, access_token):
-        """Override in subclass to fetch user info from specific provider."""
-        raise NotImplementedError("Subclasses must implement get_user_info()")
-class BaseOAuthLoginSerializer(serializers.Serializer):
-    access_token = serializers.CharField(required=True)
-
-    # Subclasses must set this to the provider name (e.g., 'google')
-    provider = None
-
-    def _split_name(self, full_name):
-        parts = full_name.strip().split(maxsplit=1)
-        return parts[0], parts[1] if len(parts) > 1 else ""
-
-    def validate(self, attrs):
-        access_token = attrs.get('access_token')
-        user_info = self.get_user_info(access_token)
-
-        if not user_info:
-            raise serializers.ValidationError({"detail": "Invalid or expired access token."})
-
-        email = user_info.get('email')
-        if not email:
-            raise serializers.ValidationError({"detail": "Email not provided by provider."})
-
-        email = email.lower().strip()
-        provider_user_id = user_info.get('id')
-        if not provider_user_id:
-            raise serializers.ValidationError({"detail": "Provider user ID not provided."})
-
-        full_name = user_info.get('name', '').strip()
-        first_name, last_name = self._split_name(full_name)
-
-        # Get or create the user
-        try:
-            user = User.objects.get(email=email)
-            update_fields = []
-
-            if not user.first_name and first_name:
-                user.first_name = first_name
-                update_fields.append("first_name")
-            if not user.last_name and last_name:
-                user.last_name = last_name
-                update_fields.append("last_name")
-
-            if not user.is_active:
-                user.is_active = True
-                update_fields.append("is_active")
-            if not user.is_verified:
-                user.is_verified = True
-                update_fields.append("is_verified")
-
-            if update_fields:
-                user.save(update_fields=update_fields)
-
-        except User.DoesNotExist:
-            user = User(
-                email=email,
-                first_name=first_name,
-                last_name=last_name,
-                is_active=True,
-                is_verified=True
-            )
-            user.set_unusable_password()
-            user.save()
-
+        
         # --- Create or update SocialAccount ---
-        social_account, created = SocialAccount.objects.get_or_create(
-            user=user,
-            provider=self.provider,
-            defaults={
-                'provider_user_id': provider_user_id,
-                'provider_email': email,
-            }
+        social_account, created = SocialAccount.objects.get_or_create(user=user,provider=self.provider,
+            defaults={'provider_user_id': provider_user_id,'provider_email': email}
         )
         # Update if provider_user_id changed (unlikely)
         if not created and social_account.provider_user_id != provider_user_id:
@@ -324,6 +255,7 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
         return attrs
 
     def get_user_info(self, access_token):
+        """Override in subclass to fetch user info from specific provider."""
         raise NotImplementedError("Subclasses must implement get_user_info()")
 
 
