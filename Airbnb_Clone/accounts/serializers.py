@@ -50,7 +50,8 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 # create user and set is_active and is_verified to False  
     def create(self, validated_data: dict) -> Any:
-        validated_data.pop("confirm_password")
+       # Added None fallback to prevent KeyErrors
+        validated_data.pop("confirm_password", None)
         user = User.objects.create_user(**validated_data,
         is_active = False,  # Set the user as inactive until email verification
         is_verified = False # Set the user as unverified until email verification
