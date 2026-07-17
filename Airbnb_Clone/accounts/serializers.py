@@ -241,7 +241,7 @@ class GoogleLoginSerializer(BaseOAuthLoginSerializer):
         
         except requests.exceptions.RequestException as exc:
            raise serializers.ValidationError(f"OAuth provider error: {str(exc)}")
-
+        
 
 
 class GitHubLoginSerializer(BaseOAuthLoginSerializer):
