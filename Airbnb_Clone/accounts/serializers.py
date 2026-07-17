@@ -169,7 +169,7 @@ class ChangePasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError({"new_password": list(e.messages)})  
         return attrs
 
-    def save(self):
+    def save(self)-> Any:
         request = self.context.get("request")
         if request is None:
             raise serializers.ValidationError("Request context is required.")
