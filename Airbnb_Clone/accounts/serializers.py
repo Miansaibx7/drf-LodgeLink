@@ -266,7 +266,7 @@ class GoogleLoginSerializer(BaseOAuthLoginSerializer):
 
     provider = "google"
 
-    def get_user_info(self, access_token):
+    def get_user_info(self, access_token: str) -> dict:
         url = 'https://www.googleapis.com/oauth2/v2/userinfo'
         headers = {'Authorization': f'Bearer {access_token}'}
         try:
