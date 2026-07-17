@@ -230,14 +230,9 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
                 user.save(update_fields=update_fields)
 
         except User.DoesNotExist:
-            # FIX: Use first_name and last_name instead of the undefined 'name' variable
-            user = User(
-                email=email,
-                first_name=first_name,
-                last_name=last_name,
-                is_active=True,
-                is_verified=True
-            )
+            # Use first_name and last_name variable
+            user = User(email=email, first_name=first_name,last_name=last_name,
+                is_active=True,is_verified=True)
             user.set_unusable_password()
             user.save()
             
