@@ -340,7 +340,7 @@ class LinkedInLoginSerializer(BaseOAuthLoginSerializer):
     
     provider = "linkedin"
 
-    def get_user_info(self, access_token):
+    def get_user_info(self, access_token: str) -> dict:
         url = "https://api.linkedin.com/v2/userinfo"
         headers = {"Authorization": f"Bearer {access_token}"}
 
