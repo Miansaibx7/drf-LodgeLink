@@ -125,7 +125,7 @@ class PasswordResetOTPVerifySerializer(serializers.Serializer):
     new_password = serializers.CharField(write_only=True,required=True,trim_whitespace=False)
     confirm_password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
 
-    def validate(self, attrs):
+    def validate(self, attrs: dict) -> dict:
         new_password = attrs.get('new_password')
         confirm_password = attrs.get('confirm_password')
         if new_password != confirm_password:
