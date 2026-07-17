@@ -370,7 +370,7 @@ class LogoutSerializer(serializers.Serializer):
             raise serializers.ValidationError("Invalid refresh token.")
         return value
 
-    def save(self):
+    def save(self)-> None:
         try:
             RefreshToken(self.validated_data["refresh"]).blacklist()
         except TokenError:
