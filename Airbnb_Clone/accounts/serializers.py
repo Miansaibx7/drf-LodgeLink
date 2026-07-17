@@ -262,20 +262,22 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
 
 class GoogleLoginSerializer(BaseOAuthLoginSerializer):
 
+    provider = "google"
+
     def get_user_info(self, access_token):
         url = 'https://www.googleapis.com/oauth2/v2/userinfo'
         headers = {'Authorization': f'Bearer {access_token}'}
-
         try:
             response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
             data = response.json()
-
-            return {'email': data.get('email'),'name': data.get('name'),}
-        
+            return {
+                'email': data.get('email'),
+                'name': data.get('name'),
+                'id': data.get('id'),      # Google user ID
+            }
         except requests.exceptions.RequestException as exc:
-           raise serializers.ValidationError(f"OAuth provider error: {str(exc)}")
-        
+            raise serializers.ValidationError(f"OAuth provider error: {str(exc)}")        
 
 
 class GitHubLoginSerializer(BaseOAuthLoginSerializer):
