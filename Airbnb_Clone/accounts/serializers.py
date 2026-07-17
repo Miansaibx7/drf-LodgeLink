@@ -66,7 +66,7 @@ class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
 
-    def validate(self, attrs)-> str:
+    def validate(self, attrs: dict) -> dict:
         email = attrs.get('email')
         password = attrs.get('password')
         #  Django's default `authenticate()` immediately returns None if `is_active=False`.
