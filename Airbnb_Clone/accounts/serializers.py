@@ -335,6 +335,8 @@ class FacebookLoginSerializer(BaseOAuthLoginSerializer):
 
 
 class LinkedInLoginSerializer(BaseOAuthLoginSerializer):
+    
+    provider = "linkedin"
 
     def get_user_info(self, access_token):
         url = "https://api.linkedin.com/v2/userinfo"
@@ -345,10 +347,13 @@ class LinkedInLoginSerializer(BaseOAuthLoginSerializer):
             response.raise_for_status()
             data = response.json()
 
-            return {"email": data.get("email"),"name": data.get("name"),}
-
+            return {
+                'email': data.get('email'),
+                'name': data.get('name'),
+                'id': data.get('sub')     # LinkedIn uses 'sub' for user ID
+            }
         except requests.exceptions.RequestException as exc:
-           raise serializers.ValidationError(f"OAuth provider error: {str(exc)}")
+            raise serializers.ValidationError(f"OAuth provider error: {str(exc)}")
 
 
 
