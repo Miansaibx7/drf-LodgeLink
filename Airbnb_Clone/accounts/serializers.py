@@ -223,10 +223,10 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 # OAUTH LOGIN
 class BaseOAuthLoginSerializer(serializers.Serializer):
+    """Base serializer for OAuth login.Subclasses must set `provider` and implement `get_user_info()`."""
 
     access_token = serializers.CharField(required=True)
-    # Subclasses must set this to the provider name (e.g., 'google')
-    provider = None
+    provider = None  # Must be overridden
 
     def _split_name(self, full_name: str) -> tuple[str, str]:
         # Added safeguard against empty or whitespace-only names returned by external providers
