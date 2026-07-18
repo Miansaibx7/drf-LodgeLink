@@ -479,8 +479,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
         allowed_types = {"image/jpeg","image/png","image/webp",}
 
-        if value.content_type not in allowed_types:
-            raise serializers.ValidationError("Only JPEG, PNG, and WEBP images are allowed.")
-
+        if getattr(value, 'content_type', None) not in allowed_types:
+            raise serializers.ValidationError({"avatar": "Only JPEG, PNG, and WEBP images are allowed."})
+        
         return value
         
