@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
 from typing import Any
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction # ADDED: Essential for atomic database commits during OAuth registration
 
 from django.core.validators import RegexValidator
 from rest_framework_simplejwt.tokens import RefreshToken
