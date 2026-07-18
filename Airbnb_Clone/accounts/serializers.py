@@ -462,6 +462,7 @@ class RefreshTokenSerializer(serializers.Serializer):
 
 
 class UserDeviceSerializer(serializers.ModelSerializer):
+    """Read‑only serializer for user devices."""
 
     class Meta:
         model = UserDevice
