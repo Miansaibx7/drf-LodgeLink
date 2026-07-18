@@ -80,7 +80,8 @@ class LoginSerializer(serializers.Serializer):
                 raise serializers.ValidationError("Email not verified. Please check your inbox for the OTP.")
         except User.DoesNotExist:
             pass  # Let authenticate() handle the generic failure below to prevent user enumeration
-
+        
+        email = email.lower().strip()
         user = authenticate(request=self.context.get('request'), email=email, password=password)
         if not user:
             raise serializers.ValidationError({"detail": "Invalid email or password."})
