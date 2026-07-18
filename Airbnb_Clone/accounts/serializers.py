@@ -129,22 +129,25 @@ class PasswordResetOTPVerifySerializer(serializers.Serializer):
         new_password = attrs.get('new_password')
         confirm_password = attrs.get('confirm_password')
         if new_password != confirm_password:
-            raise serializers.ValidationError({"new_password": "Passwords don't match."}) 
-        # Proper password validation for password resets
-        user_instance = User(email=attrs.get('email'))
+            raise serializers.ValidationError({"new_password": "Passwords don't match."})
+
+        email = attrs.get('email', '').lower().strip()
         try:
-            user = User.objects.get(email=attrs["email"].lower().strip())
-            validate_password(new_password, user=user)
-
-            if user.check_password(new_password):
-                raise serializers.ValidationError({"new_password": "New password cannot be the same as the current password."})
+            user = User.objects.get(email=email)
         except User.DoesNotExist:
-            validate_password(new_password)
+            raise serializers.ValidationError({"email": "No account found with this email."})
 
+        # Validate password strength
+        try:
+            validate_password(new_password, user=user)
         except DjangoValidationError as e:
             raise serializers.ValidationError({"new_password": list(e.messages)})
-        
-        return attrs   
+
+        # Prevent password reuse
+        if user.check_password(new_password):
+            raise serializers.ValidationError({"new_password": "New password cannot be the same as the current password."})
+
+        return attrs 
     
 
 
