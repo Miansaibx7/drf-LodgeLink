@@ -501,6 +501,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     # Avatar file size
     def validate_avatar(self, value: UploadedFile) -> UploadedFile:
+        """Validate avatar file size and type."""
         if not value:
             return value
 
