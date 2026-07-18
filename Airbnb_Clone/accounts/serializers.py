@@ -442,28 +442,20 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "timezone": {"required": False},
             "language": {"required": False},
         }
-        
+
     # Avatar file size
-    def validate_avatar(self, value):
+    def validate_avatar(self, value)-> Any:
         if not value:
             return value
 
         # Max 2 MB
         if value.size > 2 * 1024 * 1024:
-            raise serializers.ValidationError(
-                "Avatar size must not exceed 2 MB."
-            )
+            raise serializers.ValidationError("Avatar size must not exceed 2 MB.")
 
-        allowed_types = {
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-        }
+        allowed_types = {"image/jpeg","image/png","image/webp",}
 
         if value.content_type not in allowed_types:
-            raise serializers.ValidationError(
-                "Only JPEG, PNG, and WEBP images are allowed."
-            )
+            raise serializers.ValidationError("Only JPEG, PNG, and WEBP images are allowed.")
 
         return value
         
