@@ -31,19 +31,27 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 # validate email uniqueness and password confirmation
     def validate_email(self, value: str) -> str:
+        """Ensure email is unique and normalized."""
         value = value.lower().strip()
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError({"email": "User with this email already exists."})
         return value
 
+    def validate_terms_accepted(self, value: bool) -> bool:
+        """Require acceptance of Terms of Service."""
+        if not value:
+            raise serializers.ValidationError("You must accept the Terms of Service.")
+        return value
+
 # validate password confirmation
     def validate(self, attrs: dict) -> dict:
+        """Validate password confirmation and password strength."""
         password = attrs.get('password')
         confirm_password = attrs.get('confirm_password')
         if password != confirm_password:
             raise serializers.ValidationError({"confirm_password": "Password fields didn't match."})
-        # Validate password here, passing a dummy user object so Django can check 
-        # if the password is too similar to the user's email address.
+        
+        # Validate password against a dummy user so that similarity to email is checked
         user_instance = User(email=attrs.get('email'))
         try:
             validate_password(password, user=user_instance)
@@ -54,8 +62,10 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 # create user and set is_active and is_verified to False  
     def create(self, validated_data: dict) -> Any:
+        """Create a new user with inactive and unverified status."""
        # Added None fallback to prevent KeyErrors
         validated_data.pop("confirm_password", None)
+        validated_data.pop("terms_accepted", None)  # not a model field
         user = User.objects.create_user(**validated_data,
         is_active = False,  # Set the user as inactive until email verification
         is_verified = False # Set the user as unverified until email verification
