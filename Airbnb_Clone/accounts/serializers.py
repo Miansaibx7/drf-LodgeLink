@@ -122,7 +122,7 @@ class EmailOTPSendSerializer(BaseOTPSendSerializer):
 
 class EmailOTPVerifySerializer(serializers.Serializer):
     """Verify email OTP."""
-    
+
     email = serializers.EmailField(required=True)
     code = serializers.CharField(max_length=6,min_length=6,required=True,
         validators=[RegexValidator(r'^\d{6}$', 'OTP must be exactly 6 digits.')])
@@ -132,9 +132,11 @@ class EmailOTPVerifySerializer(serializers.Serializer):
         return value.lower().strip()
     
 class ResendEmailOTPSerializer(BaseOTPSendSerializer):
+    """Resend email verification OTP."""
     pass
 
 class PasswordResetOTPSendSerializer(BaseOTPSendSerializer):
+    """Send OTP for password reset."""
     pass   
 
 
