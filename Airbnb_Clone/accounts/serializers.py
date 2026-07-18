@@ -29,7 +29,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     def validate_email(self, value: str) -> str:
         value = value.lower().strip()
         if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("User with this email already exists.")
+            raise serializers.ValidationError({"email": "User with this email already exists."})
         return value
 
 # validate password confirmation
