@@ -273,11 +273,10 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
                     user.last_name = last_name
                     update_fields.append("last_name")
 
-                # It ensures we only write to the database if the status was actually False.    
+                # Activate and verify the user if not already    
                 if not user.is_active:
                     user.is_active = True
                     update_fields.append("is_active")
-
                 if not getattr(user, 'is_verified', True):
                     user.is_verified = True
                     update_fields.append("is_verified")
@@ -298,11 +297,11 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
                 user.set_unusable_password()
                 user.save()
 
-            # --- Create or update SocialAccount ---    
+            # Create or update SocialAccount
             social_account, created = SocialAccount.objects.get_or_create(user=user,
                 provider=self.provider,defaults={'provider_user_id': provider_user_id, 'provider_email': email}
             )
-            # Update if provider_user_id changed (unlikely)
+            # Update if fields changed (for existing records)
             soc_update_fields = []
             if not created:
                 if social_account.provider_user_id != provider_user_id:
