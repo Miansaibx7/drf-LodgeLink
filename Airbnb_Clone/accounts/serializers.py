@@ -142,6 +142,8 @@ class PasswordResetOTPSendSerializer(BaseOTPSendSerializer):
 
        
 class PasswordResetOTPVerifySerializer(serializers.Serializer):
+    """Verify password reset OTP and set new password.Validates password strength and prevents password reuse."""
+    
     email = serializers.EmailField(required=True)
     code = serializers.CharField(max_length=6, min_length=6,required=True,
         validators=[RegexValidator(r'^\d{6}$', 'OTP must be exactly 6 digits.')]
