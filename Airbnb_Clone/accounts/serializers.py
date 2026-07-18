@@ -67,13 +67,13 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
 
     def validate(self, attrs: dict) -> dict:
-        email = attrs.get('email')
+        email = attrs.get('email','').lower().strip()
         password = attrs.get('password')
         #  Django's default `authenticate()` immediately returns None if `is_active=False`.
         # We must check the user's database status before calling authenticate() to give 
         # accurate error messages about verification.
         try:
-            user_obj = User.objects.get(email=email.lower().strip())
+            user_obj = User.objects.get(email=email)
             if not user_obj.is_active:
                 raise serializers.ValidationError("Account is inactive. Please verify your email.")
             if not user_obj.is_verified:
@@ -81,7 +81,6 @@ class LoginSerializer(serializers.Serializer):
         except User.DoesNotExist:
             pass  # Let authenticate() handle the generic failure below to prevent user enumeration
         
-        email = email.lower().strip()
         user = authenticate(request=self.context.get('request'), email=email, password=password)
         if not user:
             raise serializers.ValidationError({"detail": "Invalid email or password."})
@@ -250,9 +249,18 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
             defaults={'provider_user_id': provider_user_id,'provider_email': email}
         )
         # Update if provider_user_id changed (unlikely)
-        if not created and social_account.provider_user_id != provider_user_id:
+        update_fields = []
+        
+        if social_account.provider_user_id != provider_user_id:
             social_account.provider_user_id = provider_user_id
-            social_account.save(update_fields=['provider_user_id'])
+            update_fields.append("provider_user_id")
+
+            if social_account.provider_email != email:
+                social_account.provider_email = email
+                update_fields.append("provider_email")
+
+                if update_fields:
+                    social_account.save(update_fields=update_fields)
 
         attrs['user'] = user
         return attrs
