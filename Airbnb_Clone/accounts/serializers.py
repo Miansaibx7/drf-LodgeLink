@@ -449,6 +449,7 @@ class LogoutSerializer(serializers.Serializer):
 
 
 class RefreshTokenSerializer(serializers.Serializer):
+    """Validate a refresh token (used for token refresh endpoint)."""
     refresh = serializers.CharField()
 
     def validate(self, attrs: dict) -> dict:
