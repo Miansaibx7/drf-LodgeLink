@@ -515,4 +515,19 @@ class UserProfileSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"avatar": "Only JPEG, PNG, and WEBP images are allowed."})
         
         return value
+    
+
+
+class SocialAccountSerializer(serializers.ModelSerializer):
+    """Read‑only serializer for social accounts."""
+    class Meta:
+        model = SocialAccount
+        fields = (
+            "id",
+            "provider",
+            "provider_email",
+            "avatar_url",
+            "created_at",
+        )
+        read_only_fields = fields    
         
