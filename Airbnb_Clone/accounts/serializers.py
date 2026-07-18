@@ -318,7 +318,7 @@ class GitHubLoginSerializer(BaseOAuthLoginSerializer):
                 email_response = requests.get('https://api.github.com/user/emails', headers=headers, timeout=10)
                 email_response.raise_for_status()
                 emails = email_response.json()
-                primary_email = next((e for e in emails if e.get('primary')), emails[0] if emails else None)
+                primary_email = next((e for e in emails if e.get('primary') and e.get('verified')), None)
                 email = primary_email.get('email') if primary_email else None
 
             return {
