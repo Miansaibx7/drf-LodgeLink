@@ -117,9 +117,12 @@ class BaseOTPSendSerializer(serializers.Serializer):
         return value
 
 class EmailOTPSendSerializer(BaseOTPSendSerializer):
+    """Send OTP for email verification."""
     pass
 
 class EmailOTPVerifySerializer(serializers.Serializer):
+    """Verify email OTP."""
+    
     email = serializers.EmailField(required=True)
     code = serializers.CharField(max_length=6,min_length=6,required=True,
         validators=[RegexValidator(r'^\d{6}$', 'OTP must be exactly 6 digits.')])
