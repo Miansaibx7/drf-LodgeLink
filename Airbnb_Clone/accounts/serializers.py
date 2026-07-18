@@ -263,12 +263,12 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
             social_account.provider_user_id = provider_user_id
             update_fields.append("provider_user_id")
 
-            if social_account.provider_email != email:
-                social_account.provider_email = email
-                update_fields.append("provider_email")
+        if social_account.provider_email != email:
+            social_account.provider_email = email
+            update_fields.append("provider_email")
 
-                if update_fields:
-                    social_account.save(update_fields=update_fields)
+        if update_fields:
+            social_account.save(update_fields=update_fields)
 
         attrs['user'] = user
         return attrs
