@@ -11,6 +11,7 @@ from rest_framework_simplejwt.exceptions import TokenError
 import requests
 
 from .models import SocialAccount, UserDevice, UserProfile
+from django.core.files.uploadedfile import UploadedFile
 
 User = get_user_model()
 
@@ -469,7 +470,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         }
 
     # Avatar file size
-    def validate_avatar(self, value: Any) -> Any:
+    def validate_avatar(self, value: UploadedFile) -> UploadedFile:
         if not value:
             return value
 
