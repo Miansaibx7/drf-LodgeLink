@@ -76,11 +76,11 @@ class LoginSerializer(serializers.Serializer):
         try:
             user_obj = User.objects.get(email=email)
             if not user_obj.is_active:
-                raise serializers.ValidationError("Account is inactive. Please verify your email.")
-            if not user_obj.is_verified:
-                raise serializers.ValidationError("Email not verified. Please check your inbox for the OTP.")
+                raise serializers.ValidationError({"detail": "Account is inactive. Please verify your email."})
+            if not getattr(user_obj, 'is_verified', True):
+                raise serializers.ValidationError({"detail": "Email not verified. Please check your inbox for the OTP."})
         except User.DoesNotExist:
-            pass  # Let authenticate() handle the generic failure below to prevent user enumeration
+            pass  # Suppress error to mask account enumeration vectors during auth processing
         
         user = authenticate(request=self.context.get('request'), email=email, password=password)
         if not user:
