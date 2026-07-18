@@ -81,7 +81,7 @@ class LoginSerializer(serializers.Serializer):
                 raise serializers.ValidationError({"detail": "Email not verified. Please check your inbox for the OTP."})
         except User.DoesNotExist:
             pass  # Suppress error to mask account enumeration vectors during auth processing
-        
+
         user = authenticate(request=self.context.get('request'), email=email, password=password)
         if not user:
             raise serializers.ValidationError({"detail": "Invalid email or password."})
@@ -108,6 +108,9 @@ class EmailOTPVerifySerializer(serializers.Serializer):
     code = serializers.CharField(max_length=6,min_length=6,required=True,
         validators=[RegexValidator(r'^\d{6}$', 'OTP must be exactly 6 digits.')])
     
+    def validate_email(self, value: str) -> str:
+        # Added email sanitization to guarantee query matching in verification workflows
+        return value.lower().strip()
     
 class ResendEmailOTPSerializer(BaseOTPSendSerializer):
     pass
