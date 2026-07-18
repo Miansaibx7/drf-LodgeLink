@@ -480,6 +480,7 @@ class UserDeviceSerializer(serializers.ModelSerializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    """Serializer for user profile.Includes avatar validation (size and content type)."""
 
     class Meta:
         model = UserProfile
