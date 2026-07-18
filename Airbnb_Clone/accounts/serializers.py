@@ -461,11 +461,11 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "language",
         )
         extra_kwargs = {
-            "phone_number": {"required": False, "allow_null": True},
+            "phone_number": {"required": False},
             "avatar": {"required": False, "allow_null": True},
-            "country": {"required": False, "allow_null": True},
-            "timezone": {"required": False, "allow_null": True},
-            "language": {"required": False, "allow_null": True},
+            "country": {"required": False},
+            "timezone": {"required": False},
+            "language": {"required": False}
         }
 
     # Avatar file size
