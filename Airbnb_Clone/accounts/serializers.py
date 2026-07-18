@@ -271,26 +271,27 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
                 user.set_unusable_password()
                 user.save()
 
-        # --- Create or update SocialAccount ---
-        social_account, created = SocialAccount.objects.get_or_create(user=user,provider=self.provider,
-            defaults={'provider_user_id': provider_user_id,'provider_email': email}
-        )
-        # Update if provider_user_id changed (unlikely)
-        update_fields = []
-        
-        if social_account.provider_user_id != provider_user_id:
-            social_account.provider_user_id = provider_user_id
-            update_fields.append("provider_user_id")
+            # --- Create or update SocialAccount ---    
+            social_account, created = SocialAccount.objects.get_or_create(user=user,
+                provider=self.provider,defaults={'provider_user_id': provider_user_id, 'provider_email': email}
+            )
+            # Update if provider_user_id changed (unlikely)
+            soc_update_fields = []
+            if not created:
+                if social_account.provider_user_id != provider_user_id:
+                    social_account.provider_user_id = provider_user_id
+                    soc_update_fields.append("provider_user_id")
 
-        if social_account.provider_email != email:
-            social_account.provider_email = email
-            update_fields.append("provider_email")
+                if social_account.provider_email != email:
+                    social_account.provider_email = email
+                    soc_update_fields.append("provider_email")
 
-        if update_fields:
-            social_account.save(update_fields=update_fields)
+                if soc_update_fields:
+                    social_account.save(update_fields=soc_update_fields)
 
         attrs['user'] = user
         return attrs
+
 
     def get_user_info(self, access_token: str) -> dict:
         """Override in subclass to fetch user info from specific provider."""
