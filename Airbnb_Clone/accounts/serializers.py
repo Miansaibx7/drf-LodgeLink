@@ -469,7 +469,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         }
 
     # Avatar file size
-    def validate_avatar(self, value)-> Any:
+    def validate_avatar(self, value: Any) -> Any:
         if not value:
             return value
 
