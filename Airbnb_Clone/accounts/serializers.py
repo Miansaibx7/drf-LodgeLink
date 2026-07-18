@@ -425,7 +425,7 @@ class UserDeviceSerializer(serializers.ModelSerializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
-
+    
     class Meta:
         model = UserProfile
         fields = (
@@ -435,3 +435,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "timezone",
             "language",
         )
+        extra_kwargs = {
+            "phone_number": {"required": False},
+            "avatar": {"required": False},
+            "country": {"required": False},
+            "timezone": {"required": False},
+            "language": {"required": False},
+        }
