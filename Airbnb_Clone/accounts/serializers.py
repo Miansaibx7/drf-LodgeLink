@@ -230,41 +230,47 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
         full_name = user_info.get('name', '').strip()
         first_name, last_name = self._split_name(full_name)
 
+        # UPGRADE: Entire user/social account handling block wrapped in a database-level transaction context
+        with transaction.atomic():
+            try:
+                user = User.objects.get(email=email)
+                update_fields = []
 
-        try:
-            user = User.objects.get(email=email)
-            update_fields = []
-            
-            # Update first_name if it was missing
-            if not user.first_name and first_name:
-                user.first_name = first_name
-                update_fields.append("first_name")
+                # Update first_name if it was missing
+                if not user.first_name and first_name:
+                    user.first_name = first_name
+                    update_fields.append("first_name")
+
+                # Update last_name if it was missing    
+                if not user.last_name and last_name:
+                    user.last_name = last_name
+                    update_fields.append("last_name")
+
+                # It ensures we only write to the database if the status was actually False.    
+                if not user.is_active:
+                    user.is_active = True
+                    update_fields.append("is_active")
+
+                if not getattr(user, 'is_verified', True):
+                    user.is_verified = True
+                    update_fields.append("is_verified")
                 
-            # Update last_name if it was missing
-            if not user.last_name and last_name:
-                user.last_name = last_name
-                update_fields.append("last_name")
-                
-            # It ensures we only write to the database if the status was actually False.
-            if not user.is_active:
-                user.is_active = True
-                update_fields.append("is_active")
+                # Call save() exactly ONCE for the existing user
+                if update_fields:
+                    user.save(update_fields=update_fields)
 
-            if not user.is_verified:
-                user.is_verified = True
-                update_fields.append("is_verified")
+            except User.DoesNotExist:
+                # Use first_name and last_name variable
+                user = User(
+                    email=email, 
+                    first_name=first_name, 
+                    last_name=last_name,
+                    is_active=True,
+                    is_verified=True
+                )
+                user.set_unusable_password()
+                user.save()
 
-            # Call save() exactly ONCE for the existing user
-            if update_fields:
-                user.save(update_fields=update_fields)
-
-        except User.DoesNotExist:
-            # Use first_name and last_name variable
-            user = User(email=email, first_name=first_name,last_name=last_name,
-                is_active=True,is_verified=True)
-            user.set_unusable_password()
-            user.save()
-        
         # --- Create or update SocialAccount ---
         social_account, created = SocialAccount.objects.get_or_create(user=user,provider=self.provider,
             defaults={'provider_user_id': provider_user_id,'provider_email': email}
