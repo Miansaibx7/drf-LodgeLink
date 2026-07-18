@@ -229,7 +229,7 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
     provider = None  # Must be overridden
 
     def _split_name(self, full_name: str) -> tuple[str, str]:
-        # Added safeguard against empty or whitespace-only names returned by external providers
+        """Split full name into first and last name."""
         full_name = full_name.strip()
         if not full_name:
             return "", ""
