@@ -180,6 +180,8 @@ class PasswordResetOTPVerifySerializer(serializers.Serializer):
 
 
 class ChangePasswordSerializer(serializers.Serializer):
+    """Allows authenticated user to change their password.Validates old password, new password strength, and avoids reuse."""
+  
     old_password = serializers.CharField(write_only=True, trim_whitespace=False)
     # Moved validate_password to the validate() method below
     new_password = serializers.CharField(write_only=True,trim_whitespace=False)
