@@ -76,6 +76,8 @@ class RegisterSerializer(serializers.ModelSerializer):
     
 
 class LoginSerializer(serializers.Serializer):
+    """Authenticates user with email and password.Provides specific error messages for inactive/unverified accounts
+    without leaking account existence."""
 
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
