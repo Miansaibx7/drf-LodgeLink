@@ -143,7 +143,7 @@ class PasswordResetOTPSendSerializer(BaseOTPSendSerializer):
        
 class PasswordResetOTPVerifySerializer(serializers.Serializer):
     """Verify password reset OTP and set new password.Validates password strength and prevents password reuse."""
-    
+
     email = serializers.EmailField(required=True)
     code = serializers.CharField(max_length=6, min_length=6,required=True,
         validators=[RegexValidator(r'^\d{6}$', 'OTP must be exactly 6 digits.')]
@@ -174,7 +174,7 @@ class PasswordResetOTPVerifySerializer(serializers.Serializer):
         if user.check_password(new_password):
             raise serializers.ValidationError({"new_password": "New password cannot be the same as the current password."})
         
-        attrs['email'] = email
+        attrs['email'] = email  # store normalized email for later use
         return attrs 
     
 
