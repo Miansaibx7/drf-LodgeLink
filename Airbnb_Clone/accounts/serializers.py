@@ -150,7 +150,8 @@ class PasswordResetOTPVerifySerializer(serializers.Serializer):
         # Prevent password reuse
         if user.check_password(new_password):
             raise serializers.ValidationError({"new_password": "New password cannot be the same as the current password."})
-
+        
+        attrs['email'] = email
         return attrs 
     
 
