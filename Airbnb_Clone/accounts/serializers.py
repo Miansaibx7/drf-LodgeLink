@@ -16,7 +16,9 @@ from django.core.files.uploadedfile import UploadedFile
 User = get_user_model()
 
 class RegisterSerializer(serializers.ModelSerializer):
-
+    """Handles user registration with email, password, and confirmation.
+       Password validation includes checks against the email address."""
+    
     email = serializers.EmailField(required=True)
     # Removed `validators=[validate_password]` from here. It is now handled in `validate()` 
     # to allow attribute similarity checks against the email.
