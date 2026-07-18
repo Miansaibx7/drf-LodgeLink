@@ -310,6 +310,11 @@ class GoogleLoginSerializer(BaseOAuthLoginSerializer):
             response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
             data = response.json()
+
+            # Enforce validation to eliminate account takeover vulnerabilities
+            if not data.get('email_verified'):
+                raise serializers.ValidationError({"detail": "Google email address is not verified."})
+            
             return {
                 'email': data.get('email'),
                 'name': data.get('name'),
