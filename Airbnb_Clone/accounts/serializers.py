@@ -106,6 +106,7 @@ class LoginSerializer(serializers.Serializer):
 
 
 class BaseOTPSendSerializer(serializers.Serializer):
+    """Base serializer for sending OTPs – ensures email exists."""
 
     email = serializers.EmailField(required=True)
 
