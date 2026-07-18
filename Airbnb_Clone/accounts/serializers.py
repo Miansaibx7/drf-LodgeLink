@@ -337,7 +337,7 @@ class GoogleLoginSerializer(BaseOAuthLoginSerializer):
             response.raise_for_status()
             data = response.json()
 
-            # Enforce validation to eliminate account takeover vulnerabilities
+            # Ensure email is verified by Google
             if not data.get('email_verified'):
                 raise serializers.ValidationError({"detail": "Google email address is not verified."})
             
@@ -369,6 +369,7 @@ class GitHubLoginSerializer(BaseOAuthLoginSerializer):
                 email_response = requests.get('https://api.github.com/user/emails', headers=headers, timeout=10)
                 email_response.raise_for_status()
                 emails = email_response.json()
+                # Pick the first verified primary email
                 primary_email = next((e for e in emails if e.get('primary') and e.get('verified')), None)
                 email = primary_email.get('email') if primary_email else None
 
@@ -428,6 +429,7 @@ class LinkedInLoginSerializer(BaseOAuthLoginSerializer):
 
 
 class LogoutSerializer(serializers.Serializer):
+    """Blacklist the refresh token."""
 
     refresh = serializers.CharField()
 
