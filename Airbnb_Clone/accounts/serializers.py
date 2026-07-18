@@ -237,6 +237,10 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
         return parts[0], parts[1] if len(parts) > 1 else ""
 
     def validate(self, attrs: dict) -> dict:
+
+        if not self.provider:
+            raise serializers.ValidationError({"detail": "Provider not configured."})
+        
         access_token = attrs.get('access_token')
         user_info = self.get_user_info(access_token)
 
@@ -255,18 +259,16 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
         full_name = user_info.get('name', '').strip()
         first_name, last_name = self._split_name(full_name)
 
-        # UPGRADE: Entire user/social account handling block wrapped in a database-level transaction context
+        # Use atomic transaction to ensure consistency
         with transaction.atomic():
             try:
                 user = User.objects.get(email=email)
                 update_fields = []
 
-                # Update first_name if it was missing
+                # Update name if missing
                 if not user.first_name and first_name:
                     user.first_name = first_name
-                    update_fields.append("first_name")
-
-                # Update last_name if it was missing    
+                    update_fields.append("first_name")  
                 if not user.last_name and last_name:
                     user.last_name = last_name
                     update_fields.append("last_name")
