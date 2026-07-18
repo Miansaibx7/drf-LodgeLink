@@ -27,7 +27,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model= User
-        fields = ('email','password','confirm_password')
+        fields = ('email','password','confirm_password', 'terms_accepted')
 
 # validate email uniqueness and password confirmation
     def validate_email(self, value: str) -> str:
