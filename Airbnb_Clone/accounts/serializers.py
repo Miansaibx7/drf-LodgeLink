@@ -195,6 +195,7 @@ class ChangePasswordSerializer(serializers.Serializer):
         return user
 
 
+
 # OAUTH LOGIN
 class BaseOAuthLoginSerializer(serializers.Serializer):
 
@@ -203,7 +204,11 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
     provider = None
 
     def _split_name(self, full_name: str) -> tuple[str, str]:
-        parts = full_name.strip().split(maxsplit=1)
+        # Added safeguard against empty or whitespace-only names returned by external providers
+        full_name = full_name.strip()
+        if not full_name:
+            return "", ""
+        parts = full_name.split(maxsplit=1)
         return parts[0], parts[1] if len(parts) > 1 else ""
 
     def validate(self, attrs: dict) -> dict:
