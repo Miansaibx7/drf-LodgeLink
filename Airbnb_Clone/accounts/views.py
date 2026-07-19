@@ -118,21 +118,13 @@ class EmailOTPVerifyView(APIView):
     throttle_classes = [OTPRateThrottle]
 
     def post(self, request: Request) -> Response:
-        
+
         serializer = EmailOTPVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        try:
-            OTPService.verify_email_otp(**serializer.validated_data)
-            return Response({"success": True,"message": "Email verified successfully.",},status=status.HTTP_200_OK)
-        except serializers.ValidationError:
-            raise
 
-        except Exception:
-            logger.exception("Unexpected error during email verification.")
-
-            return Response({"success": False,"message": "An unexpected error occurred. Please try again later.",},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        OTPService.verify_email_otp(**serializer.validated_data)
         
+        return Response({"success": True, "message": "Email verified successfully."},status=status.HTTP_200_OK)
 
 
 class ResendEmailOTPView(APIView):
