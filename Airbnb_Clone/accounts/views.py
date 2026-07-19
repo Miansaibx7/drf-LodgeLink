@@ -178,7 +178,7 @@ class ChangePasswordView(APIView):
     # Authenticated endpoints use UserRateThrottle instead of AnonRateThrottle
     throttle_classes = [UserRateThrottle]
 
-    def post(self, request) -> Response:
+    def post(self, request: Request) -> Response:
         serializer = ChangePasswordSerializer(data=request.data,context={"request": request})
         serializer.is_valid(raise_exception=True)
         try:
