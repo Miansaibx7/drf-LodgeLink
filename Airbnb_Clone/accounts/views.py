@@ -98,6 +98,7 @@ class LoginView(APIView):
 
 class EmailOTPSendView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [OTPRateThrottle]
 
     def post(self, request) -> Response:
 
