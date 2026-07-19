@@ -49,6 +49,7 @@ class RegisterView(APIView):
     throttle_classes = [LoginRateThrottle]
 
     def post(self, request: Request) -> Response:
+
         serializer = RegisterSerializer(data=request.data)
         # Automatically handles 400 errors if data is invalid
         serializer.is_valid(raise_exception=True)
@@ -68,6 +69,7 @@ class LoginView(APIView):
     throttle_classes = [LoginRateThrottle]
 
     def post(self, request: Request) -> Response:
+
         serializer = LoginSerializer(data=request.data, context={"request": request})
         #  This automatically handles invalid credentials and unverified users.
         # It will throw a 400 Bad Request if anything fails.
@@ -100,22 +102,14 @@ class EmailOTPSendView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [OTPRateThrottle]
 
-    def post(self, request) -> Response:
+    def post(self, request: Request) -> Response:
 
         serializer = EmailOTPSendSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        try:
-            OTPService.send_email_otp(serializer.validated_data["email"])
-            return Response({"success": True,"message": "OTP sent successfully.",},status=status.HTTP_200_OK,)
-        except serializers.ValidationError:
-            raise
-
-        except Exception:
-            logger.exception("Unexpected error while sending OTP.")
-
-            return Response({"success": False,"message": "An unexpected error occurred. Please try again later.",},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,)
+        OTPService.send_email_otp(serializer.validated_data["email"])
+        
+        return Response({"success": True, "message": "OTP sent successfully."},status=status.HTTP_200_OK)
 
 
 
