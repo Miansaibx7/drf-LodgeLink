@@ -1,0 +1,63 @@
+============================================================
+                 VERIFY YOUR EMAIL ADDRESS
+============================================================
+
+Hello,
+
+Thank you for registering with EduManager Pro.
+
+To activate your account, please verify your email address
+using the One-Time Password (OTP) below.
+
+------------------------------------------------------------
+
+Verification Code (OTP)
+
+{{ otp }}
+
+------------------------------------------------------------
+
+This verification code is valid for 10 minutes.
+
+# TODO:
+# Replace the hardcoded value with:
+#
+# {{ otp_expiry_minutes }}
+#
+# when you move the project configuration into settings.py.
+
+============================================================
+
+SECURITY NOTICE
+
+• Never share your verification code with anyone.
+
+• EduSoft Technologies will NEVER ask you for your
+  password or OTP.
+
+• If you did not create an EduManager Pro account,
+  you can safely ignore this email.
+
+============================================================
+
+Need Help?
+
+Email:
+support@edumanager.com
+
+# TODO:
+# Replace later with:
+#
+# {{ support_email }}
+
+============================================================
+
+© {% now "Y" %} EduSoft Technologies
+EduManager Pro
+
+All rights reserved.
+
+This is an automated email.
+Please do not reply directly to this message.
+
+===========================================================
