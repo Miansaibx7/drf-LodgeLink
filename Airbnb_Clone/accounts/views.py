@@ -127,10 +127,13 @@ class EmailOTPVerifyView(APIView):
         return Response({"success": True, "message": "Email verified successfully."},status=status.HTTP_200_OK)
 
 
+
 class ResendEmailOTPView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [OTPRateThrottle]
 
-    def post(self, request)-> Response:
+    def post(self, request: Request) -> Response:
+        
         serializer = ResendEmailOTPSerializer(data = request.data)
         serializer.is_valid(raise_exception=True)
         try:
