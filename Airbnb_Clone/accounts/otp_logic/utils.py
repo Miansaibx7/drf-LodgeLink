@@ -90,6 +90,7 @@ def send_password_reset_email(*, email: str, otp: str) -> bool:
     )
 
 
+
 # Generate JWT Tokens
 def get_tokens_for_user(user) -> Dict[str, str]:
     """Generate JWT access and refresh tokens for a user.
