@@ -62,19 +62,18 @@ REST_FRAMEWORK = {
 }
 
 # JWT settings for Django REST Framework Simple JWT
-from datetime import timedelta 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes = 60), # short lifetime for token security
-    "REFRESH_TOKEN_LIFETIME" : timedelta(days = 7), # user can get new Access Tokens without logging in again. After 7 days, they must re‑authenticate.
-    "ROTATE_REFRESH_TOKENS" : True, # Every time the user refreshes their Access Token, they also get a new Refresh Token.
-    "BLACKLIST_AFTER_ROTATION" : True, #  New Refresh Token is issued, the old one becomes invalid.
-    "AUTH_HEADER_TYPES" : ("Bearer",), # Expected prefix in the Authorization header
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60), # short lifetime for token security
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),    # user can get new Access Tokens without logging in again.
+    "ROTATE_REFRESH_TOKENS": True,                  # User gets a new Refresh Token upon refresh.
+    "BLACKLIST_AFTER_ROTATION": True,               # Old refresh token becomes invalid.
+    "AUTH_HEADER_TYPES": ("Bearer",),               # Expected prefix in the Authorization header
 }
 
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
-
+    'corsheaders.middleware.CorsMiddleware', # Keep this at the top of the middleware stack
+    
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
