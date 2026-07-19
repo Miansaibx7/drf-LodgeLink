@@ -45,6 +45,7 @@ class LoginRateThrottle(AnonRateThrottle):
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
 
     def post(self, request)-> Response:
         serializer = RegisterSerializer(data=request.data)
