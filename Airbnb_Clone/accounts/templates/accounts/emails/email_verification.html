@@ -4,209 +4,74 @@
 Verify Your Email Address
 {% endblock %}
 
-
 {% block content %}
-
-<h2 style="
-margin:0 0 20px;
-font-size:28px;
-color:#111827;
-font-weight:700;
-">
-
+<h2 style="margin: 0 0 20px; font-size: 28px; color: #111827; font-weight: 700;">
     Verify Your Email Address
-
 </h2>
 
+<p>Hello,</p>
 
 <p>
-
-    Hello,
-
-</p>
-
-
-<p>
-
-    Thank you for creating your
-    <strong>EduManager Pro</strong>
-    account.
-
+    Thank you for creating your <strong>EduManager Pro</strong> account.
     To activate your account, please verify your email address using the One-Time Password (OTP) below.
-
 </p>
 
-
-<!-- ======================================================
-     OTP CARD
-======================================================= -->
-
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="
-margin:35px 0;
-">
-
+<!-- ====================== OTP CARD =============================== -->
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 35px 0;">
     <tr>
-
-        <td align="center" style="
-background:#eff6ff;
-border:2px dashed #2563EB;
-border-radius:10px;
-padding:30px;
-">
-
-            <p style="
-margin:0;
-font-size:15px;
-color:#6b7280;
-">
-
+        <td align="center" style="background: #eff6ff; border: 2px dashed #2563EB; border-radius: 10px; padding: 30px;">
+            <p style="margin: 0; font-size: 15px; color: #6b7280;">
                 Your Verification Code
-
             </p>
-
-            <h1 style="
-margin:18px 0;
-font-size:42px;
-letter-spacing:10px;
-color:#2563EB;
-font-weight:bold;
-">
-
+            <h1 style="margin: 18px 0; font-size: 42px; letter-spacing: 10px; color: #2563EB; font-weight: bold;">
                 {{ otp }}
-
             </h1>
-
-            <p style="
-margin:0;
-color:#6b7280;
-font-size:14px;
-">
-
-                Valid for
-                <strong>10 minutes</strong>
-
+            <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                Valid for <strong>10 minutes</strong>
                 <!--
-TODO:
-Replace "10" with your settings variable later.
-
-Example:
-
-{{ otp_expiry_minutes }}
-
--->
-
+                TODO: Replace "10" with your settings variable later.
+                Example: {{ otp_expiry_minutes }}
+                -->
             </p>
-
         </td>
-
     </tr>
-
 </table>
 
-
-<!-- ======================================================
-     INFORMATION
-======================================================= -->
-
+<!-- ====================== INFORMATION ============================ -->
 <p>
-
     If you did not create this account, you can safely ignore this email.
-
     No changes will be made to your account.
-
 </p>
-
 
 <p>
-
     For your security, never share this verification code with anyone.
-
     Our support team will never ask for your OTP.
-
 </p>
 
-
 <!-- ======================================================
-     OPTIONAL BUTTON
-======================================================= -->
-
-<!--
-
-If later you move from OTP to verification links,
-you can simply uncomment this section.
-
-<table
-role="presentation"
-cellspacing="0"
-cellpadding="0"
-style="margin-top:35px;">
-
-<tr>
-
-<td
-align="center"
-bgcolor="#2563EB"
-style="border-radius:8px;">
-
-<a
-href="{{ verification_url }}"
-style="
-display:inline-block;
-padding:15px 35px;
-color:white;
-font-weight:bold;
-text-decoration:none;
-">
-
-Verify Email
-
-</a>
-
-</td>
-
-</tr>
-
+     OPTIONAL BUTTON (Uncomment if switching to magic links)
+======================================================= 
+<table role="presentation" cellspacing="0" cellpadding="0" style="margin-top: 35px;">
+    <tr>
+        <td align="center" bgcolor="#2563EB" style="border-radius: 8px;">
+            <a href="{{ verification_url }}" style="display: inline-block; padding: 15px 35px; color: white; font-weight: bold; text-decoration: none;">
+                Verify Email
+            </a>
+        </td>
+    </tr>
 </table>
-
 -->
 
+<hr style="margin: 40px 0; border: none; border-top: 1px solid #E5E7EB;">
 
-<hr style="
-margin:40px 0;
-border:none;
-border-top:1px solid #E5E7EB;
-">
-
-
-<p style="
-font-size:14px;
-color:#6B7280;
-">
-
-    Need help?
-
-    Contact our support team at
-
-    <a href="mailto:support@edumanager.com" style="
-color:#2563EB;
-text-decoration:none;
-">
-
+<p style="font-size: 14px; color: #6B7280;">
+    Need help? Contact our support team at
+    <a href="mailto:support@edumanager.com" style="color: #2563EB; text-decoration: none;">
         support@edumanager.com
-
     </a>
-
 </p>
 
-
-<p style="
-font-size:13px;
-color:#9CA3AF;
-margin-top:30px;
-">
-
+<p style="font-size: 13px; color: #9CA3AF; margin-top: 30px;">
     This email was sent because someone attempted to register an account using this email address.
-
 </p>
-
 {% endblock %}
