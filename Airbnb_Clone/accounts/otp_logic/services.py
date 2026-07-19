@@ -23,43 +23,52 @@ def _normalize_email(email: str) -> str:
 
 
 def _create_email_otp(user: Any) -> str:
-    """Generate a new OTP and replace any existing OTP for the user. Returns the generated OTP."""
-    otp = generate_otp()
-    EmailOTP.objects.update_or_create(user=user,defaults={"code": otp,"attempts": 0,},)
-    return otp
+    """ Generate a new OTP, store it hashed, and reset attempts/block. Returns the raw OTP (for sending via email). """
+    raw_otp = generate_otp()
+    # Get or create an OTP instance for this user
+    otp_obj, _ = EmailOTP.objects.get_or_create(user=user)
+    # set_otp() hashes the raw OTP, resets attempts, block, and expiry timer
+    otp_obj.set_otp(raw_otp)
+    return raw_otp
+
 
 
 def _create_password_reset_otp(user: Any) -> str:
-    """Create or replace password reset OTP."""
-    otp = generate_otp()
-    PasswordResetOTP.objects.update_or_create(user=user,defaults={"code": otp,"attempts": 0,})
-    return otp
+    """Generate and store a password reset OTP."""
+    raw_otp = generate_otp()
+    otp_obj, _ = PasswordResetOTP.objects.get_or_create(user=user)
+    otp_obj.set_otp(raw_otp)
+    return raw_otp
+
 
 
 def send_registration_otp(user: Any) -> bool:
     """Send an email verification OTP to a newly registered user."""
-    otp = _create_email_otp(user)
-    email_sent = send_email_otp(email=user.email,otp=otp)
+    raw_otp = _create_email_otp(user)
+    return send_email_otp(email=user.email, otp=raw_otp)
 
-    if not email_sent:
-        logger.error("Failed sending registration OTP to %s",user.email)
-    return email_sent
 
 
 @transaction.atomic
-def register_user(serializer:Any) -> Any:
-    """Create a new user and send a verification OTP.
-
+def register_user(email: str, password: str, **extra_fields:Any) -> Any:
+    """Create a new inactive/unverified user and send a verification OTP.
     Raises:
-        ValidationError:
-            If sending the verification email fails."""
-
-    user = serializer.save()
-
+        ServiceLayerError: If the verification email fails to send. """
+    email = _normalize_email(email)
+    # Create user with inactive/unverified status
+    user = User.objects.create_user(
+        email=email,
+        password=password,
+        is_active=False,
+        is_verified=False,
+        **extra_fields  # catches first_name, last_name if provided later
+    )
     if not send_registration_otp(user):
-        raise serializers.ValidationError({"email": "Unable to send verification email. Please try again."})
-    logger.info("New user registered successfully: %s",user.email,)
+        logger.error("Failed to send registration OTP to %s", user.email)
+        raise ServiceLayerError("Unable to send verification email. Please try again.")
+    logger.info("New user registered successfully: %s", user.email)
     return user
+
 
 
 class OTPService:
@@ -245,55 +254,16 @@ class OTPService:
 
 
 
-def _create_email_otp(user: Any) -> str:
-    """
-    Generate a new OTP, store it hashed, and reset attempts/block.
-    Returns the raw OTP (for sending via email).
-    """
-    raw_otp = generate_otp()
-    # Get or create an OTP instance for this user
-    otp_obj, _ = EmailOTP.objects.get_or_create(user=user)
-    # set_otp() hashes the raw OTP, resets attempts, block, and expiry timer
-    otp_obj.set_otp(raw_otp)
-    return raw_otp
 
 
-def _create_password_reset_otp(user: Any) -> str:
-    """Generate and store a password reset OTP."""
-    raw_otp = generate_otp()
-    otp_obj, _ = PasswordResetOTP.objects.get_or_create(user=user)
-    otp_obj.set_otp(raw_otp)
-    return raw_otp
 
 
-def send_registration_otp(user: Any) -> bool:
-    """Send an email verification OTP to a newly registered user."""
-    raw_otp = _create_email_otp(user)
-    return send_email_otp(email=user.email, otp=raw_otp)
 
 
-@transaction.atomic
-def register_user(email: str, password: str, **extra_fields) -> User:
-    """
-    Create a new inactive/unverified user and send a verification OTP.
 
-    Raises:
-        ServiceLayerError: If the verification email fails to send.
-    """
-    email = _normalize_email(email)
-    # Create user with inactive/unverified status
-    user = User.objects.create_user(
-        email=email,
-        password=password,
-        is_active=False,
-        is_verified=False,
-        **extra_fields  # catches first_name, last_name if provided later
-    )
-    if not send_registration_otp(user):
-        logger.error("Failed to send registration OTP to %s", user.email)
-        raise ServiceLayerError("Unable to send verification email. Please try again.")
-    logger.info("New user registered successfully: %s", user.email)
-    return user
+
+
+
 
 
 class OTPService:
