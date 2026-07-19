@@ -203,7 +203,7 @@ class BaseOAuthLoginView(APIView):
         assert self.serializer_class is not None, (
             f"'{self.__class__.__name__}' must define a `serializer_class` attribute."
         )
-        
+
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         
