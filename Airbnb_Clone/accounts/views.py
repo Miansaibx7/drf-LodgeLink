@@ -179,22 +179,16 @@ class ChangePasswordView(APIView):
     throttle_classes = [UserRateThrottle]
 
     def post(self, request: Request) -> Response:
-        serializer = ChangePasswordSerializer(data=request.data,context={"request": request})
+
+        serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        try:
-            OTPService.change_password(user=request.user,
-                old_password=serializer.validated_data["old_password"],
-                new_password=serializer.validated_data["new_password"],
-            )
-            return Response({"success": True,"message": "Password changed successfully."},status=status.HTTP_200_OK)
-        except serializers.ValidationError:
-            raise
-
-        except Exception:
-            logger.exception("Unexpected error while changing password.")
-
-            return Response({"success": False,"message": ("An unexpected error occurred. ""Please try again later.")},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        OTPService.change_password(user=request.user,
+            old_password=serializer.validated_data["old_password"],
+            new_password=serializer.validated_data["new_password"]
+        )
+        
+        return Response({"success": True, "message": "Password changed successfully."},status=status.HTTP_200_OK)
         
 
 
