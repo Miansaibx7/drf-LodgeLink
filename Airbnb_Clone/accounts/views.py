@@ -145,6 +145,7 @@ class ResendEmailOTPView(APIView):
 
 class PasswordResetOTPSendView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [OTPRateThrottle]
 
     def post(self, request) -> Response:
         serializer = PasswordResetOTPSendSerializer(data=request.data)
