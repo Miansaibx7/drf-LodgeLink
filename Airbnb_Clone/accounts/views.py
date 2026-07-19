@@ -3,6 +3,8 @@ import logging
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny,IsAuthenticated
 
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle # ratelimit
+
 from rest_framework.response import Response
 from rest_framework import status, serializers
 
@@ -29,6 +31,16 @@ from .otp_logic.utils import  get_tokens_for_user
 
 
 logger = logging.getLogger(__name__)
+
+
+# --- Custom Throttles ---
+# These protect your OTP and Login endpoints from brute-force and SMS/Email bombing attacks.
+class OTPRateThrottle(AnonRateThrottle):
+    scope = 'otp_requests'
+
+class LoginRateThrottle(AnonRateThrottle):
+    scope = 'login_requests'
+
 
 
 class RegisterView(APIView):
