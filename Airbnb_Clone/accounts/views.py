@@ -241,22 +241,18 @@ class LinkedInLoginView(BaseOAuthLoginView):
     serializer_class = LinkedInLoginSerializer
 
 
+
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request)-> Response:
-        serializer = LogoutSerializer(data = request.data)
+    def post(self, request: Request) -> Response:
+        serializer = LogoutSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        try:
-            serializer.save()
-            logger.info("User %s logged out successfully.", request.user.email)
-            return Response({"success": True, "message": "Logout successful."},status=status.HTTP_200_OK)
-        except serializers.ValidationError:
-            raise
-
-        except Exception:
-            logger.exception("Unexpected error during logout.")
-
-            return Response({"success": False,"message": ("An unexpected error occurred. " "Please try again later.")},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        serializer.save()
+        logger.info("User %s logged out successfully.", request.user.email)
+        
+        return Response(
+            {"success": True, "message": "Logout successful."},
+            status=status.HTTP_200_OK
+        )
