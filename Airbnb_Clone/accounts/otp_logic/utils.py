@@ -35,6 +35,7 @@ def get_email_context() -> dict[str, Any]:
     }
 
 
+
 # Generate Secure 6-Digit OTP
 def generate_otp() -> str:
     """Generate a cryptographically secure 6-digit OTP.
