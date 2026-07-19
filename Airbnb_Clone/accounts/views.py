@@ -133,20 +133,13 @@ class ResendEmailOTPView(APIView):
     throttle_classes = [OTPRateThrottle]
 
     def post(self, request: Request) -> Response:
-        
-        serializer = ResendEmailOTPSerializer(data = request.data)
+
+        serializer = ResendEmailOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        try:
-            OTPService.resend_email_otp(serializer.validated_data["email"])
-            return Response({"success": True,"message": "OTP resent successfully."},status=status.HTTP_200_OK)
-        except serializers.ValidationError:
-            raise
 
-        except Exception:
-            logger.exception("Unexpected error while resending OTP.")
-
-            return Response({"success": False,"message": "An unexpected error occurred. Please try again later."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        OTPService.resend_email_otp(serializer.validated_data["email"])
+        
+        return Response({"success": True, "message": "OTP resent successfully."},status=status.HTTP_200_OK)
         
 
 
