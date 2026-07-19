@@ -138,6 +138,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
 
+# Default primary key field type
+# REQUIRED for modern Django (3.2+) to prevent migration warnings
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 # Email settings for STMP(Simple Mail Transfer Protocol)
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend" # Which mail backend to use (SMTP).
 EMAIL_HOST = "smtp.gmail.com" # SMTP server address (Gmail).
