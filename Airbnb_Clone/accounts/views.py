@@ -194,6 +194,7 @@ class ChangePasswordView(APIView):
 
 class BaseOAuthLoginView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
     serializer_class = None
 
     def post(self, request)-> Response:
