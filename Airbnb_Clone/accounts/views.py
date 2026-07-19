@@ -117,10 +117,10 @@ class EmailOTPVerifyView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [OTPRateThrottle]
 
-    def post(self, request) -> Response:
+    def post(self, request: Request) -> Response:
+        
         serializer = EmailOTPVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
         try:
             OTPService.verify_email_otp(**serializer.validated_data)
             return Response({"success": True,"message": "Email verified successfully.",},status=status.HTTP_200_OK)
