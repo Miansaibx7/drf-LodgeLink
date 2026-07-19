@@ -172,8 +172,11 @@ class PasswordResetOTPVerifyView(APIView):
         return Response({"success": True, "message": "Password reset successfully."},status=status.HTTP_200_OK)
 
 
+
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
+    # Authenticated endpoints use UserRateThrottle instead of AnonRateThrottle
+    throttle_classes = [UserRateThrottle]
 
     def post(self, request) -> Response:
         serializer = ChangePasswordSerializer(data=request.data,context={"request": request})
