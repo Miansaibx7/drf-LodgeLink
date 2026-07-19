@@ -48,25 +48,19 @@ class RegisterView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [LoginRateThrottle]
 
-    def post(self, request)-> Response:
+    def post(self, request: Request) -> Response:
         serializer = RegisterSerializer(data=request.data)
         # Automatically handles 400 errors if data is invalid
         serializer.is_valid(raise_exception=True)
 
-        try:
-            register_user(serializer)
-            # If we reach here, the transaction is committed successfully
-            return Response({"success": True,"message": "Registration successful. Please check your email for the verification OTP."},
-                status=status.HTTP_201_CREATED)
-        except serializers.ValidationError:
-            raise
-
-        except Exception:
-            logger.exception("Unexpected error during registration.")
-
-            return Response({"success": False,"message": "An unexpected error occurred. Please try again later.",},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        # Passing only validated data as kwargs to the service layer.
+        # The service layer now has zero dependency on DRF serializers.
+        register_user(**serializer.validated_data)
         
+        return Response(
+            {"success": True, "message": "Registration successful. Please check your email for the verification OTP."},
+            status=status.HTTP_201_CREATED
+        )
     
 
 class LoginView(APIView):
