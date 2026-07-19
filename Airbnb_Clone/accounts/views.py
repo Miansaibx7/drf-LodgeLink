@@ -207,7 +207,7 @@ class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request) -> Response:
-        serializer = ChangePasswordSerializer(data=request.data)
+        serializer = ChangePasswordSerializer(data=request.data,context={"request": request})
         serializer.is_valid(raise_exception=True)
         try:
             OTPService.change_password(user=request.user,
