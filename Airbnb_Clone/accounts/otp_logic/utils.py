@@ -20,19 +20,19 @@ logger = logging.getLogger(__name__)
 
 
 # Common Email Context
-# def get_email_context() -> dict[str, Any]:
-#     """ Returns common template context used by every email. Keep company information in settings.py instead of
-#     hardcoding values throughout the project. """
+def get_email_context() -> dict[str, Any]:
+    """ Returns common template context used by every email. Keep company information in settings.py instead of
+    hardcoding values throughout the project. """
 
-#     return {
-#         "company_name": settings.COMPANY_NAME,
-#         "school_name": settings.SCHOOL_NAME,
-#         "frontend_url": settings.FRONTEND_URL,
-#         "backend_url": settings.BACKEND_URL,
-#         "support_email": settings.SUPPORT_EMAIL,
-#         "primary_color": settings.PRIMARY_COLOR,
-#         "logo_url": getattr(settings, "LOGO_URL", ""),
-#     }
+    return {
+        "company_name": settings.COMPANY_NAME,
+        "school_name": settings.SCHOOL_NAME,
+        "frontend_url": settings.FRONTEND_URL,
+        "backend_url": settings.BACKEND_URL,
+        "support_email": settings.SUPPORT_EMAIL,
+        "primary_color": settings.PRIMARY_COLOR,
+        "logo_url": getattr(settings, "LOGO_URL", ""),
+    }
 
 
 # Generate Secure 6-Digit OTP
@@ -138,9 +138,4 @@ def get_tokens_for_user(user) -> dict[str, str]:
         "refresh": str(refresh),
         "jti": str(refresh["jti"]) # useful for UserSession tracking
     }
-
-
-
-
-
 
