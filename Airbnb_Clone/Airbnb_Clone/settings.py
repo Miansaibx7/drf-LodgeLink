@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import timedelta  
 from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -8,10 +9,14 @@ SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-# Allows 
+
+# Allows hosts - update this with your domain when moving to production.
 ALLOWED_HOSTS = []
+
 # Allows every frontend to call your API.
+# In production, you may want to change this to False and use CORS_ALLOWED_ORIGINS
 CORS_ALLOW_ALL_ORIGINS = True
+
 # Allows Custom User Models Instead of Django's default User model.
 AUTH_USER_MODEL = "accounts.User"
 
@@ -24,23 +29,36 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    # Third-party apps
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
 
-
+    # Local apps
     'accounts',
 ]
 
-# Every API checks JWT automatically.
+# Django REST Framework Configuration
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES":(
+    # 1. Authentication & Permissions
+    "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    "DEFAULT_PERMISSION_CLASSES":(
+    "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
+    
+    # 2. Custom Exception Handler (Added from previous step)
+    # IMPORTANT: Change 'accounts' to the app name where you saved exceptions.py
+    'EXCEPTION_HANDLER': 'accounts.exceptions.custom_global_exception_handler',
+    
+    # 3. Throttling / Rate Limiting (Added to protect OTP and Login endpoints)
+    'DEFAULT_THROTTLE_RATES': {
+        'otp_requests': '5/min',    # Limit anon users to 5 OTP requests per minute
+        'login_requests': '10/min', # Limit anon users to 10 login attempts per minute
+        'user': '100/min',          # Limit authenticated users 
+    },
 }
 
 # JWT settings for Django REST Framework Simple JWT
