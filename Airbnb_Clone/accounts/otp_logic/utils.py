@@ -104,7 +104,7 @@ def get_tokens_for_user(user) -> Dict[str, str]:
     return {
         "refresh": str(refresh),
         "access": str(refresh.access_token),
-        "jti": str(refresh["jti"]),  # useful for UserSession tracking
+        "jti": str(refresh["jti"])  # useful for UserSession tracking
     }
 
 
