@@ -1,5 +1,5 @@
 ============================================================
-                 VERIFY YOUR EMAIL ADDRESS
+VERIFY YOUR EMAIL ADDRESS
 ============================================================
 
 Hello,
@@ -18,13 +18,7 @@ Verification Code (OTP)
 ------------------------------------------------------------
 
 This verification code is valid for 10 minutes.
-
-# TODO:
-# Replace the hardcoded value with:
-#
-# {{ otp_expiry_minutes }}
-#
-# when you move the project configuration into settings.py.
+{# TODO: Replace the hardcoded value with {{ otp_expiry_minutes }} when you move the project configuration into settings.py. #}
 
 ============================================================
 
@@ -44,11 +38,7 @@ Need Help?
 
 Email:
 support@edumanager.com
-
-# TODO:
-# Replace later with:
-#
-# {{ support_email }}
+{# TODO: Replace later with {{ support_email }} #}
 
 ============================================================
 
@@ -60,4 +50,4 @@ All rights reserved.
 This is an automated email.
 Please do not reply directly to this message.
 
-===========================================================
+============================================================
