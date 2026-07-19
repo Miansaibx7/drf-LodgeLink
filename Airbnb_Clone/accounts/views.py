@@ -65,48 +65,34 @@ class RegisterView(APIView):
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [LoginRateThrottle]
 
-    def post(self, request)-> Response:
-        try:
-            serializer = LoginSerializer(data=request.data,context={"request": request})
+    def post(self, request: Request) -> Response:
+        serializer = LoginSerializer(data=request.data, context={"request": request})
+        #  This automatically handles invalid credentials and unverified users.
+        # It will throw a 400 Bad Request if anything fails.
+        serializer.is_valid(raise_exception=True)
+        
+        # Grab the user object that we safely attached inside the serializer
+        user = serializer.validated_data["user"]
 
-            #  This automatically handles invalid credentials and unverified users.
-            # It will throw a 400 Bad Request if anything fails.
-            serializer.is_valid(raise_exception=True)
+        # Update last login time
+        update_last_login(None, user)
 
-            # Grab the user object that we safely attached inside the serializer
-            user = serializer.validated_data["user"]
+        # Generate JWT Tokens and log success
+        tokens = get_tokens_for_user(user)
 
-            # Update last login time
-            update_last_login(None, user)
+        logger.info("User %s logged in successfully.", user.email)
 
-            # Generate JWT Tokens and log success
-            tokens = get_tokens_for_user(user)
-            logger.info("User %s logged in successfully.", user.email)
-
-            return Response(
-                {
-                    "success": True,
-                    "message": "Login successful.",
-                    "tokens": tokens,
-                    "user": {
-                        "id": user.id,
-                        "email": user.email,
-                        "name": user.name,
-                        "is_verified": user.is_verified,
-                    },
+        return Response(
+            {   "success": True,
+                "message": "Login successful.",
+                "tokens": tokens,
+                "user": {"id": user.id,"email": user.email,
+                    "name": getattr(user, 'name', ''), # Use getattr in case name isn't on base model
+                    "is_verified": getattr(user, 'is_verified', True)
                 },
-                status=status.HTTP_200_OK,
-            )
-
-        except serializers.ValidationError:
-            raise
-
-        except Exception:
-            logger.exception("Unexpected error during login.")
-
-            return Response({"success": False,"message": ("An unexpected error occurred. ""Please try again later.")},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,)
+            },status=status.HTTP_200_OK)
         
 
 
