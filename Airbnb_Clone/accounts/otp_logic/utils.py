@@ -62,7 +62,7 @@ def send_email_otp(*, email: str, otp: str) -> bool:
         bool: Email sending status."""
     
     return _send_email(email=email,subject="Verify Your Email Address",
-        html_template="emails/email_verification.html",
+        html_template="templates/accounts/emails/email_verification.html",
         context={
             "otp": otp,
             "expiry_minutes": 10,
@@ -81,7 +81,7 @@ def send_password_reset_email(*, email: str, otp: str) -> bool:
         bool: Email sending status."""
     
     return _send_email(email=email,subject="Password Reset OTP",
-        html_template="emails/password_reset.html",
+        html_template="templates/accounts/emails/password_reset.html",
         context={
             "otp": otp,
             "expiry_minutes": 10,
