@@ -252,7 +252,4 @@ class LogoutView(APIView):
         serializer.save()
         logger.info("User %s logged out successfully.", request.user.email)
         
-        return Response(
-            {"success": True, "message": "Logout successful."},
-            status=status.HTTP_200_OK
-        )
+        return Response({"success": True, "message": "Logout successful."},status=status.HTTP_200_OK)
