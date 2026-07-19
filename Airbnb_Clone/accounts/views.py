@@ -147,20 +147,14 @@ class PasswordResetOTPSendView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [OTPRateThrottle]
 
-    def post(self, request) -> Response:
+    def post(self, request: Request) -> Response:
+
         serializer = PasswordResetOTPSendSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        try:
-            OTPService.send_password_reset_otp(serializer.validated_data["email"])
-            return Response({"success": True,"message": ("Password reset OTP sent successfully.")},status=status.HTTP_200_OK,)
-        except serializers.ValidationError:
-            raise
-
-        except Exception:
-            logger.exception("Unexpected error while sending password reset OTP.")
-
-            return Response({"success": False,"message": ("An unexpected error occurred. " "Please try again later.")},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        OTPService.send_password_reset_otp(serializer.validated_data["email"])
+        
+        return Response({"success": True, "message": "Password reset OTP sent successfully."},status=status.HTTP_200_OK)
         
 
 class PasswordResetOTPVerifyView(APIView):
