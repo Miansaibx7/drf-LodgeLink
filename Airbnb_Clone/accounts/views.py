@@ -115,6 +115,7 @@ class EmailOTPSendView(APIView):
 
 class EmailOTPVerifyView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [OTPRateThrottle]
 
     def post(self, request) -> Response:
         serializer = EmailOTPVerifySerializer(data=request.data)
