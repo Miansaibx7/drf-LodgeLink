@@ -95,7 +95,7 @@ def register_user(email: str, password: str, **extra_fields:Any) -> Any:
 
 
 
-
+# ===================================== OTP Service ====================================================================
 class OTPService:
     """Handles all OTP operations using the model's built‑in methods."""
 
@@ -267,9 +267,8 @@ class OTPService:
 
 
 
-# ----------------------------------------------------------------------
-# OTP Service
-# ----------------------------------------------------------------------
+
+
 class OTPService:
     """Handles all OTP operations using the model's built‑in methods."""
 
