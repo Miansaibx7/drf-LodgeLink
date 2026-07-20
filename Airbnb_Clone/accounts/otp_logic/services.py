@@ -179,10 +179,8 @@ class OTPService:
     @staticmethod
     @transaction.atomic
     def verify_password_reset_otp(email: str, code: str, new_password: str) -> bool:
-        """
-        Verify password reset OTP and update the user's password.
-        Uses the model's verify_otp() for security.
-        """
+        """Verify password reset OTP and update the user's password.Uses the model's verify_otp() for security. """
+        
         email = _normalize_email(email)
         try:
             user = User.objects.get(email=email)
@@ -208,13 +206,12 @@ class OTPService:
         logger.info("Password reset for %s", user.email)
         return True
 
+
     @staticmethod
     @transaction.atomic
     def change_password(user: Any, old_password: str, new_password: str) -> bool:
-        """
-        Change password for an authenticated user.
-        Validates old password and prevents reuse.
-        """
+        """ Change password for an authenticated user. Validates old password and prevents reuse. """
+
         if not user.check_password(old_password):
             logger.warning("Invalid old password attempt for %s", user.email)
             raise ServiceLayerError("Current password is incorrect.")
@@ -226,96 +223,3 @@ class OTPService:
         user.save(update_fields=["password"])
         logger.info("Password changed for %s", user.email)
         return True
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  
-    
-
-
-
-    
-    
-
-    
-
-    @staticmethod
-    @transaction.atomic
-    def verify_password_reset_otp(email: str,code: str,new_password: str,) -> bool:
-     """Verify password reset OTP and update the user's password."""
-     
-     email = _normalize_email(email)
-     
-     try:
-        otp = (PasswordResetOTP.objects.select_for_update().select_related("user")
-            .get(user__email=email,code=code))
-    
-     except PasswordResetOTP.DoesNotExist:
-        logger.warning("Invalid password reset OTP for %s",email)
-
-        try:
-            user = User.objects.get(email=email)
-            latest_otp = (PasswordResetOTP.objects.filter(user=user).order_by("-created_at").first())
-
-            if latest_otp:
-                latest_otp.increment_attempts()
-
-        except User.DoesNotExist:
-            pass
-
-        raise serializers.ValidationError({"code": "Invalid OTP."})
-     
-     if otp.is_blocked():
-        otp.delete()
-        raise serializers.ValidationError({"code": "Too many invalid attempts. Please request a new OTP."})
-     
-     if otp.is_expired():
-        otp.delete()
-        raise serializers.ValidationError({"code": "OTP has expired. Please request a new OTP."})
-     
-     user = otp.user
-     user.set_password(new_password)
-     user.save(update_fields=["password",])
-     
-     otp.delete()
-     logger.info("Password reset successfully for %s",user.email)
-     return True
-    
-
-    @staticmethod
-    @transaction.atomic
-    def change_password(user: Any,old_password: str,new_password: str) -> bool:
-        """Change password for an authenticated user."""
-        
-        if not user.check_password(old_password):
-            logger.warning("Invalid old password attempt for %s",user.email)
-            
-            raise serializers.ValidationError({"old_password": "Current password is incorrect."})
-        
-        if old_password == new_password:
-            raise serializers.ValidationError({"new_password": ("New password must be different " "from current password.")})
-        
-        user.set_password(new_password)
-        user.save(update_fields=["password"])
-        
-        logger.info("Password changed successfully for %s",user.email)
-        
-        return True
-    
-
-
-
-
-
