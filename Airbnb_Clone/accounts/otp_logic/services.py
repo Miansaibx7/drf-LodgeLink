@@ -137,6 +137,7 @@ class OTPService:
     @staticmethod
     def resend_email_otp(email: str) -> bool:
         """Delete old OTPs and send a fresh one."""
+        
         email = _normalize_email(email)
         try:
             user = User.objects.get(email=email)
@@ -159,6 +160,7 @@ class OTPService:
     @staticmethod
     def send_password_reset_otp(email: str) -> bool:
         """Generate and send a password reset OTP."""
+
         email = _normalize_email(email)
         try:
             user = User.objects.get(email=email)
@@ -180,7 +182,7 @@ class OTPService:
     @transaction.atomic
     def verify_password_reset_otp(email: str, code: str, new_password: str) -> bool:
         """Verify password reset OTP and update the user's password.Uses the model's verify_otp() for security. """
-        
+
         email = _normalize_email(email)
         try:
             user = User.objects.get(email=email)
