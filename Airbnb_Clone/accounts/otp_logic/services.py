@@ -18,12 +18,14 @@ User = get_user_model()
 
 def _normalize_email(email: str) -> str:
     """Normalize email to lowercase and strip whitespace."""
+    
     return email.lower().strip()
 
 
 
 def _create_email_otp(user: Any) -> str:
     """ Generate a new OTP, store it hashed, and reset attempts/block. Returns the raw OTP (for sending via email). """
+
     raw_otp = generate_otp()
     # Get or create an OTP instance for this user
     otp_obj, _ = EmailOTP.objects.get_or_create(user=user)
@@ -35,7 +37,7 @@ def _create_email_otp(user: Any) -> str:
 
 def _create_password_reset_otp(user: Any) -> str:
     """Generate and store a password reset OTP."""
-    
+
     raw_otp = generate_otp()
     otp_obj, _ = PasswordResetOTP.objects.get_or_create(user=user)
     otp_obj.set_otp(raw_otp)
