@@ -78,6 +78,7 @@ class OTPService:
     @staticmethod
     def send_email_otp(email: str) -> bool:
         """Generate and send a fresh email verification OTP."""
+        
         email = _normalize_email(email)
 
         try:
@@ -137,7 +138,7 @@ class OTPService:
     @staticmethod
     def resend_email_otp(email: str) -> bool:
         """Delete old OTPs and send a fresh one."""
-        
+
         email = _normalize_email(email)
         try:
             user = User.objects.get(email=email)
