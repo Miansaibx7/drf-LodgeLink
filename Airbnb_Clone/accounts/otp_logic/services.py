@@ -265,27 +265,6 @@ class OTPService:
 
 
 
-@transaction.atomic
-def register_user(email: str, password: str, **extra_fields: Any) -> Any:
-    """
-    Create a new inactive/unverified user and send a verification OTP.
-
-    Raises:
-        ServiceLayerError: If the verification email fails to send.
-    """
-    email = _normalize_email(email)
-    user = User.objects.create_user(
-        email=email,
-        password=password,
-        is_active=False,
-        is_verified=False,
-        **extra_fields  # catches first_name, last_name if provided
-    )
-    if not send_registration_otp(user):
-        logger.error("Failed to send registration OTP to %s", user.email)
-        raise ServiceLayerError("Unable to send verification email. Please try again.")
-    logger.info("New user registered successfully: %s", user.email)
-    return user
 
 
 # ----------------------------------------------------------------------
