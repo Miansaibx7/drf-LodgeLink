@@ -44,6 +44,7 @@ def _create_password_reset_otp(user: Any) -> str:
 
 def send_registration_otp(user: Any) -> bool:
     """Send an email verification OTP to a newly registered user."""
+    
     raw_otp = _create_email_otp(user)
     return send_email_otp(email=user.email, otp=raw_otp)
 
@@ -54,6 +55,7 @@ def register_user(email: str, password: str, **extra_fields:Any) -> Any:
     """Create a new inactive/unverified user and send a verification OTP.
     Raises:
         ServiceLayerError: If the verification email fails to send. """
+    
     email = _normalize_email(email)
     # Create user with inactive/unverified status
     user = User.objects.create_user(
@@ -78,7 +80,7 @@ class OTPService:
     @staticmethod
     def send_email_otp(email: str) -> bool:
         """Generate and send a fresh email verification OTP."""
-        
+
         email = _normalize_email(email)
 
         try:
