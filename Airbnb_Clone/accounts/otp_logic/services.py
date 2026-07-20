@@ -35,6 +35,7 @@ def _create_email_otp(user: Any) -> str:
 
 def _create_password_reset_otp(user: Any) -> str:
     """Generate and store a password reset OTP."""
+    
     raw_otp = generate_otp()
     otp_obj, _ = PasswordResetOTP.objects.get_or_create(user=user)
     otp_obj.set_otp(raw_otp)
@@ -44,7 +45,7 @@ def _create_password_reset_otp(user: Any) -> str:
 
 def send_registration_otp(user: Any) -> bool:
     """Send an email verification OTP to a newly registered user."""
-    
+
     raw_otp = _create_email_otp(user)
     return send_email_otp(email=user.email, otp=raw_otp)
 
