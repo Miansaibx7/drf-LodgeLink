@@ -167,11 +167,14 @@ class OTPService:
             raise ServiceLayerError("No account found with this email.")
 
         raw_otp = _create_password_reset_otp(user)
+
         if not send_password_reset_email(email=user.email, otp=raw_otp):
             logger.error("Failed sending password reset OTP to %s", user.email)
             raise ServiceLayerError("Unable to send password reset OTP. Please try again later.")
+        
         logger.info("Password reset OTP sent to %s", user.email)
         return True
+
 
     @staticmethod
     @transaction.atomic
