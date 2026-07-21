@@ -43,7 +43,7 @@ def _delete_otps_for_user(user: User, otp_model: Any) -> None:
 
 
 
-# ===================================== OTP Creation Helpers ==========================================================
+# ===================================== OTP Creation Helpers Functions ====================================================
 def _create_email_otp(user: Any) -> str:
     """ Generate a new OTP, store it hashed, and reset attempts/block. Returns the raw OTP (for sending via email). """
     raw_otp = generate_otp()
@@ -90,6 +90,7 @@ def register_user(email: str, password: str, **extra_fields:Any) -> Any:
     if not send_registration_otp(user):
         logger.error("Failed to send registration OTP to %s", user.email)
         raise ServiceLayerError("Unable to send verification email. Please try again.")
+    
     logger.info("New user registered successfully: %s", user.email)
     return user
 
@@ -103,15 +104,9 @@ class OTPService:
     def send_email_otp(email: str) -> bool:
         """Generate and send a fresh email verification OTP."""
 
-        email = _normalize_email(email)
+        user = _get_user_by_email(email) # Use Helper Functions 
+        raw_otp = _create_email_otp(user) # Use OTP Creation Helpers Functions
 
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            logger.warning("OTP requested for non‑existing email %s", email)
-            raise ServiceLayerError("No account found with this email.")
-
-        raw_otp = _create_email_otp(user)
         if not send_email_otp(email=user.email, otp=raw_otp):
             logger.error("Failed sending OTP to %s", user.email)
             raise ServiceLayerError("Unable to send OTP. Please try again later.")
@@ -123,21 +118,14 @@ class OTPService:
 
     @staticmethod
     @transaction.atomic
-    def verify_email_otp(email: str, code: str) -> Any:
+    def verify_email_otp(email: str, code: str) -> User:
         """Verify the email OTP. Uses the model's verify_otp() which handles attempts, blocking, expiry, and deletion. """
         
-        email = _normalize_email(email)
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            logger.warning("Verification attempted for non‑existing email %s", email)
-            raise ServiceLayerError("Invalid OTP.")
+        user = _get_user_by_email(email) # Use Helper Functions 
+        otp_obj = EmailOTP.objects.get_active_for_user(user) # Get the latest active OTP for this user
 
-        # Get the latest active OTP for this user
-        otp_obj = EmailOTP.objects.get_active_for_user(user)
         if not otp_obj:
-            # No active OTP – they need to request a new one
-            raise ServiceLayerError("Invalid OTP. Please request a new one.")
+            raise ServiceLayerError("Invalid OTP. Please request a new one.")# No active OTP-they need to request a new one
 
         # Attempt verification – this method increments attempts, blocks if needed,
         # and deletes the OTP on success.
@@ -159,48 +147,42 @@ class OTPService:
         return user
     
 
+
     @staticmethod
     def resend_email_otp(email: str) -> bool:
         """Delete old OTPs and send a fresh one."""
 
-        email = _normalize_email(email)
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            logger.warning("Resend OTP requested for non‑existing email %s", email)
-            raise ServiceLayerError("No account found with this email.")
-
+        user = _get_user_by_email(email) # Use Helper Functions 
         # Delete any existing OTPs for this user
-        EmailOTP.objects.filter(user=user).delete()
+        _delete_otps_for_user(user, EmailOTP)          # remove old OTPs by Helper Functions
+
         # Generate and send a new OTP
         raw_otp = _create_email_otp(user)  # this creates a new one
 
         if not send_email_otp(email=user.email, otp=raw_otp):
             logger.error("Failed resending OTP to %s", user.email)
             raise ServiceLayerError("Unable to resend OTP. Please try again later.")
+        
         logger.info("OTP resent to %s", user.email)
         return True
-    
+
+
     
     @staticmethod
     def send_password_reset_otp(email: str) -> bool:
         """Generate and send a password reset OTP."""
 
-        email = _normalize_email(email)
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            logger.warning("Password reset requested for non‑existing email %s", email)
-            raise ServiceLayerError("No account found with this email.")
+        user = _get_user_by_email(email) # Use Helper Functions
 
         raw_otp = _create_password_reset_otp(user)
 
         if not send_password_reset_email(email=user.email, otp=raw_otp):
             logger.error("Failed sending password reset OTP to %s", user.email)
             raise ServiceLayerError("Unable to send password reset OTP. Please try again later.")
-        
+    
         logger.info("Password reset OTP sent to %s", user.email)
         return True
+    
 
 
     @staticmethod
@@ -208,14 +190,9 @@ class OTPService:
     def verify_password_reset_otp(email: str, code: str, new_password: str) -> bool:
         """Verify password reset OTP and update the user's password.Uses the model's verify_otp() for security. """
 
-        email = _normalize_email(email)
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            logger.warning("Password reset attempt for non‑existing email %s", email)
-            raise ServiceLayerError("Invalid OTP.")
-
+        user = _get_user_by_email(email) # Use Helper Functions
         otp_obj = PasswordResetOTP.objects.get_active_for_user(user)
+
         if not otp_obj:
             raise ServiceLayerError("Invalid OTP. Please request a new one.")
 
@@ -228,10 +205,10 @@ class OTPService:
             raise ServiceLayerError("Invalid OTP.")
 
         # OTP verified and deleted – update password
-        user.set_password(new_password)
-        user.save(update_fields=["password"])
+        _update_user_password(user, new_password) # Use Helper Functions for password delete – update
         logger.info("Password reset for %s", user.email)
         return True
+
 
 
     @staticmethod
@@ -246,132 +223,7 @@ class OTPService:
         if old_password == new_password:
             raise ServiceLayerError("New password must be different from current password.")
 
-        user.set_password(new_password)
-        user.save(update_fields=["password"])
+        _update_user_password(user, new_password) # Use Helper Functions for password delete – update
         logger.info("Password changed for %s", user.email)
         return True
-    
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class OTPService:
-    """Handles all OTP operations using the model's built‑in methods."""
-
-    @staticmethod
-    def send_email_otp(email: str) -> bool:
-        """Generate and send a fresh email verification OTP."""
-        user = _get_user_by_email(email)
-        raw_otp = _create_email_otp(user)
-        if not send_email_otp(email=user.email, otp=raw_otp):
-            logger.error("Failed sending OTP to %s", user.email)
-            raise ServiceLayerError("Unable to send OTP. Please try again later.")
-        logger.info("OTP sent to %s", user.email)
-        return True
-
-    @staticmethod
-    @transaction.atomic
-    def verify_email_otp(email: str, code: str) -> User:
-        """
-        Verify the email OTP.
-        Uses the model's verify_otp() which handles attempts, blocking, expiry, and deletion.
-        """
-        user = _get_user_by_email(email)
-        otp_obj = EmailOTP.objects.get_active_for_user(user)
-        if not otp_obj:
-            raise ServiceLayerError("Invalid OTP. Please request a new one.")
-
-        if not otp_obj.verify_otp(code):
-            otp_obj.refresh_from_db()
-            if otp_obj.is_blocked:
-                raise ServiceLayerError("Too many invalid attempts. Please request a new OTP.")
-            if otp_obj.is_expired:
-                raise ServiceLayerError("OTP has expired. Please request a new OTP.")
-            raise ServiceLayerError("Invalid OTP.")
-
-        # OTP verified and deleted – activate the user
-        user.is_active = True
-        user.is_verified = True
-        user.save(update_fields=["is_active", "is_verified"])
-        logger.info("Email verified for %s", user.email)
-        return user
-
-    @staticmethod
-    def resend_email_otp(email: str) -> bool:
-        """Delete old OTPs and send a fresh one."""
-        user = _get_user_by_email(email)
-        _delete_otps_for_user(user, EmailOTP)          # remove old OTPs
-        raw_otp = _create_email_otp(user)
-        if not send_email_otp(email=user.email, otp=raw_otp):
-            logger.error("Failed resending OTP to %s", user.email)
-            raise ServiceLayerError("Unable to resend OTP. Please try again later.")
-        logger.info("OTP resent to %s", user.email)
-        return True
-
-    @staticmethod
-    def send_password_reset_otp(email: str) -> bool:
-        """Generate and send a password reset OTP."""
-        user = _get_user_by_email(email)
-        raw_otp = _create_password_reset_otp(user)
-        if not send_password_reset_email(email=user.email, otp=raw_otp):
-            logger.error("Failed sending password reset OTP to %s", user.email)
-            raise ServiceLayerError("Unable to send password reset OTP. Please try again later.")
-        logger.info("Password reset OTP sent to %s", user.email)
-        return True
-
-    @staticmethod
-    @transaction.atomic
-    def verify_password_reset_otp(email: str, code: str, new_password: str) -> bool:
-        """
-        Verify password reset OTP and update the user's password.
-        Uses the model's verify_otp() for security.
-        """
-        user = _get_user_by_email(email)
-        otp_obj = PasswordResetOTP.objects.get_active_for_user(user)
-        if not otp_obj:
-            raise ServiceLayerError("Invalid OTP. Please request a new one.")
-
-        if not otp_obj.verify_otp(code):
-            otp_obj.refresh_from_db()
-            if otp_obj.is_blocked:
-                raise ServiceLayerError("Too many invalid attempts. Please request a new OTP.")
-            if otp_obj.is_expired:
-                raise ServiceLayerError("OTP has expired. Please request a new OTP.")
-            raise ServiceLayerError("Invalid OTP.")
-
-        # OTP verified and deleted – update password
-        _update_user_password(user, new_password)
-        logger.info("Password reset for %s", user.email)
-        return True
-
-    @staticmethod
-    @transaction.atomic
-    def change_password(user: Any, old_password: str, new_password: str) -> bool:
-        """
-        Change password for an authenticated user.
-        Validates old password and prevents reuse.
-        """
-        if not user.check_password(old_password):
-            logger.warning("Invalid old password attempt for %s", user.email)
-            raise ServiceLayerError("Current password is incorrect.")
-
-        if old_password == new_password:
-            raise ServiceLayerError("New password must be different from current password.")
-
-        _update_user_password(user, new_password)
-        logger.info("Password changed for %s", user.email)
-        return True
