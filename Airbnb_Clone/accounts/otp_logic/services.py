@@ -3,6 +3,7 @@ from typing import Any, Type
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.db.models import Model
 
 
 from ..models import EmailOTP, PasswordResetOTP
