@@ -58,10 +58,16 @@ def _create_email_otp(user: Any) -> str:
 
 
 
+@transaction.atomic
 def _create_password_reset_otp(user: Any) -> str:
     """Generate and store a password reset OTP."""
+    # Lock user row to prevent concurrency issues
+    user = User.objects.select_for_update().get(pk=user.pk) 
+    # Clean up old OTPs
+    _delete_otps_for_user(user, PasswordResetOTP)
+    # Create new OTP safely
     raw_otp = generate_otp()
-    otp_obj, _ = PasswordResetOTP.objects.get_or_create(user=user)
+    otp_obj = PasswordResetOTP.objects.create(user=user)
     otp_obj.set_otp(raw_otp)
     return raw_otp
 
