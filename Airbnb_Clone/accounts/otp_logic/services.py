@@ -129,16 +129,18 @@ class OTPService:
         """Verify the email OTP. Uses the model's verify_otp() which handles attempts, blocking, expiry, and deletion. """
         
         user = _get_user_by_email(email) # Use Helper Functions 
-        otp_obj = EmailOTP.objects.get_active_for_user(user) # Get the latest active OTP for this user
+
+        # Use all_objects so we can properly report if they are blocked/expired
+        otp_obj = EmailOTP.all_objects.filter(user=user).order_by('-created_at').first()# Get the latest active OTP for this user
 
         if not otp_obj:
             raise ServiceLayerError("Invalid OTP. Please request a new one.")# No active OTP-they need to request a new one
-
+        
         # Attempt verification – this method increments attempts, blocks if needed,
         # and deletes the OTP on success.
         if not otp_obj.verify_otp(code):
-            # verify_otp returned False – determine why
-            # Refresh the object to get updated attempts/blocked_until
+            # verify_otp has already incremented attempts/blocked inside the transaction
+            # Refresh to get updated state (though it's already current)
             otp_obj.refresh_from_db()
             if otp_obj.is_blocked:
                 raise ServiceLayerError("Too many invalid attempts. Please request a new OTP.")
@@ -146,13 +148,13 @@ class OTPService:
                 raise ServiceLayerError("OTP has expired. Please request a new OTP.")
             raise ServiceLayerError("Invalid OTP.")
 
-        # OTP verified and deleted – activate the user
+        # OTP verified and deleted by model – activate the user
         user.is_active = True
         user.is_verified = True
         user.save(update_fields=["is_active", "is_verified"])
         logger.info("Email verified for %s", user.email)
         return user
-    
+        
 
 
     @staticmethod
