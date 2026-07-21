@@ -230,7 +230,7 @@ class OTPService:
         if old_password == new_password:
             raise ServiceLayerError("New password must be different from current password.")
 
-        _update_user_password(user, new_password) # Use Helper Functions for password delete – update
+        _update_user_password(user, new_password) # Update password using helper
         logger.info("Password changed for %s", user.email)
         return True
 
