@@ -39,6 +39,17 @@ def _update_user_password(user: User, password: str) -> None: # type: ignore
 def _delete_otps_for_user(user: User, otp_model: Any) -> None: # type: ignore
     """Delete all OTPs for a given user of a specific model."""
     otp_model.objects.filter(user=user).delete()
+def _delete_otps_for_user(user: User, otp_model: Any) -> None:
+    """Delete all OTPs for a given user of a specific model to keep DB clean."""
+    # Use all_objects to ensure we delete blocked/expired ones too
+    otp_model.all_objects.filter(user=user).delete()
+def _delete_otps_for_user(user: User, otp_model: Type[Model]) -> None:
+    """
+    Delete ALL OTPs for a given user (active, expired, or blocked).
+    Uses all_objects to bypass the ActiveOTPManager filter.
+    """
+    # all_objects bypasses the filtered manager to delete everything
+    otp_model.all_objects.filter(user=user).delete()
 
 
 

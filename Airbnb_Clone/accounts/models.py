@@ -129,10 +129,10 @@ class BaseOTP(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     blocked_until = models.DateTimeField(null=True, blank=True)
 
-    # Use an unfiltered manager for internal operations that must access all rows
-    all_objects = models.Manager()
-    # Filtered manager for normal queries (active OTPs)
+    # Filtered manager – returns only active OTPs
     objects = ActiveOTPManager()
+    # Use to Unfiltered manager – returns all OTPs 
+    all_objects = models.Manager()
 
     class Meta:
         abstract = True
