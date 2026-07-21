@@ -159,22 +159,10 @@ class OTPService:
 
     @staticmethod
     def resend_email_otp(email: str) -> bool:
-        """Delete old OTPs and send a fresh one."""
-
-        user = _get_user_by_email(email) # Use Helper Functions 
-        # Delete any existing OTPs for this user
-        _delete_otps_for_user(user, EmailOTP)          # remove old OTPs by Helper Functions
-
-        # Generate and send a new OTP
-        raw_otp = _create_email_otp(user)  # this creates a new one
-
-        if not send_email_otp(email=user.email, otp=raw_otp):
-            logger.error("Failed resending OTP to %s", user.email)
-            raise ServiceLayerError("Unable to resend OTP. Please try again later.")
-        
-        logger.info("OTP resent to %s", user.email)
-        return True
-
+        """ Delete old OTPs and send a fresh one.This is simply a wrapper around send_email_otp()."""
+        # _create_email_otp now handles the deletion, so we just call send_email_otp
+        return OTPService.send_email_otp(email)
+    
 
     
     @staticmethod
