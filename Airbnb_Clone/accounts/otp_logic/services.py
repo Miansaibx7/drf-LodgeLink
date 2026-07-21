@@ -1,10 +1,9 @@
 import logging
-from typing import Any
+from typing import Any, Type
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
-from rest_framework import serializers
 
 from ..models import EmailOTP, PasswordResetOTP
 from .utils import generate_otp, send_email_otp, send_password_reset_email
