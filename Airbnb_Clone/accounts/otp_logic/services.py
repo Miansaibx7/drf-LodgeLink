@@ -135,6 +135,7 @@ class OTPService:
         """Verify the email OTP. Uses the model's verify_otp() which handles attempts, blocking, expiry, and deletion. """
         
         user = _get_user_by_email(email) # Use Helper Functions 
+        user = User.objects.select_for_update().get(pk=user.pk) # Lock the user row to prevent concurrent modifications
 
         # Use all_objects so we can properly report if they are blocked/expired
         otp_obj = EmailOTP.all_objects.filter(user=user).order_by('-created_at').first()# Get the latest active OTP for this user
