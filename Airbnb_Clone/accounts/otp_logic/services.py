@@ -181,14 +181,18 @@ class OTPService:
         return True
     
 
-
+        
     @staticmethod
     @transaction.atomic
     def verify_password_reset_otp(email: str, code: str, new_password: str) -> bool:
-        """Verify password reset OTP and update the user's password.Uses the model's verify_otp() for security. """
+        """ Verify password reset OTP and update the user's password.Uses the model's verify_otp() for security. """
+        # Lock the user row to prevent concurrent modifications
 
         user = _get_user_by_email(email) # Use Helper Functions
-        otp_obj = PasswordResetOTP.objects.get_active_for_user(user)
+        user = User.objects.select_for_update().get(pk=user.pk)
+        
+        # Get the latest OTP (unfiltered, Use all_objects to prevent masking block/expire errors)
+        otp_obj = PasswordResetOTP.all_objects.filter(user=user).order_by('-created_at').first()
 
         if not otp_obj:
             raise ServiceLayerError("Invalid OTP. Please request a new one.")
@@ -205,7 +209,6 @@ class OTPService:
         _update_user_password(user, new_password) # Use Helper Functions for password delete – update
         logger.info("Password reset for %s", user.email)
         return True
-
 
 
     @staticmethod
