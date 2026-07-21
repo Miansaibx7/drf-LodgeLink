@@ -19,7 +19,7 @@ def _normalize_email(email: str) -> str:
     """Normalize email to lowercase and strip whitespace."""
     return email.lower().strip()
 
-def _get_user_by_email(email: str) -> User:
+def _get_user_by_email(email: str) -> User: # type: ignore
     """ Retrieve a user by email.
     Raises:
         ServiceLayerError: If no user exists. """
@@ -30,13 +30,13 @@ def _get_user_by_email(email: str) -> User:
         logger.warning("User lookup failed for %s", email)
         raise ServiceLayerError("No account found with this email.")
     
-def _update_user_password(user: User, password: str) -> None:
+def _update_user_password(user: User, password: str) -> None: # type: ignore
     """Update the user's password and save."""
     user.set_password(password)
     user.save(update_fields=["password"])
 
 
-def _delete_otps_for_user(user: User, otp_model: Any) -> None:
+def _delete_otps_for_user(user: User, otp_model: Any) -> None: # type: ignore
     """Delete all OTPs for a given user of a specific model."""
     otp_model.objects.filter(user=user).delete()
 
@@ -120,7 +120,7 @@ class OTPService:
 
     @staticmethod
     @transaction.atomic
-    def verify_email_otp(email: str, code: str) -> User:
+    def verify_email_otp(email: str, code: str) -> User: # type: ignore
         """Verify the email OTP. Uses the model's verify_otp() which handles attempts, blocking, expiry, and deletion. """
         
         user = _get_user_by_email(email) # Use Helper Functions 
