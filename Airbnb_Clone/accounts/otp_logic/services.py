@@ -43,15 +43,19 @@ def _delete_otps_for_user(user: User, otp_model: Any) -> None: # type: ignore
 
 
 
-# ===================================== OTP Creation Helpers Functions ====================================================
+# ===================================== OTP Creation Helpers Functions ====================================================    
+@transaction.atomic
 def _create_email_otp(user: Any) -> str:
-    """ Generate a new OTP, store it hashed, and reset attempts/block. Returns the raw OTP (for sending via email). """
-    raw_otp = generate_otp()
-    # Get or create an OTP instance for this user
-    otp_obj, _ = EmailOTP.objects.get_or_create(user=user)
-    # set_otp() hashes the raw OTP, resets attempts, block, and expiry timer
-    otp_obj.set_otp(raw_otp)
+    """Generate a new OTP, ensure DB is clean, and store it."""
+    
+    user = User.objects.select_for_update().get(pk=user.pk) # Lock the user row to prevent concurrent OTP creation
+    _delete_otps_for_user(user, EmailOTP) # Delete all old OTPs
+    
+    raw_otp = generate_otp() # Create new OTP
+    otp_obj = EmailOTP.objects.create(user=user) # Use .create() instead of get_or_create() to prevent MultipleObjectsReturned
+    otp_obj.set_otp(raw_otp) # set_otp() hashes the raw OTP, resets attempts, block, and expiry timer
     return raw_otp
+
 
 
 def _create_password_reset_otp(user: Any) -> str:
