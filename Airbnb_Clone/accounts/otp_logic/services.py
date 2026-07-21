@@ -79,18 +79,21 @@ def register_user(email: str, password: str, **extra_fields:Any) -> Any:
         ServiceLayerError: If the verification email fails to send. """
     
     email = _normalize_email(email)
+    extra_fields.pop('confirm_password', None) # Remove only fields that don't exist in the User model
+
     # Create user with inactive/unverified status
     user = User.objects.create_user(
         email=email,
         password=password,
         is_active=False,
         is_verified=False,
-        **extra_fields  # catches first_name, last_name if provided later
+        **extra_fields  # includes terms_accepted, first_name, last_name, etc.
     )
+
     if not send_registration_otp(user):
         logger.error("Failed to send registration OTP to %s", user.email)
         raise ServiceLayerError("Unable to send verification email. Please try again.")
-    
+
     logger.info("New user registered successfully: %s", user.email)
     return user
 
