@@ -62,6 +62,7 @@ class RegisterView(APIView):
             {"success": True, "message": "Registration successful. Please check your email for the verification OTP."},
             status=status.HTTP_201_CREATED
         )
+   
     
 
 class LoginView(APIView):
