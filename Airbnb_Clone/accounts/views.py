@@ -62,8 +62,8 @@ class RegisterView(APIView):
             {"success": True, "message": "Registration successful. Please check your email for the verification OTP."},
             status=status.HTTP_201_CREATED
         )
-   
-    
+
+
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
@@ -219,7 +219,7 @@ class BaseOAuthLoginView(APIView):
                     "email": user.email,
                     "name": getattr(user, 'name', ''),
                     "is_verified": getattr(user, 'is_verified', True)
-                },
+                }
             },
             status=status.HTTP_200_OK
         )
