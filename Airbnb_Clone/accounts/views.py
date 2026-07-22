@@ -126,9 +126,10 @@ class EmailOTPSendView(APIView):
         serializer = EmailOTPSendSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        OTPService.send_email_otp(serializer.validated_data["email"])
-        
-        return Response({"success": True, "message": "OTP sent successfully."},status=status.HTTP_200_OK)
+        request_data = _extract_request_data(request)
+        OTPService.send_email_otp(serializer.validated_data["email"], request_data)
+
+        return Response({"success": True, "message": "OTP sent successfully."}, status=status.HTTP_200_OK)
 
 
 
@@ -298,28 +299,10 @@ class LogoutView(APIView):
 
 
 
-class EmailOTPSendView(APIView):
-    permission_classes = [AllowAny]
-    throttle_classes = [OTPRateThrottle]
-
-    def post(self, request: Request) -> Response:
-        serializer = EmailOTPSendSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        request_data = _extract_request_data(request)
-        OTPService.send_email_otp(serializer.validated_data["email"], request_data)
-        return Response({"success": True, "message": "OTP sent successfully."}, status=status.HTTP_200_OK)
 
 
-class EmailOTPVerifyView(APIView):
-    permission_classes = [AllowAny]
-    throttle_classes = [OTPRateThrottle]
 
-    def post(self, request: Request) -> Response:
-        serializer = EmailOTPVerifySerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        request_data = _extract_request_data(request)
-        OTPService.verify_email_otp(**serializer.validated_data, request_data=request_data)
-        return Response({"success": True, "message": "Email verified successfully."}, status=status.HTTP_200_OK)
+
 
 
 class ResendEmailOTPView(APIView):
