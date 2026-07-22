@@ -40,11 +40,26 @@ def _update_user_password(user: User, password: str) -> None: # type: ignore
     user.set_password(password)
     user.save(update_fields=["password"])
 
-
 def _delete_otps_for_user(user: User, otp_model: Any) -> None: # type: ignore
     """ Delete ALL OTPs for a given user (active, expired, or blocked).Uses all_objects to bypass the ActiveOTPManager filter."""
     # all_objects bypasses the filtered manager to delete everything
     otp_model.all_objects.filter(user=user).delete()
+
+def _create_user_profile(user: User) -> None: # type: ignore
+    """Create a UserProfile for a new user if it doesn't exist."""
+    UserProfile.objects.get_or_create(user=user)
+
+def _log_audit(user: Optional[User], action: str, ip_address: Optional[str] = None, # type: ignore
+               user_agent: str = "", metadata: dict = None) -> None: 
+    """Helper to create an AuditLog entry."""
+    AuditLog.objects.create(
+        user=user,
+        action=action,
+        ip_address=ip_address,
+        user_agent=user_agent or "",
+        metadata=metadata or {},
+    )
+
 
 
 
@@ -267,78 +282,6 @@ class OTPService:
 
 # ==================== Helpers ====================
 
-def _normalize_email(email: str) -> str:
-    return email.lower().strip()
-
-
-def _get_user_by_email(email: str) -> User:
-    email = _normalize_email(email)
-    try:
-        return User.objects.get(email=email)
-    except User.DoesNotExist:
-        logger.warning("User lookup failed for %s", email)
-        raise ServiceLayerError("No account found with this email.")
-
-
-def _update_user_password(user: User, password: str) -> None:
-    user.set_password(password)
-    user.save(update_fields=["password"])
-
-
-def _delete_otps_for_user(user: User, otp_model: Any) -> None:
-    otp_model.all_objects.filter(user=user).delete()
-
-
-def _create_user_profile(user: User) -> None:
-    """Create a UserProfile for a new user if it doesn't exist."""
-    UserProfile.objects.get_or_create(user=user)
-
-
-def _log_audit(user: Optional[User], action: str, ip_address: Optional[str] = None,
-               user_agent: str = "", metadata: dict = None) -> None:
-    """Helper to create an AuditLog entry."""
-    AuditLog.objects.create(
-        user=user,
-        action=action,
-        ip_address=ip_address,
-        user_agent=user_agent or "",
-        metadata=metadata or {},
-    )
-
-
-def _create_user_session(user: User, refresh_token_jti: str, request_data: dict) -> UserSession:
-    """Create a UserSession from request data (IP, user-agent, etc.)."""
-    return UserSession.objects.create(
-        user=user,
-        refresh_token_jti=refresh_token_jti,
-        ip_address=request_data.get('ip_address'),
-        user_agent=request_data.get('user_agent', ''),
-        device_name=request_data.get('device_name', ''),
-        browser=request_data.get('browser', ''),
-        operating_system=request_data.get('operating_system', ''),
-        location=request_data.get('location', ''),
-        is_active=True,
-    )
-
-
-def _update_user_device(user: User, request_data: dict) -> UserDevice:
-    """Update or create a UserDevice based on device_id (if provided)."""
-    device_id = request_data.get('device_id')
-    if not device_id:
-        return None
-    device, created = UserDevice.objects.get_or_create(
-        user=user,
-        device_id=device_id,
-        defaults={
-            'device_name': request_data.get('device_name', ''),
-            'browser': request_data.get('browser', ''),
-            'operating_system': request_data.get('operating_system', ''),
-            'trusted': False,
-        }
-    )
-    device.last_login = timezone.now()
-    device.save(update_fields=['last_login'])
-    return device
 
 
 # ==================== OTP Creation ====================
