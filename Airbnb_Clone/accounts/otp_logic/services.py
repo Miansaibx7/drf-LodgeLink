@@ -295,10 +295,10 @@ class OTPService:
 
 
     @staticmethod
-    def resend_email_otp(email: str) -> bool:
+    def resend_email_otp(email: str, request_data: dict = None) -> bool:
         """ Delete old OTPs and send a fresh one.This is simply a wrapper around send_email_otp()."""
         # _create_email_otp now handles the deletion, so we just call send_email_otp
-        return OTPService.send_email_otp(email)
+        return OTPService.send_email_otp(email, request_data)
     
 
     
@@ -425,9 +425,10 @@ class OTPService:
         logger.info("Email verified for %s", user.email)
         return user
 
-    @staticmethod
-    def resend_email_otp(email: str, request_data: dict = None) -> bool:
-        return OTPService.send_email_otp(email, request_data)
+
+    
+
+
 
     @staticmethod
     def send_password_reset_otp(email: str, request_data: dict = None) -> bool:
