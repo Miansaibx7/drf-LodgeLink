@@ -142,9 +142,10 @@ class EmailOTPVerifyView(APIView):
         serializer = EmailOTPVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        OTPService.verify_email_otp(**serializer.validated_data)
-        
-        return Response({"success": True, "message": "Email verified successfully."},status=status.HTTP_200_OK)
+        request_data = _extract_request_data(request)
+        OTPService.verify_email_otp(**serializer.validated_data, request_data=request_data)
+
+        return Response({"success": True, "message": "Email verified successfully."}, status=status.HTTP_200_OK)
 
 
 
@@ -157,9 +158,10 @@ class ResendEmailOTPView(APIView):
         serializer = ResendEmailOTPSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        OTPService.resend_email_otp(serializer.validated_data["email"])
-        
-        return Response({"success": True, "message": "OTP resent successfully."},status=status.HTTP_200_OK)
+        request_data = _extract_request_data(request)
+        OTPService.resend_email_otp(serializer.validated_data["email"], request_data)
+
+        return Response({"success": True, "message": "OTP resent successfully."}, status=status.HTTP_200_OK)
         
 
 
@@ -171,10 +173,12 @@ class PasswordResetOTPSendView(APIView):
 
         serializer = PasswordResetOTPSendSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
-        OTPService.send_password_reset_otp(serializer.validated_data["email"])
-        
-        return Response({"success": True, "message": "Password reset OTP sent successfully."},status=status.HTTP_200_OK)
+    
+        request_data = _extract_request_data(request)
+        OTPService.send_password_reset_otp(serializer.validated_data["email"], request_data)
+
+        return Response({"success": True, "message": "Password reset OTP sent successfully."}, status=status.HTTP_200_OK)
+
         
 
 
@@ -187,9 +191,10 @@ class PasswordResetOTPVerifyView(APIView):
         serializer = PasswordResetOTPVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        OTPService.verify_password_reset_otp(**serializer.validated_data)
-        
-        return Response({"success": True, "message": "Password reset successfully."},status=status.HTTP_200_OK)
+        request_data = _extract_request_data(request)
+        OTPService.verify_password_reset_otp(**serializer.validated_data, request_data=request_data)
+
+        return Response({"success": True, "message": "Password reset successfully."}, status=status.HTTP_200_OK)
 
 
 
@@ -203,12 +208,16 @@ class ChangePasswordView(APIView):
         serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         
-        OTPService.change_password(user=request.user,
+        request_data = _extract_request_data(request)
+        OTPService.change_password(
+            user=request.user,
             old_password=serializer.validated_data["old_password"],
-            new_password=serializer.validated_data["new_password"]
+            new_password=serializer.validated_data["new_password"],
+            request_data=request_data,
         )
-        
-        return Response({"success": True, "message": "Password changed successfully."},status=status.HTTP_200_OK)
+
+        return Response({"success": True, "message": "Password changed successfully."}, status=status.HTTP_200_OK)
+
         
 
 
@@ -305,57 +314,14 @@ class LogoutView(APIView):
 
 
 
-class ResendEmailOTPView(APIView):
-    permission_classes = [AllowAny]
-    throttle_classes = [OTPRateThrottle]
-
-    def post(self, request: Request) -> Response:
-        serializer = ResendEmailOTPSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        request_data = _extract_request_data(request)
-        OTPService.resend_email_otp(serializer.validated_data["email"], request_data)
-        return Response({"success": True, "message": "OTP resent successfully."}, status=status.HTTP_200_OK)
 
 
-class PasswordResetOTPSendView(APIView):
-    permission_classes = [AllowAny]
-    throttle_classes = [OTPRateThrottle]
-
-    def post(self, request: Request) -> Response:
-        serializer = PasswordResetOTPSendSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        request_data = _extract_request_data(request)
-        OTPService.send_password_reset_otp(serializer.validated_data["email"], request_data)
-        return Response({"success": True, "message": "Password reset OTP sent successfully."}, status=status.HTTP_200_OK)
 
 
-class PasswordResetOTPVerifyView(APIView):
-    permission_classes = [AllowAny]
-    throttle_classes = [OTPRateThrottle]
-
-    def post(self, request: Request) -> Response:
-        serializer = PasswordResetOTPVerifySerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        request_data = _extract_request_data(request)
-        OTPService.verify_password_reset_otp(**serializer.validated_data, request_data=request_data)
-        return Response({"success": True, "message": "Password reset successfully."}, status=status.HTTP_200_OK)
 
 
-class ChangePasswordView(APIView):
-    permission_classes = [IsAuthenticated]
-    throttle_classes = [UserRateThrottle]
 
-    def post(self, request: Request) -> Response:
-        serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
-        serializer.is_valid(raise_exception=True)
-        request_data = _extract_request_data(request)
-        OTPService.change_password(
-            user=request.user,
-            old_password=serializer.validated_data["old_password"],
-            new_password=serializer.validated_data["new_password"],
-            request_data=request_data,
-        )
-        return Response({"success": True, "message": "Password changed successfully."}, status=status.HTTP_200_OK)
+
 
 
 class BaseOAuthLoginView(APIView):
@@ -396,20 +362,7 @@ class BaseOAuthLoginView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-class GoogleLoginView(BaseOAuthLoginView):
-    serializer_class = GoogleLoginSerializer
 
-
-class GitHubLoginView(BaseOAuthLoginView):
-    serializer_class = GitHubLoginSerializer
-
-
-class FacebookLoginView(BaseOAuthLoginView):
-    serializer_class = FacebookLoginSerializer
-
-
-class LinkedInLoginView(BaseOAuthLoginView):
-    serializer_class = LinkedInLoginSerializer
 
 
 class LogoutView(APIView):
