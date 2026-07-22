@@ -60,6 +60,38 @@ def _log_audit(user: Optional[User], action: str, ip_address: Optional[str] = No
         metadata=metadata or {},
     )
 
+def _create_user_session(user: User, refresh_token_jti: str, request_data: dict) -> UserSession: # type: ignore
+    """Create a UserSession from request data (IP, user-agent, etc.)."""
+    return UserSession.objects.create(
+        user=user,
+        refresh_token_jti=refresh_token_jti,
+        ip_address=request_data.get('ip_address'),
+        user_agent=request_data.get('user_agent', ''),
+        device_name=request_data.get('device_name', ''),
+        browser=request_data.get('browser', ''),
+        operating_system=request_data.get('operating_system', ''),
+        location=request_data.get('location', ''),
+        is_active=True,
+    )
+
+def _update_user_device(user: User, request_data: dict) -> UserDevice: # type: ignore
+    """Update or create a UserDevice based on device_id (if provided)."""
+    device_id = request_data.get('device_id')
+    if not device_id:
+        return None
+    device, created = UserDevice.objects.get_or_create(
+        user=user,
+        device_id=device_id,
+        defaults={
+            'device_name': request_data.get('device_name', ''),
+            'browser': request_data.get('browser', ''),
+            'operating_system': request_data.get('operating_system', ''),
+            'trusted': False,
+        }
+    )
+    device.last_login = timezone.now()
+    device.save(update_fields=['last_login'])
+    return device
 
 
 
