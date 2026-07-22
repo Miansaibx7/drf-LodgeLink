@@ -374,7 +374,7 @@ class OTPService:
 
     @staticmethod
     @transaction.atomic
-    def change_password(user: Any, old_password: str, new_password: str) -> bool:
+    def change_password(user: User, old_password: str, new_password: str, request_data: dict = None) -> bool: # type: ignore
         """ Change password for an authenticated user. Validates old password and prevents reuse. """
 
         if not user.check_password(old_password):
@@ -385,58 +385,6 @@ class OTPService:
             raise ServiceLayerError("New password must be different from current password.")
 
         _update_user_password(user, new_password) # Update password using helper
-        logger.info("Password changed for %s", user.email)
-        return True
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ==================== OTP Service ====================
-
-class OTPService:
-    """Handles all OTP operations with logging and session tracking."""
-
-    
-
-    
-
-
-    
-
-
-
-    
-
-    
-    @staticmethod
-    @transaction.atomic
-    def change_password(user: User, old_password: str, new_password: str, request_data: dict = None) -> bool: # type: ignore
-        if not user.check_password(old_password):
-            logger.warning("Invalid old password attempt for %s", user.email)
-            raise ServiceLayerError("Current password is incorrect.")
-        if old_password == new_password:
-            raise ServiceLayerError("New password must be different from current password.")
-
-        _update_user_password(user, new_password)
 
         _log_audit(
             user=user,
@@ -444,5 +392,6 @@ class OTPService:
             ip_address=request_data.get('ip_address') if request_data else None,
             user_agent=request_data.get('user_agent', '') if request_data else '',
         )
+        
         logger.info("Password changed for %s", user.email)
         return True
