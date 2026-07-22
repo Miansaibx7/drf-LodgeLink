@@ -132,10 +132,10 @@ def send_registration_otp(user: Any) -> bool:
 
 
 @transaction.atomic
-def register_user(email: str, password: str, **extra_fields:Any) -> Any:
-    """Create a new inactive/unverified user and send a verification OTP.
-    Raises:
-        ServiceLayerError: If the verification email fails to send. """
+def register_user(email: str, password: str, request_data: Optional[dict] = None, **extra_fields: Any) -> User: # type: ignore
+    """Create a new inactive/unverified user and send a verification OTP and create a UserProfile.
+        Raises:
+            ServiceLayerError: If the verification email fails to send. """
     
     email = _normalize_email(email)
     extra_fields.pop('confirm_password', None) # Remove only fields that don't exist in the User model
@@ -146,7 +146,18 @@ def register_user(email: str, password: str, **extra_fields:Any) -> Any:
         password=password,
         is_active=False,
         is_verified=False,
-        **extra_fields  # includes terms_accepted, first_name, last_name, etc.
+        **extra_fields   # includes terms_accepted, first_name, last_name, etc.
+    )
+
+    # Create UserProfile
+    _create_user_profile(user)
+
+    # Log registration
+    _log_audit(
+        user=user,
+        action="REGISTER",
+        ip_address=request_data.get('ip_address') if request_data else None,
+        user_agent=request_data.get('user_agent', '') if request_data else '',
     )
 
     if not send_registration_otp(user):
@@ -316,41 +327,6 @@ class OTPService:
 
 
 
-@transaction.atomic
-def register_user(email: str, password: str, request_data: Optional[dict] = None, **extra_fields: Any) -> User:
-    """
-    Create a new inactive/unverified user, send verification OTP,
-    and create a UserProfile.
-    """
-    email = _normalize_email(email)
-    extra_fields.pop('confirm_password', None)
-    extra_fields.pop('terms_accepted', None)
-
-    user = User.objects.create_user(
-        email=email,
-        password=password,
-        is_active=False,
-        is_verified=False,
-        **extra_fields
-    )
-
-    # Create UserProfile
-    _create_user_profile(user)
-
-    # Log registration
-    _log_audit(
-        user=user,
-        action="REGISTER",
-        ip_address=request_data.get('ip_address') if request_data else None,
-        user_agent=request_data.get('user_agent', '') if request_data else '',
-    )
-
-    if not send_registration_otp(user):
-        logger.error("Failed to send registration OTP to %s", user.email)
-        raise ServiceLayerError("Unable to send verification email. Please try again.")
-
-    logger.info("New user registered successfully: %s", user.email)
-    return user
 
 
 # ==================== Login & Session ====================
