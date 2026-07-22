@@ -113,16 +113,14 @@ def _create_email_otp(user: Any) -> str:
 @transaction.atomic
 def _create_password_reset_otp(user: Any) -> str:
     """Generate and store a password reset OTP."""
-    # Lock user row to prevent concurrency issues
-    user = User.objects.select_for_update().get(pk=user.pk) 
-    # Clean up old OTPs
-    _delete_otps_for_user(user, PasswordResetOTP)
-    # Create new OTP safely
-    raw_otp = generate_otp()
+    
+    user = User.objects.select_for_update().get(pk=user.pk) # Lock user row to prevent concurrency issues
+    _delete_otps_for_user(user, PasswordResetOTP) # Clean up old OTPs
+    
+    raw_otp = generate_otp()# Create new OTP safely
     otp_obj = PasswordResetOTP.objects.create(user=user)
     otp_obj.set_otp(raw_otp)
     return raw_otp
-
 
 
 
@@ -312,30 +310,8 @@ class OTPService:
 
 
 
-# ==================== Helpers ====================
 
 
-
-# ==================== OTP Creation ====================
-
-@transaction.atomic
-def _create_email_otp(user: User) -> str:
-    user = User.objects.select_for_update().get(pk=user.pk)
-    _delete_otps_for_user(user, EmailOTP)
-    raw_otp = generate_otp()
-    otp_obj = EmailOTP.objects.create(user=user)
-    otp_obj.set_otp(raw_otp)
-    return raw_otp
-
-
-@transaction.atomic
-def _create_password_reset_otp(user: User) -> str:
-    user = User.objects.select_for_update().get(pk=user.pk)
-    _delete_otps_for_user(user, PasswordResetOTP)
-    raw_otp = generate_otp()
-    otp_obj = PasswordResetOTP.objects.create(user=user)
-    otp_obj.set_otp(raw_otp)
-    return raw_otp
 
 
 def send_registration_otp(user: User) -> bool:
