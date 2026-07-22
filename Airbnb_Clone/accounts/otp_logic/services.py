@@ -236,7 +236,7 @@ class OTPService:
     """Handles all OTP operations using the model's built‑in methods."""
 
     @staticmethod
-    def send_email_otp(email: str) -> bool:
+    def send_email_otp(email: str, request_data: dict = None) -> bool:
         """Generate and send a fresh email verification OTP."""
 
         user = _get_user_by_email(email) # Use Helper Functions 
@@ -245,8 +245,16 @@ class OTPService:
         if not send_email_otp(email=user.email, otp=raw_otp):
             logger.error("Failed sending OTP to %s", user.email)
             raise ServiceLayerError("Unable to send OTP. Please try again later.")
+
+        _log_audit(
+                user=user,
+                action="OTP_SENT",
+                ip_address=request_data.get('ip_address') if request_data else None,
+                user_agent=request_data.get('user_agent', '') if request_data else '',
+                metadata={'otp_type': 'email_verification'}
+            )
         
-        logger.info("OTP sent to %s", user.email)
+        logger.info("Email verification OTP sent successfully to %s",user.email)
         return True
 
 
@@ -383,23 +391,7 @@ class OTPService:
 class OTPService:
     """Handles all OTP operations with logging and session tracking."""
 
-    @staticmethod
-    def send_email_otp(email: str, request_data: dict = None) -> bool:
-        user = _get_user_by_email(email)
-        raw_otp = _create_email_otp(user)
-        if not send_email_otp(email=user.email, otp=raw_otp):
-            logger.error("Failed sending OTP to %s", user.email)
-            raise ServiceLayerError("Unable to send OTP. Please try again later.")
-
-        _log_audit(
-            user=user,
-            action="OTP_SENT",
-            ip_address=request_data.get('ip_address') if request_data else None,
-            user_agent=request_data.get('user_agent', '') if request_data else '',
-            metadata={'otp_type': 'email_verification'}
-        )
-        logger.info("OTP sent to %s", user.email)
-        return True
+    
 
     @staticmethod
     @transaction.atomic
