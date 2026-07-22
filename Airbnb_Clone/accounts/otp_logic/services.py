@@ -1,17 +1,22 @@
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from django.db import transaction
 
 
-from ..models import EmailOTP, PasswordResetOTP
+from ..models import (
+    EmailOTP, PasswordResetOTP, UserProfile, UserSession,
+    AuditLog, LoginAttempt, UserDevice
+)
 from .utils import generate_otp, send_email_otp, send_password_reset_email
 
 from ..exceptions import ServiceLayerError  # custom exception
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
+
 
 
 # ===================================== Helper Functions =====================================
@@ -234,3 +239,362 @@ class OTPService:
         logger.info("Password changed for %s", user.email)
         return True
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ==================== Helpers ====================
+
+def _normalize_email(email: str) -> str:
+    return email.lower().strip()
+
+
+def _get_user_by_email(email: str) -> User:
+    email = _normalize_email(email)
+    try:
+        return User.objects.get(email=email)
+    except User.DoesNotExist:
+        logger.warning("User lookup failed for %s", email)
+        raise ServiceLayerError("No account found with this email.")
+
+
+def _update_user_password(user: User, password: str) -> None:
+    user.set_password(password)
+    user.save(update_fields=["password"])
+
+
+def _delete_otps_for_user(user: User, otp_model: Any) -> None:
+    otp_model.all_objects.filter(user=user).delete()
+
+
+def _create_user_profile(user: User) -> None:
+    """Create a UserProfile for a new user if it doesn't exist."""
+    UserProfile.objects.get_or_create(user=user)
+
+
+def _log_audit(user: Optional[User], action: str, ip_address: Optional[str] = None,
+               user_agent: str = "", metadata: dict = None) -> None:
+    """Helper to create an AuditLog entry."""
+    AuditLog.objects.create(
+        user=user,
+        action=action,
+        ip_address=ip_address,
+        user_agent=user_agent or "",
+        metadata=metadata or {},
+    )
+
+
+def _create_user_session(user: User, refresh_token_jti: str, request_data: dict) -> UserSession:
+    """Create a UserSession from request data (IP, user-agent, etc.)."""
+    return UserSession.objects.create(
+        user=user,
+        refresh_token_jti=refresh_token_jti,
+        ip_address=request_data.get('ip_address'),
+        user_agent=request_data.get('user_agent', ''),
+        device_name=request_data.get('device_name', ''),
+        browser=request_data.get('browser', ''),
+        operating_system=request_data.get('operating_system', ''),
+        location=request_data.get('location', ''),
+        is_active=True,
+    )
+
+
+def _update_user_device(user: User, request_data: dict) -> UserDevice:
+    """Update or create a UserDevice based on device_id (if provided)."""
+    device_id = request_data.get('device_id')
+    if not device_id:
+        return None
+    device, created = UserDevice.objects.get_or_create(
+        user=user,
+        device_id=device_id,
+        defaults={
+            'device_name': request_data.get('device_name', ''),
+            'browser': request_data.get('browser', ''),
+            'operating_system': request_data.get('operating_system', ''),
+            'trusted': False,
+        }
+    )
+    device.last_login = timezone.now()
+    device.save(update_fields=['last_login'])
+    return device
+
+
+# ==================== OTP Creation ====================
+
+@transaction.atomic
+def _create_email_otp(user: User) -> str:
+    user = User.objects.select_for_update().get(pk=user.pk)
+    _delete_otps_for_user(user, EmailOTP)
+    raw_otp = generate_otp()
+    otp_obj = EmailOTP.objects.create(user=user)
+    otp_obj.set_otp(raw_otp)
+    return raw_otp
+
+
+@transaction.atomic
+def _create_password_reset_otp(user: User) -> str:
+    user = User.objects.select_for_update().get(pk=user.pk)
+    _delete_otps_for_user(user, PasswordResetOTP)
+    raw_otp = generate_otp()
+    otp_obj = PasswordResetOTP.objects.create(user=user)
+    otp_obj.set_otp(raw_otp)
+    return raw_otp
+
+
+def send_registration_otp(user: User) -> bool:
+    raw_otp = _create_email_otp(user)
+    return send_email_otp(email=user.email, otp=raw_otp)
+
+
+@transaction.atomic
+def register_user(email: str, password: str, request_data: Optional[dict] = None, **extra_fields: Any) -> User:
+    """
+    Create a new inactive/unverified user, send verification OTP,
+    and create a UserProfile.
+    """
+    email = _normalize_email(email)
+    extra_fields.pop('confirm_password', None)
+    extra_fields.pop('terms_accepted', None)
+
+    user = User.objects.create_user(
+        email=email,
+        password=password,
+        is_active=False,
+        is_verified=False,
+        **extra_fields
+    )
+
+    # Create UserProfile
+    _create_user_profile(user)
+
+    # Log registration
+    _log_audit(
+        user=user,
+        action="REGISTER",
+        ip_address=request_data.get('ip_address') if request_data else None,
+        user_agent=request_data.get('user_agent', '') if request_data else '',
+    )
+
+    if not send_registration_otp(user):
+        logger.error("Failed to send registration OTP to %s", user.email)
+        raise ServiceLayerError("Unable to send verification email. Please try again.")
+
+    logger.info("New user registered successfully: %s", user.email)
+    return user
+
+
+# ==================== Login & Session ====================
+
+def authenticate_user(email: str, password: str, request_data: dict) -> User:
+    """
+    Authenticate a user, check LoginAttempt blocking, increment on failure,
+    and on success create UserSession and UserDevice, and log login.
+    """
+    email = _normalize_email(email)
+    ip = request_data.get('ip_address')
+
+    # Check if this email+IP is currently blocked
+    attempt = LoginAttempt.objects.filter(email=email, ip_address=ip).first()
+    if attempt and attempt.is_blocked():
+        raise ServiceLayerError(
+            f"Too many failed attempts. Try again after {attempt.blocked_until.strftime('%H:%M:%S')}."
+        )
+
+    # Attempt authentication
+    from django.contrib.auth import authenticate
+    user = authenticate(request=None, email=email, password=password)
+
+    if user is None:
+        # Failed attempt – increment or create LoginAttempt
+        with transaction.atomic():
+            attempt, created = LoginAttempt.objects.get_or_create(
+                email=email,
+                ip_address=ip,
+                defaults={'attempts': 0}
+            )
+            attempt.increment()  # atomic increment with blocking
+        raise ServiceLayerError("Invalid email or password.")
+
+    # Success – reset attempts (delete) and create session/device
+    LoginAttempt.objects.filter(email=email, ip_address=ip).delete()
+
+    # Create UserSession (requires refresh token JTI – will be set later)
+    # We'll create session after token generation, but we need refresh token.
+    # For now, we'll store session creation outside this function.
+    # So we'll return the user and let the view handle session creation with tokens.
+
+    # Log login (will be done after token generation)
+    return user
+
+
+@transaction.atomic
+def handle_successful_login(user: User, request_data: dict, refresh_token_jti: str) -> dict:
+    """
+    After successful authentication, create UserSession, update UserDevice,
+    and log login. Returns the created session and device.
+    """
+    # Create session
+    session = _create_user_session(user, refresh_token_jti, request_data)
+
+    # Update device
+    device = _update_user_device(user, request_data)
+
+    # Log login
+    _log_audit(
+        user=user,
+        action="LOGIN",
+        ip_address=request_data.get('ip_address'),
+        user_agent=request_data.get('user_agent', ''),
+        metadata={'session_id': session.id}
+    )
+
+    return {'session': session, 'device': device}
+
+
+# ==================== OTP Service ====================
+
+class OTPService:
+    """Handles all OTP operations with logging and session tracking."""
+
+    @staticmethod
+    def send_email_otp(email: str, request_data: dict = None) -> bool:
+        user = _get_user_by_email(email)
+        raw_otp = _create_email_otp(user)
+        if not send_email_otp(email=user.email, otp=raw_otp):
+            logger.error("Failed sending OTP to %s", user.email)
+            raise ServiceLayerError("Unable to send OTP. Please try again later.")
+
+        _log_audit(
+            user=user,
+            action="OTP_SENT",
+            ip_address=request_data.get('ip_address') if request_data else None,
+            user_agent=request_data.get('user_agent', '') if request_data else '',
+            metadata={'otp_type': 'email_verification'}
+        )
+        logger.info("OTP sent to %s", user.email)
+        return True
+
+    @staticmethod
+    @transaction.atomic
+    def verify_email_otp(email: str, code: str, request_data: dict = None) -> User:
+        user = _get_user_by_email(email)
+        user = User.objects.select_for_update().get(pk=user.pk)
+
+        otp_obj = EmailOTP.all_objects.filter(user=user).order_by('-created_at').first()
+        if not otp_obj:
+            raise ServiceLayerError("Invalid OTP. Please request a new one.")
+
+        if not otp_obj.verify_otp(code):
+            otp_obj.refresh_from_db()
+            if otp_obj.is_blocked:
+                raise ServiceLayerError("Too many invalid attempts. Please request a new OTP.")
+            if otp_obj.is_expired:
+                raise ServiceLayerError("OTP has expired. Please request a new OTP.")
+            raise ServiceLayerError("Invalid OTP.")
+
+        # OTP verified – activate user
+        user.is_active = True
+        user.is_verified = True
+        user.save(update_fields=["is_active", "is_verified"])
+
+        _log_audit(
+            user=user,
+            action="EMAIL_VERIFY",
+            ip_address=request_data.get('ip_address') if request_data else None,
+            user_agent=request_data.get('user_agent', '') if request_data else '',
+        )
+        logger.info("Email verified for %s", user.email)
+        return user
+
+    @staticmethod
+    def resend_email_otp(email: str, request_data: dict = None) -> bool:
+        return OTPService.send_email_otp(email, request_data)
+
+    @staticmethod
+    def send_password_reset_otp(email: str, request_data: dict = None) -> bool:
+        user = _get_user_by_email(email)
+        raw_otp = _create_password_reset_otp(user)
+        if not send_password_reset_email(email=user.email, otp=raw_otp):
+            logger.error("Failed sending password reset OTP to %s", user.email)
+            raise ServiceLayerError("Unable to send password reset OTP. Please try again later.")
+
+        _log_audit(
+            user=user,
+            action="OTP_SENT",
+            ip_address=request_data.get('ip_address') if request_data else None,
+            user_agent=request_data.get('user_agent', '') if request_data else '',
+            metadata={'otp_type': 'password_reset'}
+        )
+        logger.info("Password reset OTP sent to %s", user.email)
+        return True
+
+    @staticmethod
+    @transaction.atomic
+    def verify_password_reset_otp(email: str, code: str, new_password: str, request_data: dict = None) -> bool:
+        user = _get_user_by_email(email)
+        user = User.objects.select_for_update().get(pk=user.pk)
+
+        otp_obj = PasswordResetOTP.all_objects.filter(user=user).order_by('-created_at').first()
+        if not otp_obj:
+            raise ServiceLayerError("Invalid OTP. Please request a new one.")
+
+        if not otp_obj.verify_otp(code):
+            otp_obj.refresh_from_db()
+            if otp_obj.is_blocked:
+                raise ServiceLayerError("Too many invalid attempts. Please request a new OTP.")
+            if otp_obj.is_expired:
+                raise ServiceLayerError("OTP has expired. Please request a new OTP.")
+            raise ServiceLayerError("Invalid OTP.")
+
+        _update_user_password(user, new_password)
+
+        _log_audit(
+            user=user,
+            action="PASSWORD_RESET",
+            ip_address=request_data.get('ip_address') if request_data else None,
+            user_agent=request_data.get('user_agent', '') if request_data else '',
+        )
+        logger.info("Password reset for %s", user.email)
+        return True
+
+    @staticmethod
+    @transaction.atomic
+    def change_password(user: User, old_password: str, new_password: str, request_data: dict = None) -> bool:
+        if not user.check_password(old_password):
+            logger.warning("Invalid old password attempt for %s", user.email)
+            raise ServiceLayerError("Current password is incorrect.")
+        if old_password == new_password:
+            raise ServiceLayerError("New password must be different from current password.")
+
+        _update_user_password(user, new_password)
+
+        _log_audit(
+            user=user,
+            action="PASSWORD_CHANGE",
+            ip_address=request_data.get('ip_address') if request_data else None,
+            user_agent=request_data.get('user_agent', '') if request_data else '',
+        )
+        logger.info("Password changed for %s", user.email)
+        return True
