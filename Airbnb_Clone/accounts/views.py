@@ -23,6 +23,7 @@ from .serializers import (
 from .otp_logic.utils import  get_tokens_for_user
 
 from .models import UserSession, AuditLog
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 logger = logging.getLogger(__name__)
@@ -230,27 +231,32 @@ class BaseOAuthLoginView(APIView):
 
         # DEFENSIVE PROGRAMMING: Ensure subclasses define a serializer
         assert self.serializer_class is not None, (
-            f"'{self.__class__.__name__}' must define a `serializer_class` attribute."
+            f"'{self.__class__.__name__}' must define a `serializer_class`."
         )
-
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
+
         user = serializer.validated_data["user"]
-        update_last_login(None, user)
+        request_data = _extract_request_data(request)
+
+        # Generate tokens
         tokens = get_tokens_for_user(user)
+        refresh_jti = tokens['jti']
+
+        # Create session, update device, log login
+        handle_successful_login(user, request_data, refresh_jti)
+
+        update_last_login(None, user)
         logger.info("OAuth login successful for %s", user.email)
 
-        return Response({"success": True,"message": "Login successful.","tokens": tokens,
-                "user": {
-                    "id": user.id,
-                    "email": user.email,
-                    "name": getattr(user, 'name', ''),
-                    "is_verified": getattr(user, 'is_verified', True)
-                }
+        return Response({"success": True, "message": "Login successful.", "tokens": tokens,
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "name": user.get_full_name() or user.email,
+                "is_verified": user.is_verified,
             },
-            status=status.HTTP_200_OK
-        )
+        }, status=status.HTTP_200_OK)
     
 
 
@@ -278,100 +284,6 @@ class LogoutView(APIView):
         serializer = LogoutSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        serializer.save()
-        logger.info("User %s logged out successfully.", request.user.email)
-        
-        return Response({"success": True, "message": "Logout successful."},status=status.HTTP_200_OK)
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class BaseOAuthLoginView(APIView):
-    permission_classes = [AllowAny]
-    throttle_classes = [LoginRateThrottle]
-    serializer_class = None
-
-    def post(self, request: Request) -> Response:
-        assert self.serializer_class is not None, (
-            f"'{self.__class__.__name__}' must define a `serializer_class`."
-        )
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        user = serializer.validated_data["user"]
-        request_data = _extract_request_data(request)
-
-        # Generate tokens
-        tokens = get_tokens_for_user(user)
-        refresh_jti = tokens['jti']
-
-        # Create session, update device, log login
-        handle_successful_login(user, request_data, refresh_jti)
-
-        update_last_login(None, user)
-        logger.info("OAuth login successful for %s", user.email)
-
-        return Response({
-            "success": True,
-            "message": "Login successful.",
-            "tokens": tokens,
-            "user": {
-                "id": user.id,
-                "email": user.email,
-                "name": user.get_full_name() or user.email,
-                "is_verified": user.is_verified,
-            },
-        }, status=status.HTTP_200_OK)
-
-
-
-
-
-class LogoutView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request: Request) -> Response:
-        serializer = LogoutSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
         # Blacklist token
         serializer.save()
 
@@ -382,7 +294,7 @@ class LogoutView(APIView):
         # But we don't have the session ID. We can query session by refresh_token_jti.
         refresh_token = request.data.get('refresh')
         if refresh_token:
-            from rest_framework_simplejwt.tokens import RefreshToken
+            
             try:
                 token = RefreshToken(refresh_token)
                 jti = token['jti']
