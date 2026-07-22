@@ -131,7 +131,6 @@ def send_registration_otp(user: Any) -> bool:
     return send_email_otp(email=user.email, otp=raw_otp)
 
 
-
 @transaction.atomic
 def register_user(email: str, password: str, **extra_fields:Any) -> Any:
     """Create a new inactive/unverified user and send a verification OTP.
@@ -314,9 +313,7 @@ class OTPService:
 
 
 
-def send_registration_otp(user: User) -> bool:
-    raw_otp = _create_email_otp(user)
-    return send_email_otp(email=user.email, otp=raw_otp)
+
 
 
 @transaction.atomic
