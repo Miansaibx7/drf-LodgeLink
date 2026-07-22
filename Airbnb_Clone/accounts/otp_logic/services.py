@@ -261,7 +261,7 @@ class OTPService:
 
     @staticmethod
     @transaction.atomic
-    def verify_email_otp(email: str, code: str) -> User: # type: ignore
+    def verify_email_otp(email: str, code: str, request_data: dict = None) -> User: # type: ignore
         """Verify the email OTP. Uses the model's verify_otp() which handles attempts, blocking, expiry, and deletion. """
         
         user = _get_user_by_email(email) # Use Helper Functions 
@@ -289,6 +289,14 @@ class OTPService:
         user.is_active = True
         user.is_verified = True
         user.save(update_fields=["is_active", "is_verified"])
+
+        _log_audit(
+                user=user,
+                action="EMAIL_VERIFY",
+                ip_address=request_data.get('ip_address') if request_data else None,
+                user_agent=request_data.get('user_agent', '') if request_data else '',
+            )
+
         logger.info("Email verified for %s", user.email)
         return user
         
@@ -401,37 +409,7 @@ class OTPService:
 
     
 
-    @staticmethod
-    @transaction.atomic
-    def verify_email_otp(email: str, code: str, request_data: dict = None) -> User: # type: ignore
-        user = _get_user_by_email(email)
-        user = User.objects.select_for_update().get(pk=user.pk)
-
-        otp_obj = EmailOTP.all_objects.filter(user=user).order_by('-created_at').first()
-        if not otp_obj:
-            raise ServiceLayerError("Invalid OTP. Please request a new one.")
-
-        if not otp_obj.verify_otp(code):
-            otp_obj.refresh_from_db()
-            if otp_obj.is_blocked:
-                raise ServiceLayerError("Too many invalid attempts. Please request a new OTP.")
-            if otp_obj.is_expired:
-                raise ServiceLayerError("OTP has expired. Please request a new OTP.")
-            raise ServiceLayerError("Invalid OTP.")
-
-        # OTP verified – activate user
-        user.is_active = True
-        user.is_verified = True
-        user.save(update_fields=["is_active", "is_verified"])
-
-        _log_audit(
-            user=user,
-            action="EMAIL_VERIFY",
-            ip_address=request_data.get('ip_address') if request_data else None,
-            user_agent=request_data.get('user_agent', '') if request_data else '',
-        )
-        logger.info("Email verified for %s", user.email)
-        return user
+    
 
 
     
