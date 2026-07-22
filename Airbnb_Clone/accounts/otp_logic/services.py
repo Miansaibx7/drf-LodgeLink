@@ -315,7 +315,6 @@ class OTPService:
         """Generate and send a password reset OTP."""
 
         user = _get_user_by_email(email) # Use Helper Functions
-
         raw_otp = _create_password_reset_otp(user)
 
         if not send_password_reset_email(email=user.email, otp=raw_otp):
@@ -337,7 +336,7 @@ class OTPService:
         
     @staticmethod
     @transaction.atomic
-    def verify_password_reset_otp(email: str, code: str, new_password: str) -> bool:
+    def verify_password_reset_otp(email: str, code: str, new_password: str, request_data: dict = None) -> bool:
         """ Verify password reset OTP and update the user's password.Uses the model's verify_otp() for security. """
         # Lock the user row to prevent concurrent modifications
 
@@ -360,8 +359,17 @@ class OTPService:
 
         # OTP verified and deleted – update password
         _update_user_password(user, new_password) # Use Helper Functions for password delete – update
+
+        _log_audit(
+                user=user,
+                action="PASSWORD_RESET",
+                ip_address=request_data.get('ip_address') if request_data else None,
+                user_agent=request_data.get('user_agent', '') if request_data else '',
+            )
+
         logger.info("Password reset for %s", user.email)
         return True
+    
 
 
     @staticmethod
@@ -418,35 +426,7 @@ class OTPService:
 
     
 
-    @staticmethod
-    @transaction.atomic
-    def verify_password_reset_otp(email: str, code: str, new_password: str, request_data: dict = None) -> bool:
-        user = _get_user_by_email(email)
-        user = User.objects.select_for_update().get(pk=user.pk)
-
-        otp_obj = PasswordResetOTP.all_objects.filter(user=user).order_by('-created_at').first()
-        if not otp_obj:
-            raise ServiceLayerError("Invalid OTP. Please request a new one.")
-
-        if not otp_obj.verify_otp(code):
-            otp_obj.refresh_from_db()
-            if otp_obj.is_blocked:
-                raise ServiceLayerError("Too many invalid attempts. Please request a new OTP.")
-            if otp_obj.is_expired:
-                raise ServiceLayerError("OTP has expired. Please request a new OTP.")
-            raise ServiceLayerError("Invalid OTP.")
-
-        _update_user_password(user, new_password)
-
-        _log_audit(
-            user=user,
-            action="PASSWORD_RESET",
-            ip_address=request_data.get('ip_address') if request_data else None,
-            user_agent=request_data.get('user_agent', '') if request_data else '',
-        )
-        logger.info("Password reset for %s", user.email)
-        return True
-
+    
     @staticmethod
     @transaction.atomic
     def change_password(user: User, old_password: str, new_password: str, request_data: dict = None) -> bool: # type: ignore
