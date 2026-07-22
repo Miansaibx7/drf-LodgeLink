@@ -89,25 +89,31 @@ class LoginView(APIView):
         serializer.is_valid(raise_exception=True)
         
         # Grab the user object that we safely attached inside the serializer
-        user = serializer.validated_data["user"]
+        # We bypass the serializer's validation for email/password because we handle it in the service
+        email = serializer.validated_data['email']
+        password = serializer.validated_data['password']
+        request_data = _extract_request_data(request)
 
-        # Update last login time
-        update_last_login(None, user)
+        # Authenticate with brute‑force protection
+        user = authenticate_user(email, password, request_data)
+        
+        tokens = get_tokens_for_user(user) # Generate JWT Tokens and log success
+        refresh_jti = tokens['jti']
 
-        # Generate JWT Tokens and log success
-        tokens = get_tokens_for_user(user)
+        
+        handle_successful_login(user, request_data, refresh_jti) # Create session, update device, log login
+        update_last_login(None, user) # Update last login time
 
         logger.info("User %s logged in successfully.", user.email)
 
-        return Response({"success": True,"message": "Login successful.","tokens": tokens,
-                "user": {
-                    "id": user.id,
-                    "email": user.email,
-                    "name": getattr(user, 'name', ''), # Use getattr in case name isn't on base model
-                    "is_verified": getattr(user, 'is_verified', True)
-                },
-            },status=status.HTTP_200_OK
-        )
+        return Response({"success": True, "message": "Login successful.", "tokens": tokens,
+            "user": {
+                "id": user.id,
+                "email": user.email,
+                "name": user.get_full_name() or user.email,
+                "is_verified": user.is_verified,
+            }
+        }, status=status.HTTP_200_OK)
         
 
 
@@ -289,44 +295,7 @@ class LogoutView(APIView):
 
 
 
-class LoginView(APIView):
-    permission_classes = [AllowAny]
-    throttle_classes = [LoginRateThrottle]
 
-    def post(self, request: Request) -> Response:
-        serializer = LoginSerializer(data=request.data, context={"request": request})
-        serializer.is_valid(raise_exception=True)
-
-        # We bypass the serializer's validation for email/password because we handle it in the service
-        email = serializer.validated_data['email']
-        password = serializer.validated_data['password']
-        request_data = _extract_request_data(request)
-
-        # Authenticate with brute‑force protection
-        user = authenticate_user(email, password, request_data)
-
-        # Generate tokens
-        tokens = get_tokens_for_user(user)
-        refresh_jti = tokens['jti']
-
-        # Create session, update device, log login
-        handle_successful_login(user, request_data, refresh_jti)
-
-        update_last_login(None, user)
-
-        logger.info("User %s logged in successfully.", user.email)
-
-        return Response({
-            "success": True,
-            "message": "Login successful.",
-            "tokens": tokens,
-            "user": {
-                "id": user.id,
-                "email": user.email,
-                "name": user.get_full_name() or user.email,
-                "is_verified": user.is_verified,
-            },
-        }, status=status.HTTP_200_OK)
 
 
 class EmailOTPSendView(APIView):
