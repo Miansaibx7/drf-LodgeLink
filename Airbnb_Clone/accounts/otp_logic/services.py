@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.db import transaction
 
+from django.contrib.auth import authenticate
 
 from ..models import (
     EmailOTP, PasswordResetOTP, UserProfile, UserSession,
@@ -169,6 +170,67 @@ def register_user(email: str, password: str, request_data: Optional[dict] = None
 
 
 
+
+# ==================== Login & Session ====================
+
+def authenticate_user(email: str, password: str, request_data: dict) -> User: # type: ignore
+    """ Authenticate a user, check LoginAttempt blocking, increment on failure,
+    and on success create UserSession and UserDevice, and log login. """
+
+    email = _normalize_email(email)
+    ip = request_data.get('ip_address')
+
+    attempt = LoginAttempt.objects.filter(email=email, ip_address=ip).first() # Check if this email+IP is currently blocked
+    if attempt and attempt.is_blocked():
+        raise ServiceLayerError(f"Too many failed attempts. Try again after {attempt.blocked_until.strftime('%H:%M:%S')}.")
+
+    # Attempt authentication
+    user = authenticate(request=None, email=email, password=password)
+
+    if user is None:
+        # Failed attempt – increment or create LoginAttempt
+        with transaction.atomic():
+            attempt, created = LoginAttempt.objects.get_or_create(
+                email=email,
+                ip_address=ip,
+                defaults={'attempts': 0}
+            )
+            attempt.increment()  # atomic increment with blocking
+        raise ServiceLayerError("Invalid email or password.")
+
+    # Success – reset attempts (delete) and create session/device
+    LoginAttempt.objects.filter(email=email, ip_address=ip).delete()
+
+    # Create UserSession (requires refresh token JTI – will be set later)
+    # We'll create session after token generation, but we need refresh token.
+    # For now, we'll store session creation outside this function.
+    # So we'll return the user and let the view handle session creation with tokens.
+
+    # Log login (will be done after token generation)
+    return user
+
+
+@transaction.atomic
+def handle_successful_login(user: User, request_data: dict, refresh_token_jti: str) -> dict: # type: ignore
+    """After successful authentication, create UserSession, update UserDevice,
+    and log login. Returns the created session and device."""
+    
+    session = _create_user_session(user, refresh_token_jti, request_data) # Create session
+    device = _update_user_device(user, request_data) # Update device
+
+    # Log login
+    _log_audit(
+        user=user,
+        action="LOGIN",
+        ip_address=request_data.get('ip_address'),
+        user_agent=request_data.get('user_agent', ''),
+        metadata={'session_id': session.id}
+    )
+
+    return {'session': session, 'device': device}
+
+
+
 # ===================================== OTP Service ====================================================================
 class OTPService:
     """Handles all OTP operations using the model's built‑in methods."""
@@ -316,87 +378,6 @@ class OTPService:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ==================== Login & Session ====================
-
-def authenticate_user(email: str, password: str, request_data: dict) -> User:
-    """
-    Authenticate a user, check LoginAttempt blocking, increment on failure,
-    and on success create UserSession and UserDevice, and log login.
-    """
-    email = _normalize_email(email)
-    ip = request_data.get('ip_address')
-
-    # Check if this email+IP is currently blocked
-    attempt = LoginAttempt.objects.filter(email=email, ip_address=ip).first()
-    if attempt and attempt.is_blocked():
-        raise ServiceLayerError(
-            f"Too many failed attempts. Try again after {attempt.blocked_until.strftime('%H:%M:%S')}."
-        )
-
-    # Attempt authentication
-    from django.contrib.auth import authenticate
-    user = authenticate(request=None, email=email, password=password)
-
-    if user is None:
-        # Failed attempt – increment or create LoginAttempt
-        with transaction.atomic():
-            attempt, created = LoginAttempt.objects.get_or_create(
-                email=email,
-                ip_address=ip,
-                defaults={'attempts': 0}
-            )
-            attempt.increment()  # atomic increment with blocking
-        raise ServiceLayerError("Invalid email or password.")
-
-    # Success – reset attempts (delete) and create session/device
-    LoginAttempt.objects.filter(email=email, ip_address=ip).delete()
-
-    # Create UserSession (requires refresh token JTI – will be set later)
-    # We'll create session after token generation, but we need refresh token.
-    # For now, we'll store session creation outside this function.
-    # So we'll return the user and let the view handle session creation with tokens.
-
-    # Log login (will be done after token generation)
-    return user
-
-
-@transaction.atomic
-def handle_successful_login(user: User, request_data: dict, refresh_token_jti: str) -> dict:
-    """
-    After successful authentication, create UserSession, update UserDevice,
-    and log login. Returns the created session and device.
-    """
-    # Create session
-    session = _create_user_session(user, refresh_token_jti, request_data)
-
-    # Update device
-    device = _update_user_device(user, request_data)
-
-    # Log login
-    _log_audit(
-        user=user,
-        action="LOGIN",
-        ip_address=request_data.get('ip_address'),
-        user_agent=request_data.get('user_agent', ''),
-        metadata={'session_id': session.id}
-    )
-
-    return {'session': session, 'device': device}
-
-
 # ==================== OTP Service ====================
 
 class OTPService:
@@ -422,7 +403,7 @@ class OTPService:
 
     @staticmethod
     @transaction.atomic
-    def verify_email_otp(email: str, code: str, request_data: dict = None) -> User:
+    def verify_email_otp(email: str, code: str, request_data: dict = None) -> User: # type: ignore
         user = _get_user_by_email(email)
         user = User.objects.select_for_update().get(pk=user.pk)
 
@@ -505,7 +486,7 @@ class OTPService:
 
     @staticmethod
     @transaction.atomic
-    def change_password(user: User, old_password: str, new_password: str, request_data: dict = None) -> bool:
+    def change_password(user: User, old_password: str, new_password: str, request_data: dict = None) -> bool: # type: ignore
         if not user.check_password(old_password):
             logger.warning("Invalid old password attempt for %s", user.email)
             raise ServiceLayerError("Current password is incorrect.")
