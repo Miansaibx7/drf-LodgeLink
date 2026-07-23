@@ -18,6 +18,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 logger = logging.getLogger(__name__)
 
+from rest_framework.response import Response
+from ..models import User
 
 # Common Email Context
 def get_email_context() -> dict[str, Any]:
@@ -140,3 +142,8 @@ def get_tokens_for_user(user) -> dict[str, str]:
         "jti": str(refresh["jti"]) # useful for UserSession tracking
     }
 
+
+
+def api_success(message: str, data: dict = None, status_code: int = 200) -> Response:
+    """Standardizes successful responses."""
+    return Response({"success": True, "message": message, "data": data or {} }, status=status_code)

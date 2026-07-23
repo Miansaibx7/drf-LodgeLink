@@ -529,5 +529,14 @@ class SocialAccountSerializer(serializers.ModelSerializer):
             "avatar_url",
             "created_at",
         )
-        read_only_fields = fields    
+        read_only_fields = fields 
+
+
+
+class TwoFactorVerifySerializer(serializers.Serializer):
+    otp_code = serializers.CharField(max_length=6, min_length=6)
+
+class TwoFactorLoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    totp_code = serializers.CharField(max_length=6, min_length=6)   
         
