@@ -1,3 +1,4 @@
+import uuid
 from django.db import models,transaction
 
 from django.contrib.auth.models import (AbstractBaseUser,BaseUserManager,PermissionsMixin)
@@ -59,6 +60,8 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     """Custom user model using email authentication."""
 
     username = None
+    # UUIDs prevent attackers from knowing how many users you have.
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True, validators=[EmailValidator()]) # unique=True automatically creates a database index
     first_name = models.CharField(max_length=150, blank=True)
     last_name = models.CharField(max_length=150, blank=True)
@@ -446,7 +449,7 @@ class AccountDeletionRequest(models.Model):
     user = models.ForeignKey(User,on_delete=models.CASCADE,related_name='deletion_requests')
 
     reason = models.TextField(blank=True)
-    scheduled_for = models.DateTimeField()
+    scheduled_for = models.DateTimeField(db_index=True)
     completed = models.BooleanField(default=False)
     completed_at = models.DateTimeField(null=True, blank=True)
     cancelled = models.BooleanField(default=False)
@@ -468,6 +471,7 @@ class AccountDeletionRequest(models.Model):
         self.completed = True
         self.completed_at = timezone.now()
         self.save(update_fields=["completed", "completed_at"])
+
 
 
 class SocialAccount(TimeStampedModel):
