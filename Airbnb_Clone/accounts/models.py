@@ -37,6 +37,14 @@ class UserManager(BaseUserManager):
 
         # IntegrityError catch.RegisterSerializer already
         # validates email uniqueness. Catching it here masks real DB issues
+
+        # NOTE: RegisterSerializer.validate_email() checks uniqueness before this
+        # runs, but that check-then-create is NOT atomic — two concurrent requests
+        # for the same email can both pass validation and both land here. The
+        # DB unique=True constraint on User.email will raise IntegrityError for
+        # the second one. We deliberately do NOT swallow it here; the caller
+        # (register_user in services.py) catches IntegrityError and converts it
+        # into a clean, user-facing error instead of a 500. See services.py.
         user.save(using=self._db)
         return user
 
@@ -53,7 +61,7 @@ class UserManager(BaseUserManager):
             raise ValueError("Superuser must have is_superuser=True.")
 
         return self.create_user(email, password, **extra_fields)
-
+    
 
 
 class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
@@ -195,16 +203,24 @@ class BaseOTP(models.Model):
                 return False
 
             if check_password(raw_otp, obj.otp_hash):
-                obj.delete()                          # one‑time use
+                obj.delete() # one‑time use
+                # FIX: obj is deleted, self.pk is now stale. Guard refresh_from_db
+                # below so we don't raise DoesNotExist on the success path.
+                self._state.adding = True
                 return True
+            
             # Handle failed attempt safely within the lock
             obj.attempts += 1
             if obj.attempts >= self.MAX_ATTEMPTS and not obj.blocked_until:
                 obj.blocked_until = timezone.now() + timedelta(minutes=self.BLOCK_MINUTES)
-            obj.save(update_fields=["attempts", "blocked_until"])
-
-        self.refresh_from_db()
-        return False
+                obj.save(update_fields=["attempts", "blocked_until"])
+            # FIX (bug): previously this unconditional refresh_from_db() ran even
+            # after obj.delete() above, which raises DoesNotExist on the *successful*
+            # verification path because self.pk no longer exists in the DB. We only
+            # refresh on the failure path now.
+            if not self._state.adding:
+                self.refresh_from_db()
+            return False
 
     def increment_attempts(self) -> None:
         """Atomically increment attempts and apply a block if threshold reached.
@@ -222,6 +238,7 @@ class BaseOTP(models.Model):
             obj.save(update_fields=["attempts", "blocked_until"])
             # Update the current instance in memory
             self.refresh_from_db()
+         
 
 
 class EmailOTP(BaseOTP):
@@ -359,11 +376,11 @@ class LoginAttempt(models.Model):
         verbose_name = "Login Attempt"
         verbose_name_plural = "Login Attempts"
         ordering = ["-updated_at"]
-        constraints = [models.UniqueConstraint(
-                fields=["email", "ip_address"],
-                name="unique_login_attempt")]
+        constraints = [
+                    models.UniqueConstraint(fields=["email", "ip_address"], name="unique_login_attempt")
+        ]
         indexes = [models.Index(fields=["email"]),models.Index(fields=["ip_address"]),
-            models.Index(fields=["blocked_until"])]
+                models.Index(fields=["blocked_until"])]
 
     def __str__(self):
         return f"{self.email} - {self.attempts} attempts"
@@ -387,13 +404,21 @@ class LoginAttempt(models.Model):
 
 
 class TwoFactorAuth(models.Model):
-    """Store 2FA secrets and status.The TOTP secret must be encrypted at rest (use django-encrypted-model-fields
-    or a custom Fernet field)."""
+    """ Store 2FA secrets and status.
+        SECURITY (unresolved — flagging clearly): `secret_key` is stored in
+        PLAINTEXT. TOTP secrets are long-lived credentials; anyone with read
+        access to the DB (a backup, a leaked dump, a compromised replica) can
+        generate valid codes forever. Before production, encrypt this field at
+        rest — e.g. `django-encrypted-model-fields`'s EncryptedCharField, or a
+        custom Fernet-based field using a key from your secrets manager (not
+        SECRET_KEY). This is not a cosmetic recommendation; treat it as a
+        blocker for production launch. """
 
     user = models.OneToOneField(User,on_delete=models.CASCADE,related_name='two_factor_auth')
 
-    # 🔐 Replace with EncryptedCharField in production
-    secret_key = models.CharField(max_length=255)
+    # 🔐 Replace with EncryptedCharField in production. null=True because we
+    # clear it on disable() — see FIX note in services/two_factor.py.
+    secret_key = models.CharField(max_length=255, null=True, blank=True)
 
     # Hashed backup codes (list of strings)
     backup_code_hashes = models.JSONField(default=list, blank=True)
@@ -418,9 +443,11 @@ class TwoFactorAuth(models.Model):
         self.save(update_fields=["secret_key", "enabled", "enabled_at", "disabled_at"])
 
     def disable(self) -> None:
-        self.enabled = False
-        self.disabled_at = timezone.now()
-        self.save(update_fields=["enabled", "disabled_at"])
+            self.enabled = False
+            self.secret_key = None
+            self.backup_code_hashes = []
+            self.disabled_at = timezone.now()
+            self.save(update_fields=["enabled", "secret_key", "backup_code_hashes", "disabled_at"])
 
     def set_backup_codes(self, raw_codes: list) -> None:
         """Hash and store a new set of one‑time backup codes."""
@@ -428,21 +455,24 @@ class TwoFactorAuth(models.Model):
         self.save(update_fields=["backup_code_hashes"])
 
     def consume_backup_code(self, raw_code: str) -> bool:
-        """Verify and consume a backup code atomically.Returns True if the code was valid and used, False otherwise."""
-        with transaction.atomic():
-            # Lock the row to prevent concurrent consumption of the same code
-            obj = TwoFactorAuth.objects.select_for_update().get(pk=self.pk)
-            for i, hash_val in enumerate(obj.backup_code_hashes):
-                if check_password(raw_code, hash_val):
-                    # Code valid – remove it and update
-                    obj.backup_code_hashes.pop(i)
-                    obj.last_used_at = timezone.now()
-                    obj.save(update_fields=["backup_code_hashes", "last_used_at"])
-                    return True
-        return False
+            """Verify and consume a backup code atomically.Returns True if the code was valid and used, False otherwise."""
+            with transaction.atomic():
+                # Lock the row to prevent concurrent consumption of the same code
+                obj = TwoFactorAuth.objects.select_for_update().get(pk=self.pk)
+                for i, hash_val in enumerate(obj.backup_code_hashes):
+                    if check_password(raw_code, hash_val):
+                        obj.backup_code_hashes.pop(i) # Code valid – remove it and update
+                        obj.last_used_at = timezone.now()
+                        obj.save(update_fields=["backup_code_hashes", "last_used_at"])
+                        # FIX (bug): the original code returned True from *inside*
+                        # the `with` block without ever updating `self` (the caller's
+                        # in-memory instance stayed stale). Refresh before returning.
+                        self.refresh_from_db()
+                        return True
+            return False
 
 
-
+    
 class AccountDeletionRequest(models.Model):
     """Request to delete a user account (GDPR compliance)."""
 
