@@ -1,4 +1,5 @@
 """ Two-Factor Authentication (2FA) endpoints. Uses TOTP (Time‑based One‑Time Password) with pyotp. """
+
 import logging
 from django.utils import timezone
 import pyotp
@@ -10,18 +11,15 @@ from rest_framework import status, serializers
 from rest_framework.request import Request
 from django.db import transaction
 
-from ..otp_logic.utils import get_tokens_for_user
+from ..otp_logic.utils import get_tokens_for_user # Assuming you moved this to a general utils file
 from ..models import TwoFactorAuth, User
 from ..exceptions import ServiceLayerError
 
 logger = logging.getLogger(__name__)
 
-
 # ===================== Serializers =====================
 
 class TwoFactorEnableSerializer(serializers.Serializer):
-    """Serializer to enable 2FA – returns provisioning URI and secret."""
-    
     password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
 
     def validate_password(self, value: str) -> str:
@@ -30,11 +28,7 @@ class TwoFactorEnableSerializer(serializers.Serializer):
             raise serializers.ValidationError("Incorrect password.")
         return value
 
-
-
 class TwoFactorVerifySerializer(serializers.Serializer):
-    """Serializer to verify and activate 2FA after scanning QR code."""
-
     otp_code = serializers.CharField(max_length=6, min_length=6, required=True)
 
     def validate_otp_code(self, value: str) -> str:
@@ -42,200 +36,136 @@ class TwoFactorVerifySerializer(serializers.Serializer):
             raise serializers.ValidationError("OTP must be numeric.")
         return value
 
+class TwoFactorDisableSerializer(TwoFactorEnableSerializer):
+    pass # Inherits password validation
 
-class TwoFactorDisableSerializer(serializers.Serializer):
-    """Serializer to disable 2FA (requires password verification)."""
-
-    password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
-
-    def validate_password(self, value: str) -> str:
-        user = self.context['request'].user
-        if not user.check_password(value):
-            raise serializers.ValidationError("Incorrect password.")
-        return value
-
-
-class TwoFactorBackupCodesSerializer(serializers.Serializer):
-    """Serializer for generating new backup codes (password required)."""
-
-    password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
-
-    def validate_password(self, value: str) -> str:
-        user = self.context['request'].user
-        if not user.check_password(value):
-            raise serializers.ValidationError("Incorrect password.")
-        return value
-
+class TwoFactorBackupCodesSerializer(TwoFactorEnableSerializer):
+    pass # Inherits password validation
 
 class TwoFactorLoginChallengeSerializer(serializers.Serializer):
-    """Serializer for 2FA challenge during login."""
-
     email = serializers.EmailField(required=True)
     totp_code = serializers.CharField(max_length=6, min_length=6, required=True)
 
     def validate_totp_code(self, value: str) -> str:
-        if not value.isdigit():
-            raise serializers.ValidationError("OTP must be numeric.")
+        # Backup codes might be alphanumeric depending on implementation, 
+        # so we relax the isdigit() check to allow backup codes if needed.
+        if len(value) != 6:
+            raise serializers.ValidationError("Code must be 6 characters.")
         return value
 
-
-# ===================== Service Layer =================================================
+# ===================== Service Layer =====================
 
 class TwoFactorService:
-    """Business logic for Two-Factor Authentication."""
-
     @staticmethod
     def generate_secret() -> str:
-        """Generate a new TOTP secret (Base32)."""
         return pyotp.random_base32()
 
     @staticmethod
     def get_provisioning_uri(user: User, secret: str) -> str:
-        """Generate the provisioning URI for QR code generation."""
         return pyotp.totp.TOTP(secret).provisioning_uri(
             name=user.email,
-            issuer_name=getattr(user, 'get_full_name', lambda: user.email)() or user.email
+            issuer_name="Airbnb_Clone" # Hardcoded app name for cleaner Authenticator UI
         )
 
     @staticmethod
     def verify_totp(secret: str, otp_code: str) -> bool:
-        """Verify a TOTP code against a secret."""
         totp = pyotp.TOTP(secret)
-        return totp.verify(otp_code, valid_window=1)  # allow 1 step drift
+        return totp.verify(otp_code, valid_window=1)
 
     @staticmethod
     @transaction.atomic
     def enable_2fa(user: User, password: str) -> dict:
-        """
-        Step 1: Generate a new secret and return it (and provisioning URI) to the user.
-        Does NOT enable 2FA yet – user must verify with a code first.
-        """
-        # Check password again (already validated in serializer, but double‑check)
         if not user.check_password(password):
             raise ServiceLayerError("Incorrect password.")
 
-        # Get or create TwoFactorAuth record
-        tfa, created = TwoFactorAuth.objects.get_or_create(user=user)
-
-        # Generate a new secret
+        tfa, _ = TwoFactorAuth.objects.get_or_create(user=user)
         secret = TwoFactorService.generate_secret()
+        
         tfa.secret_key = secret
-        tfa.enabled = False  # ensure not enabled yet
-        tfa.backup_code_hashes = []  # reset backup codes
+        tfa.enabled = False 
+        tfa.backup_code_hashes = [] 
         tfa.save(update_fields=['secret_key', 'enabled', 'backup_code_hashes'])
-
-        provisioning_uri = TwoFactorService.get_provisioning_uri(user, secret)
 
         return {
             'secret': secret,
-            'provisioning_uri': provisioning_uri,
+            'provisioning_uri': TwoFactorService.get_provisioning_uri(user, secret),
         }
 
     @staticmethod
     @transaction.atomic
     def verify_and_enable_2fa(user: User, otp_code: str) -> dict:
-        """
-        Step 2: Verify the TOTP code and enable 2FA for the user.
-        Also generates backup codes.
-        """
+        # CONCURRENCY: Lock the row during verification
         tfa = TwoFactorAuth.objects.select_for_update().get(user=user)
+        
         if tfa.enabled:
             raise ServiceLayerError("2FA is already enabled.")
 
-        # Verify the code using the stored secret
         if not TwoFactorService.verify_totp(tfa.secret_key, otp_code):
             raise ServiceLayerError("Invalid OTP code.")
 
-        # Enable 2FA
         tfa.enabled = True
         tfa.enabled_at = timezone.now()
-        tfa.save(update_fields=['enabled', 'enabled_at'])
-
-        # Generate backup codes (10 codes)
         backup_codes = [pyotp.random_base32()[:6] for _ in range(10)]
-        tfa.set_backup_codes(backup_codes)
-
-        # Log the event (optional)
-        # (you can add AuditLog creation here if needed)
-
-        return {
-            'backup_codes': backup_codes,  # return raw codes for the user to store
-        }
+        tfa.set_backup_codes(backup_codes) # Ensure this hashes the codes in the model!
+        
+        tfa.save(update_fields=['enabled', 'enabled_at', 'backup_code_hashes'])
+        return {'backup_codes': backup_codes}
 
     @staticmethod
     @transaction.atomic
     def disable_2fa(user: User, password: str) -> None:
-        """Disable 2FA for the user (requires password verification)."""
         if not user.check_password(password):
             raise ServiceLayerError("Incorrect password.")
 
-        try:
-            tfa = TwoFactorAuth.objects.get(user=user)
-        except TwoFactorAuth.DoesNotExist:
+        # Optimization: use update() instead of fetching the object if we don't need signals
+        updated = TwoFactorAuth.objects.filter(user=user, enabled=True).update(
+            enabled=False, 
+            secret_key=None, 
+            backup_code_hashes=[]
+        )
+        if not updated:
             raise ServiceLayerError("2FA is not enabled.")
-
-        tfa.disable()  # sets enabled=False and disabled_at
-        logger.info("2FA disabled for user %s", user.email)
+        logger.info(f"2FA disabled for user {user.email}")
 
     @staticmethod
     @transaction.atomic
     def generate_new_backup_codes(user: User, password: str) -> list:
-        """Generate new backup codes (invalidates old ones)."""
         if not user.check_password(password):
             raise ServiceLayerError("Incorrect password.")
 
-        try:
-            tfa = TwoFactorAuth.objects.get(user=user)
-        except TwoFactorAuth.DoesNotExist:
+        tfa = TwoFactorAuth.objects.select_for_update().filter(user=user, enabled=True).first()
+        if not tfa:
             raise ServiceLayerError("2FA is not enabled.")
 
-        if not tfa.enabled:
-            raise ServiceLayerError("2FA is not enabled.")
-
-        # Generate 10 new backup codes
         backup_codes = [pyotp.random_base32()[:6] for _ in range(10)]
         tfa.set_backup_codes(backup_codes)
-        logger.info("New backup codes generated for user %s", user.email)
+        tfa.save(update_fields=['backup_code_hashes'])
         return backup_codes
 
     @staticmethod
     @transaction.atomic
     def verify_2fa_for_login(email: str, totp_code: str) -> User:
-        """
-        Verify 2FA during login.
-        This is called after primary authentication (email/password) succeeds.
-        """
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
+        # Use select_related and select_for_update to prevent concurrent login race conditions
+        user = User.objects.filter(email__iexact=email).first()
+        if not user:
             raise ServiceLayerError("Invalid credentials.")
 
-        try:
-            tfa = TwoFactorAuth.objects.get(user=user)
-        except TwoFactorAuth.DoesNotExist:
-            # 2FA not set up – allow login (or raise error depending on policy)
-            # We'll raise an error if 2FA is required; but we can also let it pass.
-            # For our implementation, we require 2FA only if enabled.
-            # So if not enabled, we return user (login allowed).
-            return user
+        tfa = TwoFactorAuth.objects.select_for_update().filter(user=user).first()
+        if not tfa or not tfa.enabled:
+            return user # 2FA not required
 
-        if not tfa.enabled:
-            return user
-
-        # Verify TOTP
         if TwoFactorService.verify_totp(tfa.secret_key, totp_code):
-            # Optionally update last_used_at
             tfa.last_used_at = timezone.now()
             tfa.save(update_fields=['last_used_at'])
             return user
-        else:
-            # Try backup codes
-            if tfa.consume_backup_code(totp_code):
-                tfa.last_used_at = timezone.now()
-                tfa.save(update_fields=['last_used_at'])
-                return user
-            else:
-                raise ServiceLayerError("Invalid 2FA code.")
+        
+        # Fallback to backup code
+        if tfa.consume_backup_code(totp_code):
+            tfa.last_used_at = timezone.now()
+            tfa.save(update_fields=['backup_code_hashes', 'last_used_at'])
+            return user
+            
+        raise ServiceLayerError("Invalid 2FA code.")
 
 
 # ===================== Views =====================
@@ -263,10 +193,7 @@ class TwoFactorSetupView(APIView):
 
 
 class TwoFactorVerifyView(APIView):
-    """
-    Step 2: Verify OTP and enable 2FA.
-    Returns backup codes for the user to store.
-    """
+    """Step 2: Verify OTP and enable 2FA. Returns backup codes for the user to store."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request: Request) -> Response:
@@ -296,10 +223,7 @@ class TwoFactorDisableView(APIView):
             user=request.user,
             password=serializer.validated_data['password']
         )
-        return Response({
-            'success': True,
-            'message': '2FA disabled successfully.'
-        }, status=status.HTTP_200_OK)
+        return Response({'success': True, 'message': '2FA disabled successfully.'}, status=status.HTTP_200_OK)
 
 
 class TwoFactorBackupCodesView(APIView):

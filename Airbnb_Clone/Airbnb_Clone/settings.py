@@ -39,6 +39,15 @@ INSTALLED_APPS = [
     'accounts',
 ]
 
+# Upgrade to Argon2. PBKDF2 is fine, but Argon2 is the 
+# current industry standard against GPU-based password cracking.
+# Run: pip install argon2-cffi or uv add argon2-cffi
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+]
+
+
 # Django REST Framework Configuration
 REST_FRAMEWORK = {
     # 1. Authentication & Permissions
@@ -52,7 +61,12 @@ REST_FRAMEWORK = {
     # 2. Custom Exception Handler (Added from previous step)
     # IMPORTANT: Change 'accounts' to the app name where you saved exceptions.py
     'EXCEPTION_HANDLER': 'accounts.exceptions.custom_global_exception_handler',
-    
+
+    'DEFAULT_THROTTLE_CLASSES': [
+            'rest_framework.throttling.AnonRateThrottle',
+            'rest_framework.throttling.UserRateThrottle'
+        ],
+        
     # 3. Throttling / Rate Limiting (Added to protect OTP and Login endpoints)
     'DEFAULT_THROTTLE_RATES': {
         'otp_requests': '5/min',    # Limit anon users to 5 OTP requests per minute
@@ -60,6 +74,12 @@ REST_FRAMEWORK = {
         'user': '100/min',          # Limit authenticated users 
     },
 }
+
+# Production Security Headers (Ensure these are True in production)
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+
 
 # JWT settings for Django REST Framework Simple JWT
 SIMPLE_JWT = {
@@ -151,4 +171,13 @@ EMAIL_USE_TLS = True # Enable TLS encryption.
 
 EMAIL_HOST_USER = config('EMAIL_HOST_USER')     # Your Gmail address (from .env).
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')  # Your Gmail App Password (from .env).
+
+
+
+
+
+
+
+
+
 
