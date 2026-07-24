@@ -35,9 +35,6 @@ class UserManager(BaseUserManager):
         else:
             user.set_unusable_password()
 
-        # IntegrityError catch.RegisterSerializer already
-        # validates email uniqueness. Catching it here masks real DB issues
-
         # NOTE: RegisterSerializer.validate_email() checks uniqueness before this
         # runs, but that check-then-create is NOT atomic — two concurrent requests
         # for the same email can both pass validation and both land here. The
