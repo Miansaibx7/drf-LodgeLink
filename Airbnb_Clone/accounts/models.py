@@ -149,7 +149,7 @@ class BaseOTP(models.Model):
     def __str__(self):
         return f"{self.user.email} OTP"
 
-    # ── Properties ──────────────────────────────────
+# ────────────────────────────────── Properties ────────────────────────────────────────────────────────────────────
     @property
     def is_expired(self) -> bool:
         return timezone.now() >= (self.created_at + timedelta(minutes=self.OTP_EXPIRY_MINUTES))
