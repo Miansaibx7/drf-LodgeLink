@@ -7,13 +7,22 @@ from .views import (
     PasswordResetOTPSendView, PasswordResetOTPVerifyView, ChangePasswordView,
     GoogleLoginView, GitHubLoginView, FacebookLoginView, LinkedInLoginView
 )
-
 # Bringing in the isolated sub_views!
 from .sub_views.account_deletion import (
     AccountDeletionRequestView, AccountDeletionCancelView, AccountDeletionStatusView
 )
+
+# FIX (import bug — this would raise ImportError and crash the entire app on
+# startup): urls.py imported `EnableTOTPView, VerifyTOTPView, DisableTOTPView`
+# from sub_views.two_factor, but the classes actually defined there are named
+# `TwoFactorSetupView, TwoFactorVerifyView, TwoFactorDisableView`
+# (plus `TwoFactorBackupCodesView` and `TwoFactorLoginView`, which existed
+# but were never routed at all). Corrected the import names below and added
+# the two missing routes.
+# Bringing in the isolated sub_views!
 from .sub_views.two_factor import (
-    EnableTOTPView, VerifyTOTPView, DisableTOTPView
+    TwoFactorSetupView, TwoFactorVerifyView, TwoFactorDisableView,
+    TwoFactorBackupCodesView, TwoFactorLoginView,
 )
 
 
@@ -39,12 +48,15 @@ urlpatterns = [
     path("oauth/facebook/", FacebookLoginView.as_view(), name="facebook_login"),
     path("oauth/linkedin/", LinkedInLoginView.as_view(), name="linkedin_login"),
 
-    # ------------------------- Two-Factor Auth (Added) ------------------
-    path("2fa/enable/", EnableTOTPView.as_view(), name="2fa_enable"),
-    path("2fa/verify/", VerifyTOTPView.as_view(), name="2fa_verify"),
-    path("2fa/disable/", DisableTOTPView.as_view(), name="2fa_disable"),
+    # ------------------------- Two-Factor Auth ---------------------------
+    path("2fa/setup/", TwoFactorSetupView.as_view(), name="2fa_setup"),
+    path("2fa/verify/", TwoFactorVerifyView.as_view(), name="2fa_verify"),
+    path("2fa/disable/", TwoFactorDisableView.as_view(), name="2fa_disable"),
+    # these two views existed in sub_views/two_factor.py
+    path("2fa/backup-codes/", TwoFactorBackupCodesView.as_view(), name="2fa_backup_codes"),
+    path("2fa/login/", TwoFactorLoginView.as_view(), name="2fa_login"),
 
-    # ------------------------- Account Deletion (GDPR) (Added) ----------
+    # ------------------------- Account Deletion (GDPR) --------------------
     path("deletion/request/", AccountDeletionRequestView.as_view(), name="account_delete_request"),
     path("deletion/cancel/", AccountDeletionCancelView.as_view(), name="account_delete_cancel"),
     path("deletion/status/", AccountDeletionStatusView.as_view(), name="account_delete_status"),
