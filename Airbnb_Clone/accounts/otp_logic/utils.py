@@ -19,12 +19,21 @@ from rest_framework_simplejwt.tokens import RefreshToken
 logger = logging.getLogger(__name__)
 
 from rest_framework.response import Response
-from ..models import User
 
-# Common Email Context
+
+
 def get_email_context() -> dict[str, Any]:
     """ Returns common template context used by every email. Keep company information in settings.py instead of
-    hardcoding values throughout the project. """
+        hardcoding values throughout the project. 
+
+    NOTE: every one of these settings (COMPANY_NAME, SCHOOL_NAME,
+    FRONTEND_URL, BACKEND_URL, SUPPORT_EMAIL, PRIMARY_COLOR) was referenced
+    here but NONE of them existed in the settings.py you shared. Calling any
+    OTP-sending code path as-is would raise
+    `django.core.exceptions.ImproperlyConfigured` / AttributeError at
+    runtime the first time an email is sent. They've been added to the
+    corrected settings.py — see that file.
+    """
 
     return {
         "company_name": settings.COMPANY_NAME,
@@ -71,9 +80,13 @@ def _send_email(*,email: str,subject: str,html_template: str,text_template: str,
 
         logger.info("Email sent successfully to %s", email)
         return True
-
-    except Exception as exc:
-        logger.exception("Unable to send email to %s. Error: %s",email,exc)
+    
+    except Exception:
+        # FIX: log the traceback (logger.exception) instead of interpolating
+        # the raw exception object into the message string — `logger.exception`
+        # captures the full stack trace, which matters a lot when SMTP config
+        # is wrong in production and you need to know *why* it failed.
+        logger.exception("Unable to send email to %s", email)
         return False
 
 
@@ -125,16 +138,8 @@ def send_password_reset_email(*, email: str, otp: str) -> bool:
 
 # JWT Token Generator
 def get_tokens_for_user(user) -> dict[str, str]:
-    """ Generate JWT tokens for a user.
-    Returns:
-    {
-        "access": "...",
-        "refresh": "...",
-        "jti": "..."
-    }
-    The JTI is stored in UserSession so a refresh token
-    can later be revoked individually. """
-
+    """Generate JWT tokens for a user. The JTI is stored in UserSession so a
+    refresh token can later be revoked individually."""
     refresh = RefreshToken.for_user(user)
     return {
         "access": str(refresh.access_token),
