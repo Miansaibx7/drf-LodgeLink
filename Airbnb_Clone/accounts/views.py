@@ -11,6 +11,7 @@ from rest_framework import status
 from django.contrib.auth.models import update_last_login
 
 from .otp_logic.services import register_user, OTPService, authenticate_user, handle_successful_login
+from .sub_views.two_factor import TwoFactorService
 
 from .serializers import (
     RegisterSerializer, LoginSerializer, EmailOTPSendSerializer,
@@ -23,7 +24,10 @@ from .serializers import (
 from .otp_logic.utils import  get_tokens_for_user
 
 from .models import UserSession, AuditLog
+from .exceptions import ServiceLayerError
+
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
 
 
 logger = logging.getLogger(__name__)
@@ -36,6 +40,18 @@ class OTPRateThrottle(AnonRateThrottle):
 
 class LoginRateThrottle(AnonRateThrottle):
     scope = 'login_requests'
+
+class RegisterRateThrottle(AnonRateThrottle):
+    # FIX: RegisterView previously reused LoginRateThrottle's scope
+    # ('login_requests'). That conflates two very different abuse patterns
+    # (credential-stuffing vs. mass fake-account creation) under one budget,
+    # and a burst of registrations would eat into legitimate users' login
+    # attempts (they share the same throttle cache key namespace... actually
+    # DRF scopes them by (scope, ident), so it's not a shared *bucket*, but
+    # it's still the wrong semantic scope and rate). Registration gets its
+    # own scope so its rate can be tuned independently. Add
+    # 'register_requests' to DEFAULT_THROTTLE_RATES in settings.py.
+    scope = 'register_requests'
 
 def _extract_request_data(request: Request) -> dict:
     """Extract IP, user-agent, and other metadata from request."""
@@ -50,9 +66,10 @@ def _extract_request_data(request: Request) -> dict:
     }
 
 
+
 class RegisterView(APIView):
     permission_classes = [AllowAny]
-    throttle_classes = [LoginRateThrottle]
+    throttle_classes = [RegisterRateThrottle]
 
     def post(self, request: Request) -> Response:
 
@@ -68,7 +85,7 @@ class RegisterView(APIView):
                     password=serializer.validated_data['password'],
                     request_data=request_data,
                     **{k: v for k, v in serializer.validated_data.items()
-                       if k not in ('confirm_password', 'terms_accepted')}
+                       if k not in ('confirm_password', 'terms_accepted', 'email', 'password')}
                 )
         
         return Response(
@@ -96,12 +113,29 @@ class LoginView(APIView):
         request_data = _extract_request_data(request)
 
         # Authenticate with brute‑force protection
+        # FIX (bug): this used to call authenticate_user() a SECOND time after
+        # LoginSerializer.validate() already ran Django's authenticate()
+        # internally — i.e. two full password-hash comparisons per login, and
+        # two divergent code paths for "is this login allowed" (the serializer
+        # version didn't touch LoginAttempt at all). All auth + brute-force
+        # logic now lives in this one service call.
         user = authenticate_user(email, password, request_data)
-        
+    
+        # FIX (missing feature): TwoFactorLoginView existed in
+        # sub_views/two_factor.py but nothing ever routed a normal login
+        # through it — a user with 2FA enabled would get a full access/refresh
+        # token pair from a bare email+password POST, i.e. 2FA was decorative.
+        # Now: if 2FA is enabled, we do NOT issue tokens here. The client must
+        # call /2fa/login/ with the TOTP/backup code to get tokens.
+        tfa = getattr(user, 'two_factor_auth', None)
+        if tfa is not None and tfa.enabled:
+            return Response({"success": True,"message": "Password verified. Two-factor authentication code required.",
+                    "requires_2fa": True,"email": user.email},
+                status=status.HTTP_200_OK)
+
         tokens = get_tokens_for_user(user) # Generate JWT Tokens and log success
         refresh_jti = tokens['jti']
 
-        
         handle_successful_login(user, request_data, refresh_jti) # Create session, update device, log login
         update_last_login(None, user) # Update last login time
 
@@ -112,10 +146,10 @@ class LoginView(APIView):
                 "id": user.id,
                 "email": user.email,
                 "name": user.get_full_name() or user.email,
-                "is_verified": user.is_verified,
+                "is_verified": user.is_verified
             }
-        }, status=status.HTTP_200_OK)
-        
+        }, status=status.HTTP_200_OK)       
+
 
 
 class EmailOTPSendView(APIView):
@@ -254,10 +288,10 @@ class BaseOAuthLoginView(APIView):
                 "id": user.id,
                 "email": user.email,
                 "name": user.get_full_name() or user.email,
-                "is_verified": user.is_verified,
-            },
+                "is_verified": user.is_verified
+            }
         }, status=status.HTTP_200_OK)
-    
+   
 
 
 class GoogleLoginView(BaseOAuthLoginView):
@@ -274,6 +308,7 @@ class FacebookLoginView(BaseOAuthLoginView):
 
 class LinkedInLoginView(BaseOAuthLoginView):
     serializer_class = LinkedInLoginSerializer
+
 
 
 
@@ -301,9 +336,16 @@ class LogoutView(APIView):
                 session = UserSession.objects.filter(refresh_token_jti=jti, user=request.user, is_active=True).first()
                 if session:
                     session.logout()
-            except Exception:
-                pass
-
+            except TokenError:
+                # FIX (bug): the original `except Exception: pass` silently
+                # swallowed EVERYTHING, including programming errors (e.g. a
+                # typo'd attribute access) — you'd never see it in logs. We
+                # now only swallow the specific, expected failure (a malformed
+                # / already-invalid token, which just means we can't look up
+                # the session — logout still proceeds) and log it, and let any
+                # other exception type propagate to the global exception
+                # handler so it's actually visible.
+                logger.warning("Could not resolve session for refresh token during logout.", exc_info=True)
         # Log logout
         AuditLog.objects.create(
             user=request.user,
