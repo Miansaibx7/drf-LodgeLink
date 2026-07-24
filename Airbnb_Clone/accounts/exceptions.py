@@ -7,60 +7,57 @@ from rest_framework import status
 logger = logging.getLogger(__name__)
 
 
-    
 class ServiceLayerError(APIException):
     """Custom exception for business logic failures in services.py.
-    Use this instead of DRF's ValidationError in your service layer to prevent leaky abstractions."""
+    Use this instead of DRF's ValidationError in the service layer so the
+    service layer has zero dependency on DRF request/response internals."""
     status_code = status.HTTP_400_BAD_REQUEST
     default_detail = 'Service layer encountered an error.'
     default_code = 'service_error'
 
 
-
+# FIX (bug): the original file defined `custom_global_exception_handler`
+# TWICE. In Python, the second `def` silently overwrites the first — the
+# first implementation (which special-cased ServiceLayerError with a 400 and
+# a bare {"success": False, "message": ...} body, and logged unhandled
+# exceptions with the view name) was completely dead code. Only the second
+# definition below was ever actually wired up via
+# REST_FRAMEWORK['EXCEPTION_HANDLER']. This merges the useful behavior of
+# both into a single implementation and removes the shadowed duplicate.
 def custom_global_exception_handler(exc, context):
-    """Custom exception handler that intercepts unhandled exceptions,
-    logs them safely, and returns a standardized JSON format."""
-
-    # Call REST framework's default exception handler first
+    """
+    Custom exception handler that intercepts unhandled exceptions, logs them
+    safely, and returns a standardized JSON envelope:
+        {"success": False, "message": "...", "errors": {...} | None}
+    """
     response = exception_handler(exc, context)
 
-    # Handle our custom ServiceLayerError gracefully as a 400 Bad Request
-    if isinstance(exc, ServiceLayerError):
-        return Response({"success": False, "message": str(exc)},status=status.HTTP_400_BAD_REQUEST)
-
-    # If response is None, DRF didn't handle it. This is a 500 Internal Server Error.
+    # DRF didn't recognize this exception at all -> unhandled 500.
     if response is None:
-        view_name = context['view'].__class__.__name__
-        logger.exception("Unexpected error in %s", view_name)
-        
-        return Response({"success": False,"message": "An unexpected error occurred. Please try again later."}, 
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        view = context.get('view')
+        view_name = view.__class__.__name__ if view else "UnknownView"
+        logger.exception("Unhandled exception in %s", view_name)
+        return Response(
+            {"success": False, "message": "An unexpected error occurred. Please try again later.", "errors": None},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
-    return response
+    custom_data = {"success": False, "message": "An error occurred.", "errors": None}
 
-
-def custom_global_exception_handler(exc, context):
-    response = exception_handler(exc, context)
-
-    if response is not None:
-        custom_data = {
-            'success': False,
-            'message': 'An error occurred.',
-            'errors': None
-        }
-
-        if isinstance(exc, ServiceLayerError):
-            custom_data['message'] = str(exc.detail)
-        elif hasattr(response, 'data') and isinstance(response.data, dict):
-            if 'detail' in response.data:
-                custom_data['message'] = response.data['detail']
-            else:
-                custom_data['message'] = 'Validation Error'
-                custom_data['errors'] = response.data
-        elif hasattr(response, 'data') and isinstance(response.data, list):
-            custom_data['message'] = response.data[0]
+    if isinstance(exc, ServiceLayerError):
+        custom_data['message'] = str(exc.detail)
+    elif isinstance(response.data, dict):
+        if 'detail' in response.data:
+            custom_data['message'] = str(response.data['detail'])
+        else:
+            custom_data['message'] = 'Validation Error'
             custom_data['errors'] = response.data
+    elif isinstance(response.data, list):
+        # FIX: response.data[0] can itself be a dict/ErrorDetail, not
+        # guaranteed to be directly str()-able the way the caller expects;
+        # coerce explicitly so the "message" field is always a plain string.
+        custom_data['message'] = str(response.data[0]) if response.data else 'Validation Error'
+        custom_data['errors'] = response.data
 
-        response.data = custom_data
-
+    response.data = custom_data
     return response
