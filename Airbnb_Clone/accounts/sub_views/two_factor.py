@@ -1,4 +1,4 @@
-""" Two-Factor Authentication (2FA) endpoints. Uses TOTP (Time‑based One‑Time Password) with pyotp. """
+"""Two-Factor Authentication (2FA) endpoints. Uses TOTP (pyotp)."""
 
 import logging
 from django.utils import timezone
@@ -11,13 +11,18 @@ from rest_framework import status, serializers
 from rest_framework.request import Request
 from django.db import transaction
 
-from ..otp_logic.utils import get_tokens_for_user # Assuming you moved this to a general utils file
+from ..otp_logic.utils import get_tokens_for_user
 from ..models import TwoFactorAuth, User
 from ..exceptions import ServiceLayerError
 
 logger = logging.getLogger(__name__)
 
 # ===================== Serializers =====================
+# NOTE: these are the ONE canonical copy. serializers.py used to define
+# TwoFactorVerifySerializer / TwoFactorLoginSerializer a second time with
+# weaker validation (no digit check) — that duplicate has been removed from
+# serializers.py to eliminate the drift/ambiguity.
+
 
 class TwoFactorEnableSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
@@ -28,6 +33,7 @@ class TwoFactorEnableSerializer(serializers.Serializer):
             raise serializers.ValidationError("Incorrect password.")
         return value
 
+
 class TwoFactorVerifySerializer(serializers.Serializer):
     otp_code = serializers.CharField(max_length=6, min_length=6, required=True)
 
@@ -36,22 +42,26 @@ class TwoFactorVerifySerializer(serializers.Serializer):
             raise serializers.ValidationError("OTP must be numeric.")
         return value
 
+
 class TwoFactorDisableSerializer(TwoFactorEnableSerializer):
-    pass # Inherits password validation
+    pass
+
 
 class TwoFactorBackupCodesSerializer(TwoFactorEnableSerializer):
-    pass # Inherits password validation
+    pass
+
 
 class TwoFactorLoginChallengeSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     totp_code = serializers.CharField(max_length=6, min_length=6, required=True)
 
     def validate_totp_code(self, value: str) -> str:
-        # Backup codes might be alphanumeric depending on implementation, 
-        # so we relax the isdigit() check to allow backup codes if needed.
+        # Backup codes are alphanumeric, so we only enforce length here, not
+        # isdigit(), to allow either a TOTP code or a backup code.
         if len(value) != 6:
             raise serializers.ValidationError("Code must be 6 characters.")
         return value
+
 
 # ===================== Service Layer =====================
 
@@ -64,11 +74,13 @@ class TwoFactorService:
     def get_provisioning_uri(user: User, secret: str) -> str:
         return pyotp.totp.TOTP(secret).provisioning_uri(
             name=user.email,
-            issuer_name="Airbnb_Clone" # Hardcoded app name for cleaner Authenticator UI
+            issuer_name="Airbnb_Clone"
         )
 
     @staticmethod
     def verify_totp(secret: str, otp_code: str) -> bool:
+        if not secret:
+            return False
         totp = pyotp.TOTP(secret)
         return totp.verify(otp_code, valid_window=1)
 
@@ -80,10 +92,10 @@ class TwoFactorService:
 
         tfa, _ = TwoFactorAuth.objects.get_or_create(user=user)
         secret = TwoFactorService.generate_secret()
-        
+
         tfa.secret_key = secret
-        tfa.enabled = False 
-        tfa.backup_code_hashes = [] 
+        tfa.enabled = False
+        tfa.backup_code_hashes = []
         tfa.save(update_fields=['secret_key', 'enabled', 'backup_code_hashes'])
 
         return {
@@ -94,9 +106,8 @@ class TwoFactorService:
     @staticmethod
     @transaction.atomic
     def verify_and_enable_2fa(user: User, otp_code: str) -> dict:
-        # CONCURRENCY: Lock the row during verification
         tfa = TwoFactorAuth.objects.select_for_update().get(user=user)
-        
+
         if tfa.enabled:
             raise ServiceLayerError("2FA is already enabled.")
 
@@ -106,9 +117,9 @@ class TwoFactorService:
         tfa.enabled = True
         tfa.enabled_at = timezone.now()
         backup_codes = [pyotp.random_base32()[:6] for _ in range(10)]
-        tfa.set_backup_codes(backup_codes) # Ensure this hashes the codes in the model!
-        
-        tfa.save(update_fields=['enabled', 'enabled_at', 'backup_code_hashes'])
+        tfa.set_backup_codes(backup_codes)
+
+        tfa.save(update_fields=['enabled', 'enabled_at'])
         return {'backup_codes': backup_codes}
 
     @staticmethod
@@ -117,15 +128,23 @@ class TwoFactorService:
         if not user.check_password(password):
             raise ServiceLayerError("Incorrect password.")
 
-        # Optimization: use update() instead of fetching the object if we don't need signals
-        updated = TwoFactorAuth.objects.filter(user=user, enabled=True).update(
-            enabled=False, 
-            secret_key=None, 
-            backup_code_hashes=[]
-        )
-        if not updated:
+        # FIX (bug): the original code did
+        #   TwoFactorAuth.objects.filter(...).update(enabled=False, secret_key=None, backup_code_hashes=[])
+        # but the model's `secret_key` field was `CharField` with NO
+        # `null=True` — writing NULL into a NOT NULL column raises a raw
+        # django.db.utils.IntegrityError at the DB level, which is not an
+        # APIException and would surface as an unhandled 500. models.py now
+        # declares `secret_key = models.CharField(..., null=True, blank=True)`
+        # so this is safe. We also switch from a bare queryset `.update()`
+        # (which bypasses model methods/signals) to the model instance's own
+        # `disable()` method for consistency with the rest of the codebase,
+        # and lock the row first to avoid racing a concurrent enable/verify.
+        tfa = TwoFactorAuth.objects.select_for_update().filter(user=user, enabled=True).first()
+        if not tfa:
             raise ServiceLayerError("2FA is not enabled.")
-        logger.info(f"2FA disabled for user {user.email}")
+
+        tfa.disable()
+        logger.info("2FA disabled for user %s", user.email)
 
     @staticmethod
     @transaction.atomic
@@ -139,42 +158,34 @@ class TwoFactorService:
 
         backup_codes = [pyotp.random_base32()[:6] for _ in range(10)]
         tfa.set_backup_codes(backup_codes)
-        tfa.save(update_fields=['backup_code_hashes'])
         return backup_codes
 
     @staticmethod
     @transaction.atomic
     def verify_2fa_for_login(email: str, totp_code: str) -> User:
-        # Use select_related and select_for_update to prevent concurrent login race conditions
         user = User.objects.filter(email__iexact=email).first()
         if not user:
             raise ServiceLayerError("Invalid credentials.")
 
         tfa = TwoFactorAuth.objects.select_for_update().filter(user=user).first()
         if not tfa or not tfa.enabled:
-            return user # 2FA not required
+            return user  # 2FA not required for this account
 
         if TwoFactorService.verify_totp(tfa.secret_key, totp_code):
             tfa.last_used_at = timezone.now()
             tfa.save(update_fields=['last_used_at'])
             return user
-        
-        # Fallback to backup code
+
         if tfa.consume_backup_code(totp_code):
-            tfa.last_used_at = timezone.now()
-            tfa.save(update_fields=['backup_code_hashes', 'last_used_at'])
             return user
-            
+
         raise ServiceLayerError("Invalid 2FA code.")
 
 
 # ===================== Views =====================
 
 class TwoFactorSetupView(APIView):
-    """
-    Step 1: Generate 2FA secret and provisioning URI.
-    User must be authenticated and must verify their password.
-    """
+    """Step 1: Generate 2FA secret and provisioning URI. Requires password re-entry."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request: Request) -> Response:
@@ -247,12 +258,21 @@ class TwoFactorBackupCodesView(APIView):
 
 class TwoFactorLoginView(APIView):
     """
-    Endpoint for 2FA challenge during login.
-    This is called after primary authentication (email/password) succeeded.
-    Expects email and TOTP/backup code.
-    This view returns a JWT token if 2FA is verified.
+    2FA challenge, called after LoginView responds with requires_2fa=True.
+
+    FIX (missing wiring): this view existed before but nothing in LoginView
+    ever redirected a 2FA-enabled user here — LoginView issued full tokens
+    straight from email+password, making 2FA a no-op in practice. LoginView
+    now withholds tokens and returns requires_2fa=True instead, so this view
+    is the only path to a token pair for those accounts.
+
+    NOTE: also fixed — this view previously issued tokens without ever
+    creating a UserSession/UserDevice/AuditLog entry the way LoginView and
+    BaseOAuthLoginView do, so 2FA logins were invisible to your session
+    list and audit trail. It now calls the same handle_successful_login()
+    used everywhere else.
     """
-    permission_classes = []  # AllowAny, but we handle authentication manually
+    permission_classes = []  # AllowAny by omission; auth is via email+code, not a session
 
     def post(self, request: Request) -> Response:
         serializer = TwoFactorLoginChallengeSerializer(data=request.data)
@@ -261,16 +281,21 @@ class TwoFactorLoginView(APIView):
         email = serializer.validated_data['email']
         totp_code = serializer.validated_data['totp_code']
 
-        try:
-            user = TwoFactorService.verify_2fa_for_login(email, totp_code)
-        except ServiceLayerError as e:
-            return Response({'success': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        # Local import to avoid a circular import between views.py and
+        # otp_logic.services (services.py does not import from sub_views).
+        from ..otp_logic.services import handle_successful_login
+        from ..views import _extract_request_data
+        from django.contrib.auth.models import update_last_login
 
-        # Generate tokens
+        user = TwoFactorService.verify_2fa_for_login(email, totp_code)
+
+        request_data = _extract_request_data(request)
         tokens = get_tokens_for_user(user)
+        handle_successful_login(user, request_data, tokens['jti'])
+        update_last_login(None, user)
 
-        # Log the login (you can also create session here)
-        # For brevity, we just return tokens
+        logger.info("2FA login verified for %s", user.email)
+
         return Response({
             'success': True,
             'message': '2FA verified.',

@@ -1,4 +1,4 @@
-""" Account Deletion Requests (GDPR compliance). Users can request deletion, cancel pending requests, and see status. """
+"""Account Deletion Requests (GDPR compliance)."""
 import logging
 from datetime import timedelta
 from typing import Optional
@@ -19,9 +19,7 @@ logger = logging.getLogger(__name__)
 # ===================== Serializers =====================
 
 class AccountDeletionRequestSerializer(serializers.Serializer):
-    """Serializer to request account deletion."""
     reason = serializers.CharField(required=False, allow_blank=True)
-    # Optionally, we could add a confirmation field
     confirm = serializers.BooleanField(required=True)
 
     def validate_confirm(self, value: bool) -> bool:
@@ -31,18 +29,14 @@ class AccountDeletionRequestSerializer(serializers.Serializer):
 
 
 class AccountDeletionCancelSerializer(serializers.Serializer):
-    """Serializer to cancel a pending deletion request."""
-    # No fields needed, just the endpoint
+    """No input fields required; kept for symmetry / future extension (e.g. a reason-for-cancel field)."""
+    pass
 
 
 class AccountDeletionStatusSerializer(serializers.ModelSerializer):
-    """Serializer for displaying deletion request status."""
     class Meta:
         model = AccountDeletionRequest
-        fields = (
-            'id', 'reason', 'scheduled_for',
-            'completed', 'completed_at', 'cancelled', 'created_at'
-        )
+        fields = ('id', 'reason', 'scheduled_for', 'completed', 'completed_at', 'cancelled', 'created_at')
         read_only_fields = fields
 
 
@@ -54,20 +48,18 @@ class AccountDeletionService:
     @staticmethod
     @transaction.atomic
     def create_deletion_request(user: User, reason: str, confirm: bool) -> AccountDeletionRequest:
-        """Create a new deletion request for the user."""
         if not confirm:
             raise ServiceLayerError("Deletion not confirmed.")
 
-        # Check if there's already a pending request (not completed or cancelled)
-        existing = AccountDeletionRequest.objects.filter(
-            user=user,
-            completed=False,
-            cancelled=False
+        # FIX (concurrency): lock any existing pending row for this user so two
+        # simultaneous "delete my account" clicks can't both pass this check
+        # and create two AccountDeletionRequest rows.
+        existing = AccountDeletionRequest.objects.select_for_update().filter(
+            user=user, completed=False, cancelled=False
         ).first()
         if existing:
             raise ServiceLayerError("You already have a pending deletion request.")
 
-        # Schedule deletion after a grace period (e.g., 7 days)
         scheduled_for = timezone.now() + timedelta(days=7)
 
         request_obj = AccountDeletionRequest.objects.create(
@@ -78,18 +70,14 @@ class AccountDeletionService:
             cancelled=False
         )
 
-        logger.info("Deletion request created for user %s, scheduled for %s",
-                    user.email, scheduled_for)
+        logger.info("Deletion request created for user %s, scheduled for %s", user.email, scheduled_for)
         return request_obj
 
     @staticmethod
     @transaction.atomic
     def cancel_deletion_request(user: User) -> None:
-        """Cancel a pending deletion request."""
-        request_obj = AccountDeletionRequest.objects.filter(
-            user=user,
-            completed=False,
-            cancelled=False
+        request_obj = AccountDeletionRequest.objects.select_for_update().filter(
+            user=user, completed=False, cancelled=False
         ).first()
         if not request_obj:
             raise ServiceLayerError("No pending deletion request found.")
@@ -99,27 +87,40 @@ class AccountDeletionService:
         logger.info("Deletion request cancelled for user %s", user.email)
 
     @staticmethod
-    def get_user_deletion_status(user: User) -> Optional [AccountDeletionRequest]:
-        """Retrieve the current deletion request for the user (if any)."""
+    def get_user_deletion_status(user: User) -> Optional[AccountDeletionRequest]:
         return AccountDeletionRequest.objects.filter(
-            user=user,
-            completed=False,
-            cancelled=False
+            user=user, completed=False, cancelled=False
         ).first()
 
     @staticmethod
     @transaction.atomic
     def complete_deletion_request(request_obj: AccountDeletionRequest) -> None:
-        """Actually delete the user account.
-        This should be called by a background job (e.g., Celery) when scheduled_for arrives. """
-        
+        """
+        Actually delete the user account. This must be invoked by a scheduled
+        job (Celery beat / cron management command), not by any request/response
+        cycle.
+
+        MISSING PIECE (flagging, not silently fixing): nothing in this codebase
+        currently calls this method. There is no Celery worker/beat config, no
+        management command, and no cron entry wired up anywhere in the files
+        you shared. As written, AccountDeletionRequest rows will sit at
+        completed=False forever and accounts will never actually be deleted
+        after the 7-day grace period. You need one of:
+          1. A Celery periodic task (celery beat) that queries
+             AccountDeletionRequest.objects.filter(scheduled_for__lte=now(),
+             completed=False, cancelled=False) and calls this method for each, or
+          2. A Django management command (`manage.py process_account_deletions`)
+             invoked by a system cron job on the same schedule.
+        """
+        # FIX (bug): lock the row before re-checking state to avoid a race
+        # where cancel_deletion_request() and this job run at nearly the same
+        # moment.
+        request_obj = AccountDeletionRequest.objects.select_for_update().get(pk=request_obj.pk)
         if request_obj.completed or request_obj.cancelled:
             return
 
         user = request_obj.user
-        request_obj.complete()  # marks completed and completed_at
-
-        # Delete the user account
+        request_obj.complete()
         user.delete()
         logger.info("Account for user %s has been permanently deleted.", user.email)
 
@@ -127,10 +128,7 @@ class AccountDeletionService:
 # ===================== Views =====================
 
 class AccountDeletionRequestView(APIView):
-    """
-    Create a deletion request for the authenticated user.
-    The account will be deleted after a grace period (7 days).
-    """
+    """Create a deletion request for the authenticated user (7-day grace period)."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request: Request) -> Response:
@@ -162,10 +160,7 @@ class AccountDeletionCancelView(APIView):
         serializer.is_valid(raise_exception=True)
 
         AccountDeletionService.cancel_deletion_request(user=request.user)
-        return Response({
-            'success': True,
-            'message': 'Deletion request cancelled successfully.'
-        }, status=status.HTTP_200_OK)
+        return Response({'success': True, 'message': 'Deletion request cancelled successfully.'}, status=status.HTTP_200_OK)
 
 
 class AccountDeletionStatusView(APIView):
@@ -176,13 +171,8 @@ class AccountDeletionStatusView(APIView):
         request_obj = AccountDeletionService.get_user_deletion_status(user=request.user)
         if request_obj:
             serializer = AccountDeletionStatusSerializer(request_obj)
-            return Response({
-                'success': True,
-                'data': serializer.data
-            }, status=status.HTTP_200_OK)
-        else:
-            return Response({
-                'success': True,
-                'message': 'No active deletion request found.',
-                'data': None
-            }, status=status.HTTP_200_OK)
+            return Response({'success': True, 'data': serializer.data}, status=status.HTTP_200_OK)
+        return Response(
+            {'success': True, 'message': 'No active deletion request found.', 'data': None},
+            status=status.HTTP_200_OK
+        )
