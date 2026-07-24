@@ -24,7 +24,6 @@ from .serializers import (
 from .otp_logic.utils import  get_tokens_for_user
 
 from .models import UserSession, AuditLog
-from .exceptions import ServiceLayerError
 
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
