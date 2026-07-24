@@ -189,26 +189,54 @@ def authenticate_user(email: str, password: str, request_data: dict) -> User: # 
     """ Authenticate a user, check LoginAttempt blocking, increment on failure,
     and on success create UserSession and UserDevice, and log login. """
 
+    """ Single source of truth for the login flow: brute-force blocking, account
+        lookup, active/verified checks, and password verification.
+    
+        FIX (architecture bug): previously LoginSerializer.validate() ran its own
+        account-status checks and its own call to Django's authenticate(), and
+        THEN LoginView called this function again, which ran a second,
+        independent authentication (via authenticate()) and its own
+        LoginAttempt bookkeeping. Net effect: two bcrypt/argon2 hash comparisons
+        per login request (real CPU cost under load), and the LoginAttempt
+        brute-force counter was only ever incremented by this function — the
+        serializer's authenticate() call did nothing for brute-force protection,
+        so an attacker whose requests happened to fail validation in the
+        serializer's authenticate() call wouldn't get counted consistently.
+        Now this is the only place authentication happens. """
+
     email = _normalize_email(email)
     ip = request_data.get('ip_address')
 
     attempt = LoginAttempt.objects.filter(email=email, ip_address=ip).first() # Check if this email+IP is currently blocked
     if attempt and attempt.is_blocked():
         raise ServiceLayerError(f"Too many failed attempts. Try again after {attempt.blocked_until.strftime('%H:%M:%S')}.")
-
-    # Attempt authentication
-    user = authenticate(request=None, email=email, password=password)
-
-    if user is None:
-        # Failed attempt – increment or create LoginAttempt
+    
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        # Do the same amount of "work" whether or not the account exists so
+        # response timing doesn't leak account existence, then record the
+        # attempt against this email+IP pair and give a generic error.
+        User().set_password(password)  # constant-time-ish dummy hash comparison cost
         with transaction.atomic():
-            attempt, created = LoginAttempt.objects.get_or_create(
-                email=email,
-                ip_address=ip,
-                defaults={'attempts': 0}
-            )
-            attempt.increment()  # atomic increment with blocking
+            attempt, _ = LoginAttempt.objects.get_or_create(email=email, ip_address=ip, defaults={'attempts': 0})
+            attempt.increment()
         raise ServiceLayerError("Invalid email or password.")
+
+    if not user.check_password(password):
+        with transaction.atomic():
+            attempt, _ = LoginAttempt.objects.get_or_create(email=email, ip_address=ip, defaults={'attempts': 0})
+            attempt.increment()
+        raise ServiceLayerError("Invalid email or password.")
+
+    # Password is correct — now surface account-status errors specifically.
+    # These reveal account existence to someone who already knows the correct
+    # password for that email, which is an acceptable/expected trade-off
+    # (they could just try to log in and see the same message anyway).
+    if not user.is_active:
+        raise ServiceLayerError("Account is inactive. Please verify your email.")
+    if not user.is_verified:
+        raise ServiceLayerError("Email not verified. Please check your inbox for the OTP.")
 
     # Success – reset attempts (delete) and create session/device
     LoginAttempt.objects.filter(email=email, ip_address=ip).delete()
@@ -217,7 +245,7 @@ def authenticate_user(email: str, password: str, request_data: dict) -> User: # 
     # We'll create session after token generation, but we need refresh token.
     # For now, we'll store session creation outside this function.
     # So we'll return the user and let the view handle session creation with tokens.
-
+    
     # Log login (will be done after token generation)
     return user
 
@@ -431,81 +459,7 @@ class OTPService:
 
 # ==================== Login & Session ====================
 
-def authenticate_user(email: str, password: str, request_data: dict) -> User:  # type: ignore
-    """
-    Single source of truth for the login flow: brute-force blocking, account
-    lookup, active/verified checks, and password verification.
 
-    FIX (architecture bug): previously LoginSerializer.validate() ran its own
-    account-status checks and its own call to Django's authenticate(), and
-    THEN LoginView called this function again, which ran a second,
-    independent authentication (via authenticate()) and its own
-    LoginAttempt bookkeeping. Net effect: two bcrypt/argon2 hash comparisons
-    per login request (real CPU cost under load), and the LoginAttempt
-    brute-force counter was only ever incremented by this function — the
-    serializer's authenticate() call did nothing for brute-force protection,
-    so an attacker whose requests happened to fail validation in the
-    serializer's authenticate() call wouldn't get counted consistently.
-    Now this is the only place authentication happens.
-    """
-    email = _normalize_email(email)
-    ip = request_data.get('ip_address')
-
-    attempt = LoginAttempt.objects.filter(email=email, ip_address=ip).first()
-    if attempt and attempt.is_blocked():
-        raise ServiceLayerError(
-            f"Too many failed attempts. Try again after {attempt.blocked_until.strftime('%H:%M:%S')}."
-        )
-
-    try:
-        user = User.objects.get(email=email)
-    except User.DoesNotExist:
-        # Do the same amount of "work" whether or not the account exists so
-        # response timing doesn't leak account existence, then record the
-        # attempt against this email+IP pair and give a generic error.
-        User().set_password(password)  # constant-time-ish dummy hash comparison cost
-        with transaction.atomic():
-            attempt, _ = LoginAttempt.objects.get_or_create(email=email, ip_address=ip, defaults={'attempts': 0})
-            attempt.increment()
-        raise ServiceLayerError("Invalid email or password.")
-
-    if not user.check_password(password):
-        with transaction.atomic():
-            attempt, _ = LoginAttempt.objects.get_or_create(email=email, ip_address=ip, defaults={'attempts': 0})
-            attempt.increment()
-        raise ServiceLayerError("Invalid email or password.")
-
-    # Password is correct — now surface account-status errors specifically.
-    # These reveal account existence to someone who already knows the correct
-    # password for that email, which is an acceptable/expected trade-off
-    # (they could just try to log in and see the same message anyway).
-    if not user.is_active:
-        raise ServiceLayerError("Account is inactive. Please verify your email.")
-    if not user.is_verified:
-        raise ServiceLayerError("Email not verified. Please check your inbox for the OTP.")
-
-    # Success – reset attempts.
-    LoginAttempt.objects.filter(email=email, ip_address=ip).delete()
-
-    return user
-
-
-@transaction.atomic
-def handle_successful_login(user: User, request_data: dict, refresh_token_jti: str) -> dict:  # type: ignore
-    """After successful authentication (and, if applicable, 2FA), create
-    UserSession, update UserDevice, and log the login."""
-    session = _create_user_session(user, refresh_token_jti, request_data)
-    device = _update_user_device(user, request_data)
-
-    _log_audit(
-        user=user,
-        action="LOGIN",
-        ip_address=request_data.get('ip_address'),
-        user_agent=request_data.get('user_agent', ''),
-        metadata={'session_id': session.id}
-    )
-
-    return {'session': session, 'device': device}
 
 
 # ===================================== OTP Service ====================================================================
