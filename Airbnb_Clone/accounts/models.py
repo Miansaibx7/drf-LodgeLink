@@ -178,7 +178,7 @@ class BaseOTP(models.Model):
         self.otp_hash = make_password(raw_otp)
         self.attempts = 0
         self.blocked_until = None
-        self.created_at = timezone.now()          # 🔁 restart expiry window
+        self.created_at = timezone.now() # 🔁 restart expiry window
         self.save(update_fields=["otp_hash", "attempts", "blocked_until", "created_at"])
 
     def verify_otp(self, raw_otp: str) -> bool:
