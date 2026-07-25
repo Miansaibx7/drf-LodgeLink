@@ -62,7 +62,7 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
-    """Custom user model using email authentication."""
+    """ Custom user model using email authentication."""
 
     username = None
     # UUIDs prevent attackers from knowing how many users you have.
