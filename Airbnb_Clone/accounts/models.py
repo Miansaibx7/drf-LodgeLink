@@ -451,11 +451,11 @@ class TwoFactorAuth(models.Model):
         self.save(update_fields=["secret_key", "enabled", "enabled_at", "disabled_at"])
 
     def disable(self) -> None:
-            self.enabled = False
-            self.secret_key = None
-            self.backup_code_hashes = []
-            self.disabled_at = timezone.now()
-            self.save(update_fields=["enabled", "secret_key", "backup_code_hashes", "disabled_at"])
+        self.enabled = False
+        self.secret_key = None
+        self.backup_code_hashes = []
+        self.disabled_at = timezone.now()
+        self.save(update_fields=["enabled", "secret_key", "backup_code_hashes", "disabled_at"])
 
     def set_backup_codes(self, raw_codes: list) -> None:
         """Hash and store a new set of one‑time backup codes."""
@@ -463,21 +463,18 @@ class TwoFactorAuth(models.Model):
         self.save(update_fields=["backup_code_hashes"])
 
     def consume_backup_code(self, raw_code: str) -> bool:
-            """Verify and consume a backup code atomically.Returns True if the code was valid and used, False otherwise."""
-            with transaction.atomic():
-                # Lock the row to prevent concurrent consumption of the same code
-                obj = TwoFactorAuth.objects.select_for_update().get(pk=self.pk)
-                for i, hash_val in enumerate(obj.backup_code_hashes):
-                    if check_password(raw_code, hash_val):
-                        obj.backup_code_hashes.pop(i) # Code valid – remove it and update
-                        obj.last_used_at = timezone.now()
-                        obj.save(update_fields=["backup_code_hashes", "last_used_at"])
-                        # FIX (bug): the original code returned True from *inside*
-                        # the `with` block without ever updating `self` (the caller's
-                        # in-memory instance stayed stale). Refresh before returning.
-                        self.refresh_from_db()
-                        return True
-            return False
+        """Verify and consume a backup code atomically.Returns True if the code was valid and used, False otherwise."""
+        with transaction.atomic():
+            # Lock the row to prevent concurrent consumption of the same code
+            obj = TwoFactorAuth.objects.select_for_update().get(pk=self.pk)
+            for i, hash_val in enumerate(obj.backup_code_hashes):
+                if check_password(raw_code, hash_val):
+                    obj.backup_code_hashes.pop(i) # Code valid – remove it and update
+                    obj.last_used_at = timezone.now()
+                    obj.save(update_fields=["backup_code_hashes", "last_used_at"])
+                    self.refresh_from_db()
+                    return True
+        return False
 
 
     
