@@ -484,7 +484,7 @@ class AccountDeletionRequest(models.Model):
     user = models.ForeignKey(User,on_delete=models.CASCADE,related_name='deletion_requests')
 
     reason = models.TextField(blank=True)
-    scheduled_for = models.DateTimeField(db_index=True)
+    scheduled_for = models.DateTimeField()
     completed = models.BooleanField(default=False)
     completed_at = models.DateTimeField(null=True, blank=True)
     cancelled = models.BooleanField(default=False)
