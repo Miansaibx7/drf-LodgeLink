@@ -166,7 +166,7 @@ class BaseOTP(models.Model):
 
 # ────────────────────────────────── Helper methods ────────────────────────────────────────────────────────────────────
     def reset_block_if_expired(self) -> None:
-        """Clear block and reset attempts if the block time has passed."""
+        """ Clear block and reset attempts if the block time has passed."""
         if self.blocked_until and timezone.now() >= self.blocked_until:
             self.blocked_until = None
             self.attempts = 0
@@ -174,7 +174,7 @@ class BaseOTP(models.Model):
 
 # ────────────────────────────────── Core OTP operations ────────────────────────────────────────────────────────────────────
     def set_otp(self, raw_otp: str) -> None:
-        """Hash and store a new OTP.Resets attempts, block, and expiry timer."""
+        """ Hash and store a new OTP.Resets attempts, block, and expiry timer."""
         self.otp_hash = make_password(raw_otp)
         self.attempts = 0
         self.blocked_until = None
