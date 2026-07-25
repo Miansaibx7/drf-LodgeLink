@@ -195,42 +195,40 @@ class BaseOTP(models.Model):
         self.save(update_fields=["otp_hash", "attempts", "blocked_until", "created_at"])
 
     def verify_otp(self, raw_otp: str) -> bool:
-        """ Verifies the OTP atomically to prevent race condition brute-forcing."""
-        with transaction.atomic():
-            try:
-                # Lock the DB row to block concurrent HTTP validation requests
-                obj = self.__class__.all_objects.select_for_update().get(pk=self.pk)
-            except self.__class__.DoesNotExist:
+            """ Verifies the OTP atomically to prevent race condition brute-forcing."""
+            with transaction.atomic():
+                try:
+                    # Lock the DB row to block concurrent HTTP validation requests
+                    obj = self.__class__.all_objects.select_for_update().get(pk=self.pk)
+                except self.__class__.DoesNotExist:
+                    return False
+    
+                # First, clear any expired block on the locked instance
+                if obj.blocked_until and timezone.now() >= obj.blocked_until:
+                    obj.blocked_until = None
+                    obj.attempts = 0
+                    obj.save(update_fields=["blocked_until", "attempts"])
+    
+                if obj.is_expired or obj.is_blocked:
+                    return False
+    
+                if check_password(raw_otp, obj.otp_hash):
+                    obj.delete() # one‑time use
+
+                    # Standard Django method for marking an instance as deleted in memory.
+                    self.pk = None 
+                    return True
+                
+                # Handle failed attempt safely within the lock
+                obj.attempts += 1
+                if obj.attempts >= self.MAX_ATTEMPTS and not obj.blocked_until:
+                    obj.blocked_until = timezone.now() + timedelta(minutes=self.BLOCK_MINUTES)
+                    obj.save(update_fields=["attempts", "blocked_until"])
+                
+                # Only refresh if the object wasn't deleted (pk is not None)
+                if self.pk is not None:
+                    self.refresh_from_db()
                 return False
-
-            # First, clear any expired block on the locked instance
-            if obj.blocked_until and timezone.now() >= obj.blocked_until:
-                obj.blocked_until = None
-                obj.attempts = 0
-                obj.save(update_fields=["blocked_until", "attempts"])
-
-            if obj.is_expired or obj.is_blocked:
-                return False
-
-            if check_password(raw_otp, obj.otp_hash):
-                obj.delete() # one‑time use
-                # obj is deleted, self.pk is now stale. Guard refresh_from_db
-                # below so we don't raise DoesNotExist on the success path.
-                self._state.adding = True
-                return True
-            
-            # Handle failed attempt safely within the lock
-            obj.attempts += 1
-            if obj.attempts >= self.MAX_ATTEMPTS and not obj.blocked_until:
-                obj.blocked_until = timezone.now() + timedelta(minutes=self.BLOCK_MINUTES)
-                obj.save(update_fields=["attempts", "blocked_until"])
-            # FIX (bug): previously this unconditional refresh_from_db() ran even
-            # after obj.delete() above, which raises DoesNotExist on the *successful*
-            # verification path because self.pk no longer exists in the DB. We only
-            # refresh on the failure path now.
-            if not self._state.adding:
-                self.refresh_from_db()
-            return False
 
     def increment_attempts(self) -> None:
         """ Atomically increment attempts and apply a block if threshold reached.
