@@ -182,7 +182,7 @@ class BaseOTP(models.Model):
         self.save(update_fields=["otp_hash", "attempts", "blocked_until", "created_at"])
 
     def verify_otp(self, raw_otp: str) -> bool:
-        """Verifies the OTP atomically to prevent race condition brute-forcing."""
+        """ Verifies the OTP atomically to prevent race condition brute-forcing."""
         with transaction.atomic():
             try:
                 # Lock the DB row to block concurrent HTTP validation requests
