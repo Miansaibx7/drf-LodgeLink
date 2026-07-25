@@ -5,10 +5,11 @@ from django.utils import timezone
 import pyotp
 
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import status, serializers
 from rest_framework.request import Request
+from rest_framework.throttling import AnonRateThrottle
 from django.db import transaction
 
 from ..otp_logic.utils import get_tokens_for_user
@@ -16,6 +17,20 @@ from ..models import TwoFactorAuth, User
 from ..exceptions import ServiceLayerError
 
 logger = logging.getLogger(__name__)
+
+# ===================== Throttles =====================
+# FIX (security gap): TwoFactorLoginView is intentionally reachable without
+# authentication (a user proving identity via a TOTP/backup code has no
+# session yet). It relied on the *default* AnonRateThrottle, whose scope is
+# 'anon'. settings.py's DEFAULT_THROTTLE_RATES had no 'anon' key at all —
+# DRF treats a missing rate as "throttling disabled" for that scope, not as
+# an error. That made this endpoint a completely unthrottled surface for
+# brute-forcing 6-digit TOTP codes / 6-character backup codes. It now gets
+# its own explicit scope (reuses the 'login_requests' rate already defined
+# in settings), independent of whatever the global 'anon' default is.
+class TwoFactorLoginThrottle(AnonRateThrottle):
+    scope = 'login_requests'
+
 
 # ===================== Serializers =====================
 # NOTE: these are the ONE canonical copy. serializers.py used to define
@@ -54,6 +69,16 @@ class TwoFactorBackupCodesSerializer(TwoFactorEnableSerializer):
 class TwoFactorLoginChallengeSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     totp_code = serializers.CharField(max_length=6, min_length=6, required=True)
+
+    def validate_email(self, value: str) -> str:
+        # FIX (consistency): every other email field in this codebase is
+        # normalized to lowercase/stripped before use (RegisterSerializer,
+        # LoginSerializer, BaseOTPSendSerializer, etc.). This one wasn't,
+        # which is inconsistent — TwoFactorService.verify_2fa_for_login()
+        # happens to use email__iexact so it still matches case-insensitively,
+        # but normalizing here keeps behavior consistent and avoids relying
+        # on iexact everywhere.
+        return value.lower().strip()
 
     def validate_totp_code(self, value: str) -> str:
         # Backup codes are alphanumeric, so we only enforce length here, not
@@ -128,17 +153,6 @@ class TwoFactorService:
         if not user.check_password(password):
             raise ServiceLayerError("Incorrect password.")
 
-        # FIX (bug): the original code did
-        #   TwoFactorAuth.objects.filter(...).update(enabled=False, secret_key=None, backup_code_hashes=[])
-        # but the model's `secret_key` field was `CharField` with NO
-        # `null=True` — writing NULL into a NOT NULL column raises a raw
-        # django.db.utils.IntegrityError at the DB level, which is not an
-        # APIException and would surface as an unhandled 500. models.py now
-        # declares `secret_key = models.CharField(..., null=True, blank=True)`
-        # so this is safe. We also switch from a bare queryset `.update()`
-        # (which bypasses model methods/signals) to the model instance's own
-        # `disable()` method for consistency with the rest of the codebase,
-        # and lock the row first to avoid racing a concurrent enable/verify.
         tfa = TwoFactorAuth.objects.select_for_update().filter(user=user, enabled=True).first()
         if not tfa:
             raise ServiceLayerError("2FA is not enabled.")
@@ -165,6 +179,9 @@ class TwoFactorService:
     def verify_2fa_for_login(email: str, totp_code: str) -> User:
         user = User.objects.filter(email__iexact=email).first()
         if not user:
+            # FIX (info-disclosure / timing): return the same generic error
+            # as an invalid code so this endpoint doesn't confirm account
+            # existence to an unauthenticated caller.
             raise ServiceLayerError("Invalid credentials.")
 
         tfa = TwoFactorAuth.objects.select_for_update().filter(user=user).first()
@@ -259,20 +276,16 @@ class TwoFactorBackupCodesView(APIView):
 class TwoFactorLoginView(APIView):
     """
     2FA challenge, called after LoginView responds with requires_2fa=True.
-
-    FIX (missing wiring): this view existed before but nothing in LoginView
-    ever redirected a 2FA-enabled user here — LoginView issued full tokens
-    straight from email+password, making 2FA a no-op in practice. LoginView
-    now withholds tokens and returns requires_2fa=True instead, so this view
-    is the only path to a token pair for those accounts.
-
-    NOTE: also fixed — this view previously issued tokens without ever
-    creating a UserSession/UserDevice/AuditLog entry the way LoginView and
-    BaseOAuthLoginView do, so 2FA logins were invisible to your session
-    list and audit trail. It now calls the same handle_successful_login()
-    used everywhere else.
     """
-    permission_classes = []  # AllowAny by omission; auth is via email+code, not a session
+    # FIX (clarity): an empty list already behaves as "no permission checks",
+    # which happens to equal AllowAny, but it's implicit and easy to misread
+    # as "inherit the global IsAuthenticated default". Made explicit.
+    permission_classes = [AllowAny]
+    # FIX (security gap, see TwoFactorLoginThrottle above): this endpoint was
+    # unthrottled. It's the only remaining path to complete a login for a
+    # 2FA-protected account, and it accepts a 6-digit/6-character code — it
+    # must be rate-limited independently of authentication.
+    throttle_classes = [TwoFactorLoginThrottle]
 
     def post(self, request: Request) -> Response:
         serializer = TwoFactorLoginChallengeSerializer(data=request.data)
