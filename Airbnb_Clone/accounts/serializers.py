@@ -4,7 +4,7 @@ from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.password_validation import validate_password
 from typing import Any
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db import transaction # Essential for atomic database commits during OAuth registration
+from django.db import IntegrityError, transaction # Essential for atomic database commits during OAuth registration
 
 from django.core.validators import RegexValidator
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -92,21 +92,33 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     
 class LoginSerializer(serializers.Serializer):
-    """Field-level validation only.
-    FIX (architecture bug): the previous version authenticated the user
-    *inside* the serializer via Django's authenticate(), and then LoginView
-    called services.authenticate_user() again — running two full password
-    hash comparisons (expensive, by design) and two separate, inconsistent
-    brute-force paths (LoginAttempt tracking only happened in the service
-    call). Authentication, account-status checks, and brute-force tracking
-    now live in ONE place: services.authenticate_user(). The serializer only
-    validates that the fields are present."""
+    """Authenticates user with email and password.Provides specific error messages for inactive/unverified accounts
+    without leaking account existence."""
 
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
 
-    def validate_email(self, value: str) -> str:
-        return value.lower().strip()
+    def validate(self, attrs: dict) -> dict:
+        email = attrs.get('email','').lower().strip()
+        password = attrs.get('password')
+        #  Django's default `authenticate()` immediately returns None if `is_active=False`.
+        # We must check the user's database status before calling authenticate() to give 
+        # accurate error messages about verification.
+        try:
+            user_obj = User.objects.get(email=email)
+            if not user_obj.is_active:
+                raise serializers.ValidationError({"detail": "Account is inactive. Please verify your email."})
+            if not getattr(user_obj, 'is_verified', True):
+                raise serializers.ValidationError({"detail": "Email not verified. Please check your inbox for the OTP."})
+        except User.DoesNotExist:
+            pass  # Suppress error to mask account enumeration vectors during auth processing
+
+        user = authenticate(request=self.context.get('request'), email=email, password=password)
+        if not user:
+            raise serializers.ValidationError({"detail": "Invalid email or password."})
+
+        attrs['user'] = user
+        return attrs
    
 
 
@@ -145,16 +157,16 @@ class PasswordResetOTPSendSerializer(BaseOTPSendSerializer):
     """Send OTP for password reset."""
     pass   
 
+
        
 class PasswordResetOTPVerifySerializer(serializers.Serializer):
-    """Verify password reset OTP and set new password.Validates password strength and prevents password reuse."""
+    """ Verify password reset OTP and set new password. Validates password strength and prevents password reuse. """
 
     email = serializers.EmailField(required=True)
-    code = serializers.CharField(max_length=6, min_length=6,required=True,
+    code = serializers.CharField(max_length=6, min_length=6, required=True,
         validators=[RegexValidator(r'^\d{6}$', 'OTP must be exactly 6 digits.')]
     )
-    # Moved validate_password to the validate() method below
-    new_password = serializers.CharField(write_only=True,required=True,trim_whitespace=False)
+    new_password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
     confirm_password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
 
     def validate(self, attrs: dict) -> dict:
@@ -179,8 +191,16 @@ class PasswordResetOTPVerifySerializer(serializers.Serializer):
         if user.check_password(new_password):
             raise serializers.ValidationError({"new_password": "New password cannot be the same as the current password."})
         
-        attrs['email'] = email  # store normalized email for later use
+        attrs['email'] = email
+        attrs['user'] = user  # Store user instance so we don't have to query it again in save()
         return attrs 
+
+    def save(self) -> Any:
+        # Actually apply the password change to the database
+        user = self.validated_data['user']
+        user.set_password(self.validated_data['new_password'])
+        user.save(update_fields=['password'])
+        return user
     
 
 
@@ -547,31 +567,3 @@ class SocialAccountSerializer(serializers.ModelSerializer):
 
 
 
-# class LoginSerializer(serializers.Serializer):
-#     """Authenticates user with email and password.Provides specific error messages for inactive/unverified accounts
-#     without leaking account existence."""
-
-#     email = serializers.EmailField(required=True)
-#     password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
-
-#     def validate(self, attrs: dict) -> dict:
-#         email = attrs.get('email','').lower().strip()
-#         password = attrs.get('password')
-#         #  Django's default `authenticate()` immediately returns None if `is_active=False`.
-#         # We must check the user's database status before calling authenticate() to give 
-#         # accurate error messages about verification.
-#         try:
-#             user_obj = User.objects.get(email=email)
-#             if not user_obj.is_active:
-#                 raise serializers.ValidationError({"detail": "Account is inactive. Please verify your email."})
-#             if not getattr(user_obj, 'is_verified', True):
-#                 raise serializers.ValidationError({"detail": "Email not verified. Please check your inbox for the OTP."})
-#         except User.DoesNotExist:
-#             pass  # Suppress error to mask account enumeration vectors during auth processing
-
-#         user = authenticate(request=self.context.get('request'), email=email, password=password)
-#         if not user:
-#             raise serializers.ValidationError({"detail": "Invalid email or password."})
-
-#         attrs['user'] = user
-#         return attrs
