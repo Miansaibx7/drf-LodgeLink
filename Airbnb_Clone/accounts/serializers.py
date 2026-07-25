@@ -27,6 +27,7 @@ class RegisterSerializer(serializers.ModelSerializer):
     # to allow attribute similarity checks against the email.
     password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
     confirm_password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
+    terms_accepted = serializers.BooleanField(write_only=True, required=True)
 
     class Meta:
         model= User
