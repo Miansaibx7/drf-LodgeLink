@@ -155,12 +155,6 @@ class BaseOTP(models.Model):
 
     @property
     def is_blocked(self) -> bool:
-        # FIX (docstring accuracy, not a logic change): the previous docstring
-        # claimed this returns True "if no block time but attempts exhausted."
-        # That branch never existed in the code — is_blocked has only ever
-        # checked blocked_until. Reaching MAX_ATTEMPTS is what *sets*
-        # blocked_until (see verify_otp()); it doesn't block on its own.
-        # Docstring corrected to describe what the method actually does.
         """Blocked only if blocked_until is set and still in the future.
         Once blocked_until has passed, the OTP is treated as unblocked again
         (attempts/blocked_until get reset separately, in verify_otp() and
@@ -175,9 +169,21 @@ class BaseOTP(models.Model):
     def reset_block_if_expired(self) -> None:
         """ Clear block and reset attempts if the block time has passed."""
         if self.blocked_until and timezone.now() >= self.blocked_until:
-            self.blocked_until = None
-            self.attempts = 0
-            self.save(update_fields=["blocked_until", "attempts"])
+            # Added atomic transaction and row lock to prevent race conditions
+            with transaction.atomic():
+                try:
+                    obj = self.__class__.all_objects.select_for_update().get(pk=self.pk)
+                except self.__class__.DoesNotExist:
+                    return
+
+                if obj.blocked_until and timezone.now() >= obj.blocked_until:
+                    obj.blocked_until = None
+                    obj.attempts = 0
+                    obj.save(update_fields=["blocked_until", "attempts"])
+            
+            # Update the current instance in memory
+            if self.pk is not None:
+                self.refresh_from_db()
 
 # ────────────────────────────────── Core OTP operations ────────────────────────────────────────────────────────────────────
     def set_otp(self, raw_otp: str) -> None:
