@@ -92,6 +92,22 @@ REST_FRAMEWORK = {
 
         # 3. Throttling / Rate Limiting (Added to protect OTP and Login endpoints)
         'DEFAULT_THROTTLE_RATES': {
+            # FIX (security gap): the previous rates dict had NO 'anon' entry.
+            # DRF's SimpleRateThrottle.get_rate() returns None for a scope that
+            # isn't in this dict, and get_cache_key() returns None whenever the
+            # resolved rate is None — which means the throttle silently allows
+            # ALL requests through, with no error, no log line, nothing. Any view
+            # that relies on the *default* AnonRateThrottle (scope='anon') without
+            # an explicit custom-scope throttle attached — e.g.
+            # TwoFactorLoginView, which is intentionally permission_classes=[]
+            # so it's reachable by an unauthenticated caller — was completely
+            # unthrottled. That endpoint accepts a TOTP/backup code and is
+            # exactly the kind of endpoint you must rate-limit. Added a sane
+            # default 'anon' rate as a safety net for any endpoint that forgets
+            # to declare a specific scope, IN ADDITION to giving
+            # TwoFactorLoginView its own explicit throttle (see sub_views/two_factor.py).
+            'anon': '20/min',
+
             'otp_requests': '5/min', # Limit anon users to 5 OTP requests per minute
             'login_requests': '10/min', # Limit anon users to 10 login attempts per minute
             # FIX: RegisterView now uses its own throttle scope
@@ -101,7 +117,7 @@ REST_FRAMEWORK = {
             'user': '100/min', # Limit authenticated users 
         },
 }
-
+    
 
 
 # FIX (scaling bug): DRF's throttle counters use Django's default cache
@@ -315,4 +331,3 @@ LOGGING = {
         },
     },
 }
-
