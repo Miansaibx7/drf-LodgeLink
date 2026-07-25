@@ -83,7 +83,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     objects = UserManager()
 
     class Meta:
-        ordering = ["-created_at"]   # use created_at for ordering
+        ordering = ["-created_at"] # use created_at for ordering
         verbose_name = "User"
         verbose_name_plural = "Users"
         indexes = [models.Index(fields=["is_active"]),
