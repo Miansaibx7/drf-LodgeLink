@@ -201,7 +201,7 @@ class BaseOTP(models.Model):
 
             if check_password(raw_otp, obj.otp_hash):
                 obj.delete() # one‑time use
-                # FIX: obj is deleted, self.pk is now stale. Guard refresh_from_db
+                # obj is deleted, self.pk is now stale. Guard refresh_from_db
                 # below so we don't raise DoesNotExist on the success path.
                 self._state.adding = True
                 return True
