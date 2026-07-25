@@ -156,14 +156,22 @@ class BaseOTP(models.Model):
 
     @property
     def is_blocked(self) -> bool:
-        """Blocked only if block_until is in the future, OR if no block time but attempts exhausted.
-        After block expires, we treat the OTP as unblocked."""
+        # FIX (docstring accuracy, not a logic change): the previous docstring
+        # claimed this returns True "if no block time but attempts exhausted."
+        # That branch never existed in the code — is_blocked has only ever
+        # checked blocked_until. Reaching MAX_ATTEMPTS is what *sets*
+        # blocked_until (see verify_otp()); it doesn't block on its own.
+        # Docstring corrected to describe what the method actually does.
+        """Blocked only if blocked_until is set and still in the future.
+        Once blocked_until has passed, the OTP is treated as unblocked again
+        (attempts/blocked_until get reset separately, in verify_otp() and
+        reset_block_if_expired())."""
         now = timezone.now()
         if self.blocked_until and now < self.blocked_until:
             return True
         # Block expired – OTP is not blocked, even if attempts >= MAX
         return False
-
+    
 # ────────────────────────────────── Helper methods ────────────────────────────────────────────────────────────────────
     def reset_block_if_expired(self) -> None:
         """ Clear block and reset attempts if the block time has passed."""
@@ -235,7 +243,7 @@ class BaseOTP(models.Model):
             obj.save(update_fields=["attempts", "blocked_until"])
             # Update the current instance in memory
             self.refresh_from_db()
-         
+       
 
 
 class EmailOTP(BaseOTP):
