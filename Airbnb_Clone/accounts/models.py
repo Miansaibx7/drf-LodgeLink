@@ -220,8 +220,8 @@ class BaseOTP(models.Model):
             return False
 
     def increment_attempts(self) -> None:
-        """Atomically increment attempts and apply a block if threshold reached.
-        Uses select_for_update to avoid race conditions."""
+        """ Atomically increment attempts and apply a block if threshold reached.
+        Uses select_for_update to avoid race conditions. """
         with transaction.atomic():
             obj = self.__class__.all_objects.select_for_update().get(pk=self.pk)
             # Clear block if expired before incrementing
