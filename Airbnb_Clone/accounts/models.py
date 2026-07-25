@@ -34,7 +34,6 @@ class UserManager(BaseUserManager):
             user.set_password(password)
         else:
             user.set_unusable_password()
-
         # NOTE: RegisterSerializer.validate_email() checks uniqueness before this
         # runs, but that check-then-create is NOT atomic — two concurrent requests
         # for the same email can both pass validation and both land here. The
