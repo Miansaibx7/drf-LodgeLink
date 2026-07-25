@@ -67,7 +67,7 @@ class User(AbstractBaseUser, PermissionsMixin, TimeStampedModel):
     username = None
     # UUIDs prevent attackers from knowing how many users you have.
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    email = models.EmailField(unique=True, validators=[EmailValidator()]) # unique=True automatically creates a database index
+    email = models.EmailField(unique=True) # unique=True automatically creates a database index
     first_name = models.CharField(max_length=150, blank=True)
     last_name = models.CharField(max_length=150, blank=True)
     
