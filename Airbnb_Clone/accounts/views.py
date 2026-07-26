@@ -230,10 +230,10 @@ class BaseOAuthLoginView(APIView):
 
     def post(self, request: Request) -> Response:
 
-        # DEFENSIVE PROGRAMMING: Ensure subclasses define a serializer
-        assert self.serializer_class is not None, (
-            f"'{self.__class__.__name__}' must define a `serializer_class`."
-        )
+        # Ensure subclasses define a serializer
+        if self.serializer_class is None:
+            raise NotImplementedError(f"'{self.__class__.__name__}' must define a `serializer_class`.")
+
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
 
