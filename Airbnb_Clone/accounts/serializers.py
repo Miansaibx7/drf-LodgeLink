@@ -529,19 +529,15 @@ class UserProfileSerializer(serializers.ModelSerializer):
         
     # Avatar file size
     def validate_avatar(self, value: UploadedFile) -> UploadedFile:
-        """Validate avatar file size and type."""
+        """Validate avatar file size."""
         if not value:
             return value
 
         # Max 2 MB
         if value.size > 2 * 1024 * 1024:
             raise serializers.ValidationError("Avatar size must not exceed 2 MB.")
-         
-        allowed_types = {"image/jpeg","image/png","image/webp",}
 
-        if getattr(value, 'content_type', None) not in allowed_types:
-            raise serializers.ValidationError({"avatar": "Only JPEG, PNG, and WEBP images are allowed."})
-        
+        # content_type check is removed – ImageField already validated it's a real image.
         return value
     
 
