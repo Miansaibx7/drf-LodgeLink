@@ -1,63 +1,110 @@
 import logging
 from rest_framework.views import exception_handler
 from rest_framework.response import Response
-from rest_framework.exceptions import APIException
 from rest_framework import status
+
+from rest_framework.exceptions import APIException
+from rest_framework.exceptions import (APIException, AuthenticationFailed, MethodNotAllowed,
+    NotAuthenticated, NotFound, ParseError, PermissionDenied, Throttled)
+
 
 logger = logging.getLogger(__name__)
 
 
+
 class ServiceLayerError(APIException):
-    """Custom exception for business logic failures in services.py.
-    Use this instead of DRF's ValidationError in the service layer so the
-    service layer has zero dependency on DRF request/response internals."""
+    """ Custom exception raised by the service layer.
+    Purpose:
+    - Keeps the service layer independent of DRF serializers/views.
+    - Allows services.py to raise business-logic errors without importing DRF ValidationError.
+    Example:
+        raise ServiceLayerError("Email is already registered.") """
+
     status_code = status.HTTP_400_BAD_REQUEST
-    default_detail = 'Service layer encountered an error.'
-    default_code = 'service_error'
+    default_detail = "Service layer encountered an error."
+    default_code = "service_error"
 
 
-# FIX (bug): the original file defined `custom_global_exception_handler`
-# TWICE. In Python, the second `def` silently overwrites the first — the
-# first implementation (which special-cased ServiceLayerError with a 400 and
-# a bare {"success": False, "message": ...} body, and logged unhandled
-# exceptions with the view name) was completely dead code. Only the second
-# definition below was ever actually wired up via
-# REST_FRAMEWORK['EXCEPTION_HANDLER']. This merges the useful behavior of
-# both into a single implementation and removes the shadowed duplicate.
+
+def extract_first_error(errors):
+    """ Recursively extract the first readable validation error string.
+    Examples:
+        {"email": ["Already exists"]} -> "email: Already exists"
+        {"profile": {"bio": ["Too long"]}} -> "profile.bio: Too long"
+        ["Invalid request"] -> "Invalid request" """
+    
+    if isinstance(errors, dict):
+        for field, messages in errors.items():
+
+            if isinstance(messages, dict):
+                sub_error = extract_first_error(messages)
+                return f"{field}.{sub_error}"
+            elif isinstance(messages, (list, tuple)) and messages:
+                return f"{field}: {messages[0]}"
+            return f"{field}: {messages}"
+
+    elif isinstance(errors, (list, tuple)) and errors:
+        return extract_first_error(errors[0]) if isinstance(errors[0], (dict, list)) else str(errors[0])
+    return str(errors) if errors else "Validation Error"
+
+
+
 def custom_global_exception_handler(exc, context):
-    """
-    Custom exception handler that intercepts unhandled exceptions, logs them
-    safely, and returns a standardized JSON envelope:
-        {"success": False, "message": "...", "errors": {...} | None}
-    """
+    """ Global DRF Exception Handler. Every API response follows the same format:
+    Success:
+        { "success": True, ... }
+    Error:
+        {"success": False, "message": "...", "errors": {...} | None} """
+    
     response = exception_handler(exc, context)
 
-    # DRF didn't recognize this exception at all -> unhandled 500.
+    # Unhandled Internal Server Exceptions (500)
     if response is None:
-        view = context.get('view')
+        view = context.get("view")
         view_name = view.__class__.__name__ if view else "UnknownView"
+
         logger.exception("Unhandled exception in %s", view_name)
-        return Response(
-            {"success": False, "message": "An unexpected error occurred. Please try again later.", "errors": None},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
 
-    custom_data = {"success": False, "message": "An error occurred.", "errors": None}
+        return Response({"success": False, "message": "An unexpected error occurred. Please try again later.", "errors": None},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    custom_data = {"success": False, "message": "An error occurred.","errors": None}
 
+   
+    # Service Layer Errors
     if isinstance(exc, ServiceLayerError):
-        custom_data['message'] = str(exc.detail)
-    elif isinstance(response.data, dict):
-        if 'detail' in response.data:
-            custom_data['message'] = str(response.data['detail'])
+        if isinstance(exc.detail, (dict, list)):
+            custom_data["message"] = extract_first_error(exc.detail)
+            custom_data["errors"] = exc.detail
         else:
-            custom_data['message'] = 'Validation Error'
-            custom_data['errors'] = response.data
+            custom_data["message"] = str(exc.detail)
+
+    # Explicit DRF Request & Auth Errors
+    elif isinstance(exc,(AuthenticationFailed, NotAuthenticated, PermissionDenied, NotFound, MethodNotAllowed),):
+        custom_data["message"] = str(exc.detail)
+
+    elif isinstance(exc, ParseError):
+        custom_data["message"] = "Invalid JSON data."
+
+    elif isinstance(exc, Throttled):
+        # Retains DRF's built-in wait duration in the message
+        custom_data["message"] = str(exc.detail)
+
+
+    # Serializer Validation Errors
+    elif isinstance(response.data, dict):
+
+        if "detail" in response.data:
+            custom_data["message"] = str(response.data["detail"])
+        else:
+            custom_data["message"] = extract_first_error(response.data)
+            custom_data["errors"] = response.data
+
     elif isinstance(response.data, list):
-        # FIX: response.data[0] can itself be a dict/ErrorDetail, not
-        # guaranteed to be directly str()-able the way the caller expects;
-        # coerce explicitly so the "message" field is always a plain string.
-        custom_data['message'] = str(response.data[0]) if response.data else 'Validation Error'
-        custom_data['errors'] = response.data
+        custom_data["message"] = extract_first_error(response.data)
+        custom_data["errors"] = response.data
+
+    #  Log Handled Client Errors
+    logger.warning("%s (%s): %s", exc.__class__.__name__, response.status_code, custom_data["message"])
 
     response.data = custom_data
     return response
