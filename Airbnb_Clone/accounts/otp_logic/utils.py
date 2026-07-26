@@ -143,9 +143,9 @@ def get_tokens_for_user(user) -> dict[str, str]:
     refresh token can later be revoked individually."""
     refresh = RefreshToken.for_user(user)
     return {
-        "access": str(refresh.access_token),
-        "refresh": str(refresh),
-        "jti": str(refresh["jti"]) # useful for UserSession tracking
+    "access": str(refresh.access_token),
+    "refresh": str(refresh),
+    "jti": str(refresh.get("jti")) # useful for UserSession tracking
     }
 
 
