@@ -284,13 +284,11 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
         full_name = user_info.get('name', '').strip()
         first_name, last_name = self._split_name(full_name)
         
-        # Use atomic transaction to ensure consistency
+        # Use atomic transaction to ensure consistency        
         with transaction.atomic():
             try:
-                # FIX (concurrency): lock the row so two near-simultaneous OAuth
-                # callbacks for the same user (e.g. double-click, retried
-                # webview) can't both run the update logic and race on
-                # update_fields.
+                # lock the row so two near-simultaneous OAuth callbacks for the same user (e.g. double-click, retried
+                # webview) can't both run the update logic and race on update_fields.
                 user = User.objects.select_for_update().get(email=email)
                 update_fields = []
 
@@ -302,7 +300,7 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
                     user.last_name = last_name
                     update_fields.append("last_name")
 
-                # Activate and verify the user if not already  
+                # Activate and verify the user if not already 
                 if not user.is_active:
                     user.is_active = True
                     update_fields.append("is_active")
@@ -315,16 +313,25 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
                     user.save(update_fields=update_fields)
         
             except User.DoesNotExist:
-                # Use first_name and last_name variable
-                user = User(email=email, first_name=first_name,
-                    last_name=last_name, is_active=True, is_verified=True)
-                user.set_unusable_password()
-                user.save()
+                # Catch IntegrityError if a parallel thread just created the user
+                try:
+                    # A nested atomic block creates a savepoint. If this fails, it only 
+                    # rolls back this block, not the entire transaction.
+                    with transaction.atomic():
+                        user = User(email=email, first_name=first_name,
+                            last_name=last_name, is_active=True, is_verified=True
+                        )
+                        user.set_unusable_password()
+                        user.save()
+                except IntegrityError:
+                    # The other thread won the race. Fetch the user they just created.
+                    user = User.objects.select_for_update().get(email=email)
 
             # Create or update SocialAccount
             social_account, created = SocialAccount.objects.get_or_create(user=user, provider=self.provider,
                 defaults={'provider_user_id': provider_user_id, 'provider_email': email}
             )
+
             # Update if fields changed (for existing records)
             soc_update_fields = []
             if not created:
@@ -343,11 +350,11 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
         return attrs
 
     def get_user_info(self, access_token: str) -> dict:
-        """Override in subclass to fetch user info from specific provider."""
-        raise NotImplementedError("Subclasses must implement get_user_info()")
+            """Override in subclass to fetch user info from specific provider."""
+            raise NotImplementedError("Subclasses must implement get_user_info()")
 
 
-
+    
 class GoogleLoginSerializer(BaseOAuthLoginSerializer):
 
     provider = "google"
@@ -514,6 +521,8 @@ class UserDeviceSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     """Serializer for user profile.Includes avatar validation (size and content type)."""
 
+    # Explicitly defining this as an ImageField forces DRF to use Pillow 
+    # to check the actual binary file signature, ignoring spoofable HTTP headers.
     avatar = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
@@ -550,18 +559,5 @@ class SocialAccountSerializer(serializers.ModelSerializer):
             read_only_fields = fields
 
     
-# NOTE (dedup): TwoFactorVerifySerializer / TwoFactorLoginSerializer used to be
-# defined HERE *and* again in sub_views/two_factor.py with slightly different
-# validation (the two_factor.py versions add digit/length checks). That's a
-# real duplicate-code bug — whichever one gets imported wins, silently, and
-# nobody editing one would know the other exists. They belong to the 2FA
-# feature, so the canonical versions now live only in sub_views/two_factor.py.
-# Removed from this file to avoid drift between two divergent copies.
-
-
-
-
-
-
-
-
+# NOTE (dedup): TwoFactorVerifySerializer / TwoFactorLoginSerializer used to be defined in sub_views/two_factor.py
+#  with slightly different validation (the two_factor.py versions add digit/length checks).
