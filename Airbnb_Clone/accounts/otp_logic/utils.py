@@ -7,6 +7,7 @@ Contains:
 import logging
 import secrets
 from typing import Any
+from rest_framework.request import Request
 
 from django.conf import settings
 
@@ -145,6 +146,20 @@ def get_tokens_for_user(user) -> dict[str, str]:
         "access": str(refresh.access_token),
         "refresh": str(refresh),
         "jti": str(refresh["jti"]) # useful for UserSession tracking
+    }
+
+
+
+def extract_request_data(request: Request) -> dict:
+    """Extract IP, user-agent, and other metadata from request."""
+    return {
+        'ip_address': request.META.get('REMOTE_ADDR'),
+        'user_agent': request.META.get('HTTP_USER_AGENT', ''),
+        'device_name': request.data.get('device_name', ''),
+        'browser': request.data.get('browser', ''),
+        'operating_system': request.data.get('operating_system', ''),
+        'location': request.data.get('location', ''),
+        'device_id': request.data.get('device_id', ''),
     }
 
 
