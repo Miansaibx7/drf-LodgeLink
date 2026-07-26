@@ -514,17 +514,19 @@ class UserDeviceSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     """Serializer for user profile.Includes avatar validation (size and content type)."""
 
+    avatar = serializers.ImageField(required=False, allow_null=True)
+
     class Meta:
             model = UserProfile
             fields = ("phone_number", "avatar", "country", "timezone", "language")
             extra_kwargs = {
                 "phone_number": {"required": False},
-                "avatar": {"required": False, "allow_null": True},
                 "country": {"required": False},
                 "timezone": {"required": False},
                 "language": {"required": False},
             }
 
+        
     # Avatar file size
     def validate_avatar(self, value: UploadedFile) -> UploadedFile:
         """Validate avatar file size and type."""
@@ -534,7 +536,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         # Max 2 MB
         if value.size > 2 * 1024 * 1024:
             raise serializers.ValidationError("Avatar size must not exceed 2 MB.")
-
+         
         allowed_types = {"image/jpeg","image/png","image/webp",}
 
         if getattr(value, 'content_type', None) not in allowed_types:
