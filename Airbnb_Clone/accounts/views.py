@@ -85,7 +85,6 @@ class LoginView(APIView):
         #  This automatically handles invalid credentials and unverified users.
         serializer.is_valid(raise_exception=True) # It will throw a 400 Bad Request if anything fails.
 
-        # We bypass the serializer's validation for email/password because we handle it in the service
         email = serializer.validated_data['email']
         password = serializer.validated_data['password']
         request_data = extract_request_data(request)
