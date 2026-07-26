@@ -248,7 +248,7 @@ class ChangePasswordSerializer(serializers.Serializer):
 
 # ─────────────────────────────────────────────── OAuth Login ──────────────────────────────────────────────────────────────────────────
 class BaseOAuthLoginSerializer(serializers.Serializer):
-    """Base serializer for OAuth login.Subclasses must set `provider` and implement `get_user_info()`."""
+    """Base serializer for OAuth login. Subclasses must set `provider` and implement `get_user_info()`."""
 
     access_token = serializers.CharField(required=True)
     provider = None  # Must be overridden
@@ -262,7 +262,6 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
         return parts[0], parts[1] if len(parts) > 1 else ""
 
     def validate(self, attrs: dict) -> dict:
-
         if not self.provider:
             raise serializers.ValidationError({"detail": "Provider not configured."})
         
@@ -283,8 +282,8 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
 
         full_name = user_info.get('name', '').strip()
         first_name, last_name = self._split_name(full_name)
-        
-        # Use atomic transaction to ensure consistency        
+
+        # Use atomic transaction to ensure consistency
         with transaction.atomic():
             try:
                 # lock the row so two near-simultaneous OAuth callbacks for the same user (e.g. double-click, retried
@@ -315,11 +314,9 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
             except User.DoesNotExist:
                 # Catch IntegrityError if a parallel thread just created the user
                 try:
-                    # A nested atomic block creates a savepoint. If this fails, it only 
-                    # rolls back this block, not the entire transaction.
                     with transaction.atomic():
-                        user = User(email=email, first_name=first_name,
-                            last_name=last_name, is_active=True, is_verified=True
+                        user = User(email=email, first_name=first_name, last_name=last_name, 
+                            is_active=True, is_verified=True
                         )
                         user.set_unusable_password()
                         user.save()
@@ -328,7 +325,9 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
                     user = User.objects.select_for_update().get(email=email)
 
             # Create or update SocialAccount
-            social_account, created = SocialAccount.objects.get_or_create(user=user, provider=self.provider,
+            social_account, created = SocialAccount.objects.get_or_create(
+                user=user, 
+                provider=self.provider,
                 defaults={'provider_user_id': provider_user_id, 'provider_email': email}
             )
 
@@ -350,8 +349,8 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
         return attrs
 
     def get_user_info(self, access_token: str) -> dict:
-            """Override in subclass to fetch user info from specific provider."""
-            raise NotImplementedError("Subclasses must implement get_user_info()")
+        """Override in subclass to fetch user info from specific provider."""
+        raise NotImplementedError("Subclasses must implement get_user_info()")
 
 
     
