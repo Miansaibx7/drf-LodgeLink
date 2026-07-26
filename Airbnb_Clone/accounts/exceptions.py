@@ -3,7 +3,6 @@ from rest_framework.views import exception_handler
 from rest_framework.response import Response
 from rest_framework import status
 
-from rest_framework.exceptions import APIException
 from rest_framework.exceptions import (APIException, AuthenticationFailed, MethodNotAllowed,
     NotAuthenticated, NotFound, ParseError, PermissionDenied, Throttled)
 
@@ -102,8 +101,13 @@ def custom_global_exception_handler(exc, context):
     elif isinstance(response.data, list):
         custom_data["message"] = extract_first_error(response.data)
         custom_data["errors"] = response.data
+    else:
+        # DRF's default handler shouldn't ever produce a response.data that's neither dict nor list, but if a
+        # custom renderer or a future DRF version ever does, silently
+        # falling through to the generic "An error occurred." with no trace would make this impossible to debug later.
+        logger.warning("Unexpected response.data type in exception handler: %r (exc=%r)",type(response.data), exc,)
 
-    #  Log Handled Client Errors
+    # Log Handled Client Errors
     logger.warning("%s (%s): %s", exc.__class__.__name__, response.status_code, custom_data["message"])
 
     response.data = custom_data
