@@ -254,10 +254,10 @@ def handle_successful_login(user: User, request_data: dict, refresh_token_jti: s
 
 # ===================================== OTP Service ====================================================================
 class OTPService:
-    """Handles all OTP operations using the model's built‑in methods."""
+    """Handles all OTP operations using the model's built-in methods."""
 
     @staticmethod
-    def send_email_otp(email: str,request_data: Optional[dict] = None) -> bool:
+    def send_email_otp(email: str, request_data: Optional[dict] = None) -> bool:
         """Generate and send a fresh email verification OTP."""
 
         user = _get_user_by_email(email) # Use Helper Functions 
@@ -282,11 +282,11 @@ class OTPService:
 
     @staticmethod
     @transaction.atomic
-    def verify_email_otp(email: str, code: str, request_data: dict = None) -> User: # type: ignore
-        """ Verify the email OTP. Uses the model's verify_otp() which handles attempts, blocking, expiry, and deletion. """
+    def verify_email_otp(email: str, code: str, request_data: Optional[dict] = None) -> UserType:
+        """ Verify the email OTP. Handles attempts, blocking, expiry, and deletion. """
         
-        user = _get_user_by_email(email) # Use Helper Functions 
-        user = User.objects.select_for_update().get(pk=user.pk) # Lock the user row to prevent concurrent modifications
+        # Use Helper Functions Single query to fetch AND lock the user, preventing deadlocks
+        user = _get_user_for_update(email) # Lock the user row to prevent concurrent modifications
 
         # Use all_objects so we can properly report if they are blocked/expired
         otp_obj = EmailOTP.all_objects.filter(user=user).order_by('-created_at').first()# Get the latest active OTP for this user
@@ -319,20 +319,20 @@ class OTPService:
 
         logger.info("Email verified for %s", user.email)
         return user
-        
+  
 
 
     @staticmethod
-    def resend_email_otp(email: str, request_data: dict = None) -> bool:
-        """ Delete old OTPs and send a fresh one.This is simply a wrapper around send_email_otp()."""
+    def resend_email_otp(email: str, request_data: Optional[dict] = None) -> bool:
+        """ Delete old OTPs and send a fresh one. """
         # _create_email_otp now handles the deletion, so we just call send_email_otp
         return OTPService.send_email_otp(email, request_data)
-    
+
 
     
     @staticmethod
-    def send_password_reset_otp(email: str, request_data: dict = None) -> bool:
-        """Generate and send a password reset OTP."""
+    def send_password_reset_otp(email: str, request_data: Optional[dict] = None) -> bool:
+        """ Generate and send a password reset OTP. """
 
         user = _get_user_by_email(email) # Use Helper Functions
         raw_otp = _create_password_reset_otp(user)
@@ -356,12 +356,12 @@ class OTPService:
         
     @staticmethod
     @transaction.atomic
-    def verify_password_reset_otp(email: str, code: str, new_password: str, request_data: dict = None) -> bool:
-        """ Verify password reset OTP and update the user's password.Uses the model's verify_otp() for security. """
+    def verify_password_reset_otp(email: str, code: str, new_password: str, request_data: Optional[dict] = None) -> bool:
+        """ Verify password reset OTP and update the user's password.Uses the verify_otp() for security. """
 
         # Lock the user row to prevent concurrent modifications
-        user = _get_user_by_email(email) # Use Helper Functions
-        user = User.objects.select_for_update().get(pk=user.pk)
+        user = _get_user_for_update(email) # Use Helper Functions Single query to fetch AND lock the user
+        
         
         # Get the latest OTP (unfiltered, Use all_objects to prevent masking block/expire errors)
         otp_obj = PasswordResetOTP.all_objects.filter(user=user).order_by('-created_at').first()
@@ -388,12 +388,12 @@ class OTPService:
 
         logger.info("Password reset for %s", user.email)
         return True
-    
+
 
 
     @staticmethod
     @transaction.atomic
-    def change_password(user: User, old_password: str, new_password: str, request_data: dict = None) -> bool: # type: ignore
+    def change_password(user: UserType, old_password: str, new_password: str, request_data: Optional[dict] = None) -> bool:
         """ Change password for an authenticated user. Validates old password and prevents reuse. """
 
         if not user.check_password(old_password):
