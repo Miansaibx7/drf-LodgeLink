@@ -186,18 +186,13 @@ def register_user(email: str, password: str, request_data: Optional[dict] = None
 
 def authenticate_user(email: str, password: str, request_data: dict) -> User: # type: ignore
     """ Authenticate a user, check LoginAttempt blocking, increment on failure,
-    and on success create UserSession and UserDevice, and log login. """
-
-    """ Single source of truth for the login flow: brute-force blocking, account
-        lookup, active/verified checks, and password verification.
+    and on success create UserSession and UserDevice, and log login.
     
-        FIX (architecture bug): previously LoginSerializer.validate() ran its own
-        account-status checks and its own call to Django's authenticate(), and
-        THEN LoginView called this function again, which ran a second,
-        independent authentication (via authenticate()) and its own
-        LoginAttempt bookkeeping. Net effect: two bcrypt/argon2 hash comparisons
-        per login request (real CPU cost under load), and the LoginAttempt
-        brute-force counter was only ever incremented by this function — the
+    previously LoginSerializer.validate() ran its own account-status checks and its own call to Django's authenticate(),
+    and THEN LoginView called this function again, which ran a second, independent authentication
+    (via authenticate()) and its own LoginAttempt bookkeeping. Net effect: two bcrypt/argon2 hash comparisons
+    per login request (real CPU cost under load), and the LoginAttempt brute-force counter was only ever 
+    incremented by this function the
         serializer's authenticate() call did nothing for brute-force protection,
         so an attacker whose requests happened to fail validation in the
         serializer's authenticate() call wouldn't get counted consistently.
@@ -213,10 +208,8 @@ def authenticate_user(email: str, password: str, request_data: dict) -> User: # 
     try:
         user = User.objects.get(email=email)
     except User.DoesNotExist:
-        # Do the same amount of "work" whether or not the account exists so
-        # response timing doesn't leak account existence, then record the
-        # attempt against this email+IP pair and give a generic error.
-        User().set_password(password)  # constant-time-ish dummy hash comparison cost
+        User().set_password(password)  # constant-time dummy hash comparison cost
+
         with transaction.atomic():
             attempt, _ = LoginAttempt.objects.get_or_create(email=email, ip_address=ip, defaults={'attempts': 0})
             attempt.increment()
@@ -229,18 +222,15 @@ def authenticate_user(email: str, password: str, request_data: dict) -> User: # 
         raise ServiceLayerError("Invalid email or password.")
 
     # Password is correct — now surface account-status errors specifically.
-    # These reveal account existence to someone who already knows the correct
-    # password for that email, which is an acceptable/expected trade-off
-    # (they could just try to log in and see the same message anyway).
+    # These reveal account existence to someone who already knows the correct password for that email
     if not user.is_active:
         raise ServiceLayerError("Account is inactive. Please verify your email.")
     if not user.is_verified:
         raise ServiceLayerError("Email not verified. Please check your inbox for the OTP.")
 
     # Success – reset attempts (delete) and create session/device
-    LoginAttempt.objects.filter(email=email,ip_address=ip).only("id").delete()
+    LoginAttempt.objects.filter(email=email, ip_address=ip).delete()
 
-    # Create UserSession (requires refresh token JTI – will be set later)
     # We'll create session after token generation, but we need refresh token.
     # For now, we'll store session creation outside this function.
     # So we'll return the user and let the view handle session creation with tokens.
@@ -252,8 +242,8 @@ def authenticate_user(email: str, password: str, request_data: dict) -> User: # 
 
 @transaction.atomic
 def handle_successful_login(user: User, request_data: dict, refresh_token_jti: str) -> dict: # type: ignore
-    """After successful authentication (and, if applicable, 2FA), create
-        UserSession, update UserDevice, and log the login."""
+    """After successful authentication (and, if applicable, 2FA), 
+    create UserSession, update UserDevice, and log the login."""
     
     session = _create_user_session(user, refresh_token_jti, request_data) # Create session
     device = _update_user_device(user, request_data) # Update device
@@ -276,7 +266,7 @@ class OTPService:
     """Handles all OTP operations using the model's built‑in methods."""
 
     @staticmethod
-    def send_email_otp(email: str, request_data: dict = None) -> bool:
+    def send_email_otp(email: str,request_data: Optional[dict] = None) -> bool:
         """Generate and send a fresh email verification OTP."""
 
         user = _get_user_by_email(email) # Use Helper Functions 
@@ -302,7 +292,7 @@ class OTPService:
     @staticmethod
     @transaction.atomic
     def verify_email_otp(email: str, code: str, request_data: dict = None) -> User: # type: ignore
-        """Verify the email OTP. Uses the model's verify_otp() which handles attempts, blocking, expiry, and deletion. """
+        """ Verify the email OTP. Uses the model's verify_otp() which handles attempts, blocking, expiry, and deletion. """
         
         user = _get_user_by_email(email) # Use Helper Functions 
         user = User.objects.select_for_update().get(pk=user.pk) # Lock the user row to prevent concurrent modifications
@@ -313,11 +303,10 @@ class OTPService:
         if not otp_obj:
             raise ServiceLayerError("Invalid OTP. Please request a new one.")# No active OTP-they need to request a new one
         
-        # Attempt verification – this method increments attempts, blocks if needed,
-        # and deletes the OTP on success.
+        # Attempt verification this increments attempts, blocks if needed, and deletes the OTP on success.
         if not otp_obj.verify_otp(code):
-            # verify_otp has already incremented attempts/blocked inside the transaction
-            # Refresh to get updated state (though it's already current)
+
+            # verify_otp has already incremented attempts/blocked inside the transaction Refresh to get updated state
             otp_obj.refresh_from_db()
             if otp_obj.is_blocked:
                 raise ServiceLayerError("Too many invalid attempts. Please request a new OTP.")
@@ -378,8 +367,8 @@ class OTPService:
     @transaction.atomic
     def verify_password_reset_otp(email: str, code: str, new_password: str, request_data: dict = None) -> bool:
         """ Verify password reset OTP and update the user's password.Uses the model's verify_otp() for security. """
-        # Lock the user row to prevent concurrent modifications
 
+        # Lock the user row to prevent concurrent modifications
         user = _get_user_by_email(email) # Use Helper Functions
         user = User.objects.select_for_update().get(pk=user.pk)
         
@@ -397,8 +386,7 @@ class OTPService:
                 raise ServiceLayerError("OTP has expired. Please request a new OTP.")
             raise ServiceLayerError("Invalid OTP.")
 
-        # OTP verified and deleted – update password
-        _update_user_password(user, new_password) # Use Helper Functions for password delete – update
+        _update_user_password(user, new_password) # Use Helper Functions OTP verified and deleted – update password
 
         _log_audit(
                 user=user,
