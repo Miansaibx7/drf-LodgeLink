@@ -16,6 +16,7 @@ from django.template.loader import render_to_string
 
 from rest_framework_simplejwt.tokens import RefreshToken
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -124,7 +125,7 @@ def send_password_reset_email(*, email: str, otp: str) -> bool:
 
 
 # JWT Token Generator
-def get_tokens_for_user(user) -> dict[str, str]:
+def get_tokens_for_user(user: User) -> dict[str, str]: # type: ignore
     """Generate JWT tokens for a user. The JTI is stored in UserSession so a
     refresh token can later be revoked individually."""
     refresh = RefreshToken.for_user(user)
