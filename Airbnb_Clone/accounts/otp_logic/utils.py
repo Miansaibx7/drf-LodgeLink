@@ -7,19 +7,16 @@ import logging
 import secrets
 from typing import Any
 from rest_framework.request import Request
+from rest_framework.response import Response
 
 from django.conf import settings
 
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 
-
 from rest_framework_simplejwt.tokens import RefreshToken
 
 logger = logging.getLogger(__name__)
-
-from rest_framework.response import Response
-
 
 
 def get_email_context() -> dict[str, Any]:
@@ -75,10 +72,7 @@ def _send_email(*,email: str,subject: str,html_template: str,text_template: str,
         return True
     
     except Exception:
-        # FIX: log the traceback (logger.exception) instead of interpolating
-        # the raw exception object into the message string — `logger.exception`
-        # captures the full stack trace, which matters a lot when SMTP config
-        # is wrong in production and you need to know *why* it failed.
+        # when SMTP config is wrong in production and you need to know *why* it failed.
         logger.exception("Unable to send email to %s", email)
         return False
 
