@@ -1,5 +1,4 @@
-"""
-Reusable utility functions.
+""" Reusable utility functions.
 Contains:
 - Secure OTP generation - Email sending helpers - Email verification sender
 - Password reset sender - JWT token generation """
@@ -26,15 +25,8 @@ from rest_framework.response import Response
 def get_email_context() -> dict[str, Any]:
     """ Returns common template context used by every email. Keep company information in settings.py instead of
         hardcoding values throughout the project. 
-
-    NOTE: every one of these settings (COMPANY_NAME, SCHOOL_NAME,
-    FRONTEND_URL, BACKEND_URL, SUPPORT_EMAIL, PRIMARY_COLOR) was referenced
-    here but NONE of them existed in the settings.py you shared. Calling any
-    OTP-sending code path as-is would raise
-    `django.core.exceptions.ImproperlyConfigured` / AttributeError at
-    runtime the first time an email is sent. They've been added to the
-    corrected settings.py — see that file.
-    """
+        settings (COMPANY_NAME, SCHOOL_NAME, FRONTEND_URL, BACKEND_URL, SUPPORT_EMAIL, PRIMARY_COLOR) was referenced
+        in the settings.py."""
 
     return {
         "company_name": settings.COMPANY_NAME,
