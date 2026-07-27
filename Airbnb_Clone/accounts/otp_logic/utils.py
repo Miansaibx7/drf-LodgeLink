@@ -150,6 +150,6 @@ def extract_request_data(request: Request) -> dict:
 
 
 
-def api_success(message: str, data: dict = None, status_code: int = 200) -> Response:
+def api_success(message: str, data: dict[str, Any] | None = None, status_code: int = 200) -> Response:
     """Standardizes successful responses."""
     return Response({"success": True, "message": message, "data": data or {} }, status=status_code)
