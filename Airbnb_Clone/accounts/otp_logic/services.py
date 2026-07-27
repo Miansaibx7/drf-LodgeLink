@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, TYPE_CHECKING
 
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -15,16 +15,23 @@ from .utils import generate_otp, send_email_otp, send_password_reset_email
 from ..exceptions import ServiceLayerError  # custom exception
 
 logger = logging.getLogger(__name__)
-User = get_user_model()
 
+# Type-safe dynamic user model loading
+if TYPE_CHECKING:
+    from django.contrib.auth.models import AbstractBaseUser
+    UserType = AbstractBaseUser
+else:
+    UserType = get_user_model()
+
+User = get_user_model()
 
 
 # ===================================== Helper Functions =====================================
 def _normalize_email(email: str) -> str:
-    """Normalize email to lowercase and strip whitespace."""
+    """ Normalize email to lowercase and strip whitespace."""
     return email.lower().strip()
 
-def _get_user_by_email(email: str) -> User: # type: ignore
+def _get_user_by_email(email: str) -> UserType:
     """ Retrieve a user by email.
     Raises:
         ServiceLayerError: If no user exists. """
@@ -34,65 +41,63 @@ def _get_user_by_email(email: str) -> User: # type: ignore
     except User.DoesNotExist:
         logger.warning("User lookup failed for %s", email)
         raise ServiceLayerError("No account found with this email.")
-    
-def _update_user_password(user: User, password: str) -> None: # type: ignore
-    """Update the user's password and save."""
+
+def _get_user_for_update(email: str) -> UserType:
+    """ Retrieve and lock a user by email in a single query. """
+    email = _normalize_email(email)
+    try:
+        return User.objects.select_for_update().get(email=email)
+    except User.DoesNotExist:
+        logger.warning("Locked user lookup failed for %s", email)
+        raise ServiceLayerError("No account found with this email.")
+        
+def _update_user_password(user: UserType, password: str) -> None:
+    """ Update the user's password and save."""
     user.set_password(password)
     user.save(update_fields=["password"])
 
-def _delete_otps_for_user(user: User, otp_model: Any) -> None: # type: ignore
-    """ Delete ALL OTPs for a given user (active, expired, or blocked).Uses all_objects to bypass the ActiveOTPManager filter."""
-    # all_objects bypasses the filtered manager to delete everything
+def _delete_otps_for_user(user: UserType, otp_model: Any) -> None:
+    """ Delete ALL OTPs for a given user (active, expired, or blocked)."""
+    # all_objects bypasses the ActiveOTPManager filter to delete everything
     otp_model.all_objects.filter(user=user).delete()
 
-def _create_user_profile(user: User) -> None: # type: ignore
-    """Create a UserProfile for a new user if it doesn't exist."""
+def _create_user_profile(user: UserType) -> None:
+    """ Create a UserProfile for a new user if it doesn't exist."""
     UserProfile.objects.get_or_create(user=user)
 
-def _log_audit(user: Optional[User], action: str, ip_address: Optional[str] = None, # type: ignore
-               user_agent: str = "", metadata: dict = None) -> None: 
-    """Helper to create an AuditLog entry."""
+def _log_audit(user: Optional[UserType], action: str, ip_address: Optional[str] = None, user_agent: str = "",
+    metadata: Optional[dict] = None) -> None: 
+    """ Helper to create an AuditLog entry."""
     AuditLog.objects.create(
-        user=user,
-        action=action,
-        ip_address=ip_address,
-        user_agent=user_agent or "",
-        metadata=metadata or {},
+        user=user, action=action, ip_address=ip_address,
+        user_agent=user_agent or "", metadata=metadata or {}
     )
 
-def _create_user_session(user: User, refresh_token_jti: str, request_data: dict) -> UserSession: # type: ignore
-    """Create a UserSession from request data (IP, user-agent, etc.)."""
+def _create_user_session(user: UserType, refresh_token_jti: str, request_data: dict) -> UserSession:
+    """ Create a UserSession from request data (IP, user-agent...)."""
     return UserSession.objects.create(
-        user=user,
-        refresh_token_jti=refresh_token_jti,
-        ip_address=request_data.get('ip_address'),
-        user_agent=request_data.get('user_agent', ''),
-        device_name=request_data.get('device_name', ''),
-        browser=request_data.get('browser', ''),
-        operating_system=request_data.get('operating_system', ''),
-        location=request_data.get('location', ''),
-        is_active=True,
+        user=user, refresh_token_jti=refresh_token_jti,
+        ip_address=request_data.get('ip_address'), user_agent=request_data.get('user_agent', ''),
+        device_name=request_data.get('device_name', ''), browser=request_data.get('browser', ''),
+        operating_system=request_data.get('operating_system', ''), location=request_data.get('location', ''),
+        is_active=True
     )
 
-def _update_user_device(user: User, request_data: dict) -> Optional[UserDevice]:# type: ignore
-    """Update or create a UserDevice based on device_id (if provided)."""
+def _update_user_device(user: UserType, request_data: dict) -> Optional[UserDevice]:
+    """ Update or create a UserDevice based on device_id (if provided)."""
     device_id = request_data.get('device_id')
     if not device_id:
         return None
     device, created = UserDevice.objects.get_or_create(
         user=user,
         device_id=device_id,
-        defaults={
-            'device_name': request_data.get('device_name', ''),
-            'browser': request_data.get('browser', ''),
-            'operating_system': request_data.get('operating_system', ''),
-            'trusted': False,
-        }
-    )
+        defaults={ 'device_name': request_data.get('device_name', ''),
+            'browser': request_data.get('browser', ''), 'operating_system': request_data.get('operating_system', ''),
+            'trusted': False
+    }   )
     device.last_login = timezone.now()
     device.save(update_fields=['last_login'])
     return device
-
 
 
 # ===================================== OTP Creation Helpers Functions ====================================================    
@@ -173,7 +178,7 @@ def register_user(email: str, password: str, request_data: Optional[dict] = None
 
 
 
-# ==================== Login & Session ====================
+# ==================== Login & Session ========================================================================
 
 def authenticate_user(email: str, password: str, request_data: dict) -> User: # type: ignore
     """ Authenticate a user, check LoginAttempt blocking, increment on failure,
@@ -272,7 +277,7 @@ class OTPService:
         
         logger.info("Email verification OTP sent successfully to %s",user.email)
         return True
-
+    
 
 
     @staticmethod
