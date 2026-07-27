@@ -43,7 +43,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             the resulting IntegrityError and turns it into a clean error. Do
             not remove that try/except thinking this validator makes it
             redundant."""
-            value = value.strip().casefold() # casefold() already performs lowercase conversion
+            value = value.lower().strip()
             if User.objects.filter(email=value).exists():
                 raise serializers.ValidationError({"email": "User with this email already exists."})
             return value
@@ -99,7 +99,7 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
 
     def validate(self, attrs: dict) -> dict:
-        email = attrs.get('email','').strip().casefold() # casefold() already performs lowercase conversion
+        email = attrs.get('email','').lower().strip()
         password = attrs.get('password')
         #  Django's default `authenticate()` immediately returns None if `is_active=False`.
         # We must check the user's database status before calling authenticate() to give 
@@ -128,7 +128,7 @@ class BaseOTPSendSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
 
     def validate_email(self, value: str) -> str:
-        value = value.strip().casefold() # casefold() already performs lowercase conversion
+        value = value.lower().strip()
         if not User.objects.filter(email=value).exists():
             raise serializers.ValidationError("No account found with this email.")
         return value
@@ -147,7 +147,7 @@ class EmailOTPVerifySerializer(serializers.Serializer):
     
     def validate_email(self, value: str) -> str:
         # Added email sanitization to guarantee query matching in verification workflows
-        return value.strip().casefold() # casefold() already performs lowercase conversion
+        return value.lower().strip()
     
 class ResendEmailOTPSerializer(BaseOTPSendSerializer):
     """Resend email verification OTP."""
@@ -175,7 +175,7 @@ class PasswordResetOTPVerifySerializer(serializers.Serializer):
         if new_password != confirm_password:
             raise serializers.ValidationError({"new_password": "Passwords don't match."})
 
-        email = attrs.get('email', '').strip().casefold() # casefold() already performs lowercase conversion
+        email = attrs.get('email', '').lower().strip()
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
@@ -275,7 +275,7 @@ class BaseOAuthLoginSerializer(serializers.Serializer):
         if not email:
             raise serializers.ValidationError({"detail": "Email not provided by provider."})
             
-        email = email.strip().casefold() # casefold() already performs lowercase conversion
+        email = email.lower().strip()
         provider_user_id = user_info.get('id')
         if not provider_user_id:
             raise serializers.ValidationError({"detail": "Provider user ID not provided."})
@@ -551,12 +551,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class SocialAccountSerializer(serializers.ModelSerializer):
-    """ Read only serializer for social accounts."""
+    """Read‑only serializer for social accounts."""
     class Meta:
             model = SocialAccount
             fields = ("id", "provider", "provider_email", "avatar_url", "created_at")
             read_only_fields = fields
 
     
-# NOTE: TwoFactorVerifySerializer / TwoFactorLoginSerializer used to be defined in sub_views/two_factor.py
+# NOTE (dedup): TwoFactorVerifySerializer / TwoFactorLoginSerializer used to be defined in sub_views/two_factor.py
 #  with slightly different validation (the two_factor.py versions add digit/length checks).
