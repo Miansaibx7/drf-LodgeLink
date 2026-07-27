@@ -135,16 +135,7 @@ def send_registration_otp(user: Any) -> bool:
 def register_user(email: str, password: str, request_data: Optional[dict] = None, **extra_fields: Any) -> User: # type: ignore
     """Create a new inactive/unverified user and send a verification OTP and create a UserProfile.
         Raises:
-            ServiceLayerError: If the verification email fails to send.
-
-        FIX (concurrency bug): RegisterSerializer.validate_email() checks
-        uniqueness before this runs, but that check is not atomic with the
-        insert — two simultaneous POSTs with the same email can both pass
-        validation. Previously the second `create_user()` call would raise a raw
-        django.db.utils.IntegrityError, which is NOT a DRF exception and is NOT
-        handled by custom_global_exception_handler's APIException branch, so it
-        would surface to the client as an opaque 500 instead of a clean 400. We
-        now catch IntegrityError explicitly and convert it to ServiceLayerError."""
+            ServiceLayerError: If the verification email fails to send."""
     
     email = _normalize_email(email)
     extra_fields.pop('confirm_password', None) # Remove only fields that don't exist in the User model
