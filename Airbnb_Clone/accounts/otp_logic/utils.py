@@ -1,7 +1,11 @@
 """ Reusable utility functions.
 Contains:
-- Secure OTP generation - Email sending helpers - Email verification sender
-- Password reset sender - JWT token generation """
+- Secure OTP generation
+- Email sending helpers
+- Email verification sender
+- Password reset sender
+- JWT token generation
+- Request data extraction  """
 
 import logging
 import secrets
@@ -76,7 +80,7 @@ def _send_email(*,email: str,subject: str,html_template: str,text_template: str,
         # when SMTP config is wrong in production and you need to know *why* it failed.
         logger.exception("Unable to send email to %s", email)
         return False
-
+    
 
 
 # Email Verification
@@ -97,6 +101,7 @@ def send_email_otp(*, email: str, otp: str) -> bool:
         text_template="accounts/emails/email_verification.txt",
         context=context
     )
+
 
 
 # Password Reset Email
@@ -148,7 +153,6 @@ def extract_request_data(request: Request) -> dict:
         'location': request.data.get('location', ''),
         'device_id': request.data.get('device_id', ''),
     }
-
 
 
 def api_success(message: str, data: dict[str, Any] | None = None, status_code: int = 200) -> Response:
