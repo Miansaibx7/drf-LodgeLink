@@ -5,7 +5,6 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.db import transaction, IntegrityError
 
-from django.contrib.auth import authenticate
 
 from ..models import (
     EmailOTP, PasswordResetOTP, UserProfile, UserSession,
@@ -239,7 +238,7 @@ def authenticate_user(email: str, password: str, request_data: dict) -> User: # 
         raise ServiceLayerError("Email not verified. Please check your inbox for the OTP.")
 
     # Success – reset attempts (delete) and create session/device
-    LoginAttempt.objects.filter(email=email, ip_address=ip).delete()
+    LoginAttempt.objects.filter(email=email,ip_address=ip).only("id").delete()
 
     # Create UserSession (requires refresh token JTI – will be set later)
     # We'll create session after token generation, but we need refresh token.
