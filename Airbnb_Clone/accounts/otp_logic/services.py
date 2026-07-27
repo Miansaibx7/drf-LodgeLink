@@ -190,13 +190,8 @@ def authenticate_user(email: str, password: str, request_data: dict) -> User: # 
     
     previously LoginSerializer.validate() ran its own account-status checks and its own call to Django's authenticate(),
     and THEN LoginView called this function again, which ran a second, independent authentication
-    (via authenticate()) and its own LoginAttempt bookkeeping. Net effect: two bcrypt/argon2 hash comparisons
-    per login request (real CPU cost under load), and the LoginAttempt brute-force counter was only ever 
-    incremented by this function the
-        serializer's authenticate() call did nothing for brute-force protection,
-        so an attacker whose requests happened to fail validation in the
-        serializer's authenticate() call wouldn't get counted consistently.
-        Now this is the only place authentication happens. """
+    and its own LoginAttempt bookkeeping. Net effect: two bcrypt/argon2 hash comparisons per login request 
+    real CPU cost under load). """
 
     email = _normalize_email(email)
     ip = request_data.get('ip_address')
