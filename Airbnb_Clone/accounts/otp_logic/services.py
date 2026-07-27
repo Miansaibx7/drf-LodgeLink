@@ -75,7 +75,7 @@ def _create_user_session(user: User, refresh_token_jti: str, request_data: dict)
         is_active=True,
     )
 
-def _update_user_device(user: User, request_data: dict) -> UserDevice: # type: ignore
+def _update_user_device(user: User, request_data: dict) -> Optional[UserDevice]:# type: ignore
     """Update or create a UserDevice based on device_id (if provided)."""
     device_id = request_data.get('device_id')
     if not device_id:
