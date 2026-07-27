@@ -551,12 +551,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class SocialAccountSerializer(serializers.ModelSerializer):
-    """Read‑only serializer for social accounts."""
+    """ Read only serializer for social accounts."""
     class Meta:
             model = SocialAccount
             fields = ("id", "provider", "provider_email", "avatar_url", "created_at")
             read_only_fields = fields
 
     
-# NOTE (dedup): TwoFactorVerifySerializer / TwoFactorLoginSerializer used to be defined in sub_views/two_factor.py
+# NOTE: TwoFactorVerifySerializer / TwoFactorLoginSerializer used to be defined in sub_views/two_factor.py
 #  with slightly different validation (the two_factor.py versions add digit/length checks).
