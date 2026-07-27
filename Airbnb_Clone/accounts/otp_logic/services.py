@@ -22,7 +22,7 @@ User = get_user_model()
 # ===================================== Helper Functions =====================================
 def _normalize_email(email: str) -> str:
     """Normalize email to lowercase and strip whitespace."""
-    return email.lower().strip()
+    return email.strip().casefold() # casefold() already performs lowercase conversion
 
 def _get_user_by_email(email: str) -> User: # type: ignore
     """ Retrieve a user by email.
