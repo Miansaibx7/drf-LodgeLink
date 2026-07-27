@@ -2,7 +2,7 @@ import uuid
 from django.db import models,transaction
 
 from django.contrib.auth.models import (AbstractBaseUser,BaseUserManager,PermissionsMixin)
-from django.core.validators import RegexValidator, EmailValidator
+from django.core.validators import RegexValidator
 
 from django.contrib.auth.hashers import check_password,make_password
 
@@ -34,13 +34,7 @@ class UserManager(BaseUserManager):
             user.set_password(password)
         else:
             user.set_unusable_password()
-        # NOTE: RegisterSerializer.validate_email() checks uniqueness before this
-        # runs, but that check-then-create is NOT atomic — two concurrent requests
-        # for the same email can both pass validation and both land here. The
-        # DB unique=True constraint on User.email will raise IntegrityError for
-        # the second one. We deliberately do NOT swallow it here; the caller
-        # (register_user in services.py) catches IntegrityError and converts it
-        # into a clean, user-facing error instead of a 500. See services.py.
+        
         user.save(using=self._db)
         return user
 
@@ -385,7 +379,7 @@ class LoginAttempt(models.Model):
         verbose_name_plural = "Login Attempts"
         ordering = ["-updated_at"]
         constraints = [
-                    models.UniqueConstraint(fields=["email", "ip_address"], name="unique_login_attempt")
+            models.UniqueConstraint(fields=["email", "ip_address"], name="unique_login_attempt")
         ]
         indexes = [models.Index(fields=["email"]),models.Index(fields=["ip_address"]),
                 models.Index(fields=["blocked_until"])]
@@ -417,15 +411,11 @@ class TwoFactorAuth(models.Model):
         PLAINTEXT. TOTP secrets are long-lived credentials; anyone with read
         access to the DB (a backup, a leaked dump, a compromised replica) can
         generate valid codes forever. Before production, encrypt this field at
-        rest — e.g. `django-encrypted-model-fields`'s EncryptedCharField, or a
-        custom Fernet-based field using a key from your secrets manager (not
-        SECRET_KEY). This is not a cosmetic recommendation; treat it as a
-        blocker for production launch. """
+        rest — e.g. `django-encrypted-model-fields`'s EncryptedCharField. """
 
     user = models.OneToOneField(User,on_delete=models.CASCADE,related_name='two_factor_auth')
 
     # 🔐 Replace with EncryptedCharField in production. null=True because we
-    # clear it on disable() — see FIX note in services/two_factor.py.
     secret_key = models.CharField(max_length=255, null=True, blank=True)
 
     # Hashed backup codes (list of strings)
@@ -534,8 +524,7 @@ class SocialAccount(TimeStampedModel):
             models.UniqueConstraint(fields=["provider", "provider_user_id"], name="unique_social_account_provider_user"),
             models.UniqueConstraint(fields=["user", "provider"], name="unique_user_provider_social_account")
         ]
-        # Removed Meta.indexes entirely. ForeignKey and UniqueConstraints 
-        # already cover user, provider, and provider_user_id.
+        # ForeignKey and UniqueConstraints already cover user, provider, and provider_user_id.
 
     def __str__(self):
         return f"{self.user.email} - {self.provider}"
@@ -559,10 +548,6 @@ class UserDevice(TimeStampedModel):
         ordering = ["-last_login"]
         constraints = [models.UniqueConstraint(fields=["user", "device_id"],name="unique_user_device")]
         indexes = [
-            # Removed redundant models.Index for "user" (covered by ForeignKey) 
-            # and "device_id" (covered by unique=True) but i remove it.
-            # Sometime we the DB store both user device_id at same time so that why.
-            # Kept only "trusted".
             models.Index(fields=["trusted"])
         ]
 
