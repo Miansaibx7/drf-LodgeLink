@@ -341,7 +341,7 @@ class OTPService:
 
         _log_audit(
                 user=user,
-                action="OTP_SENT",
+                action=AuditLog.Action.OTP_SENT,
                 ip_address=request_data.get('ip_address') if request_data else None,
                 user_agent=request_data.get('user_agent', '') if request_data else '',
                 metadata={'otp_type': 'password_reset'}
@@ -379,7 +379,7 @@ class OTPService:
 
         _log_audit(
                 user=user,
-                action="PASSWORD_RESET",
+                action=AuditLog.Action.PASSWORD_RESET,
                 ip_address=request_data.get('ip_address') if request_data else None,
                 user_agent=request_data.get('user_agent', '') if request_data else '',
             )
@@ -405,7 +405,7 @@ class OTPService:
 
         _log_audit(
             user=user,
-            action="PASSWORD_CHANGE",
+            action=AuditLog.Action.PASSWORD_CHANGE,
             ip_address=request_data.get('ip_address') if request_data else None,
             user_agent=request_data.get('user_agent', '') if request_data else '',
         )
