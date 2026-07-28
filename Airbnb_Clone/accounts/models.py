@@ -327,19 +327,18 @@ class UserSession(TimeStampedModel):
 class AuditLog(models.Model):
     """Log all important user actions."""
 
-    ACTIONS = (
-        ("REGISTER", "Register"),
-        ("LOGIN", "Login"),
-        ("LOGOUT", "Logout"),
-        ("EMAIL_VERIFY", "Email Verify"),
-        ("OTP_SENT", "OTP Sent"),
-        ("PASSWORD_RESET", "Password Reset"),
-        ("PASSWORD_CHANGE", "Password Change"),
-        ("OAUTH_LOGIN", "OAuth Login"),
-        ("2FA_ENABLED", "2FA Enabled"),
-        ("2FA_DISABLED", "2FA Disabled"),
-        ("ACCOUNT_DELETE", "Account Delete")
-    )
+    class Action(models.TextChoices):
+        REGISTER = "REGISTER", "Register"
+        LOGIN = "LOGIN", "Login"
+        LOGOUT = "LOGOUT", "Logout"
+        EMAIL_VERIFY = "EMAIL_VERIFY", "Email Verify"
+        OTP_SENT = "OTP_SENT", "OTP Sent"
+        PASSWORD_RESET = "PASSWORD_RESET", "Password Reset"
+        PASSWORD_CHANGE = "PASSWORD_CHANGE", "Password Change"
+        OAUTH_LOGIN = "OAUTH_LOGIN", "OAuth Login"
+        TWO_FA_ENABLED = "2FA_ENABLED", "2FA Enabled"
+        TWO_FA_DISABLED = "2FA_DISABLED", "2FA Disabled"
+        ACCOUNT_DELETE = "ACCOUNT_DELETE", "Account Delete"
 
     user = models.ForeignKey(User,on_delete=models.SET_NULL,null=True,related_name='audit_logs')
 
