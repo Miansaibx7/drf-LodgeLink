@@ -275,8 +275,7 @@ class OTPService:
         _log_audit(
                 user=user,
                 action=AuditLog.Action.OTP_SENT,
-                ip_address=request_data.get('ip_address') if request_data else None,
-                user_agent=request_data.get('user_agent', '') if request_data else '',
+                request_data=request_data, # use helper function
                 metadata={'otp_type': 'email_verification'}
             )
         
