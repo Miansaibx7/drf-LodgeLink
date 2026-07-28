@@ -168,16 +168,7 @@ def get_client_ip(request) -> str:
         # Fallback for local development without a proxy
         ip = request.META.get('REMOTE_ADDR')
     return ip
-# def post(self, request, *args, **kwargs):
-#     request_data = {
-#         'ip_address': get_client_ip(request), # <-- Get true IP here
-#         'user_agent': request.META.get('HTTP_USER_AGENT', ''),
-#         'device_name': request.data.get('device_name', ''),
-#         # ...
-#     }
-    
-#     # Pass it to your beautiful service layer
-#     user = authenticate_user(email, password, request_data)
+
 
 
 def api_success(message: str, data: dict[str, Any] | None = None, status_code: int = 200) -> Response:

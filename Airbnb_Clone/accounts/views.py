@@ -21,7 +21,7 @@ from .serializers import (
 )
 
 # Imported the helper function from utils
-from .otp_logic.utils import get_tokens_for_user, extract_request_data 
+from .otp_logic.utils import get_client_ip, get_tokens_for_user, extract_request_data 
 
 from .models import UserSession, AuditLog
 
