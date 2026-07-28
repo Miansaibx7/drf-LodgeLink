@@ -63,12 +63,21 @@ def _create_user_profile(user: UserType) -> None:
     """ Create a UserProfile for a new user if it doesn't exist."""
     UserProfile.objects.get_or_create(user=user)
 
-def _log_audit(user: Optional[UserType], action: str, ip_address: Optional[str] = None, user_agent: str = "",
+def _log_audit(user: Optional[UserType], action: str, request_data: Optional[dict] = None, 
     metadata: Optional[dict] = None) -> None: 
-    """ Helper to create an AuditLog entry."""
+
+    """ Helper to create an AuditLog entry. 
+    Safely extracts IP and User-Agent from request_data if provided."""
+
+    ip_address = request_data.get('ip_address') if request_data else None
+    user_agent = request_data.get('user_agent', '') if request_data else ""
+
     AuditLog.objects.create(
-        user=user, action=action, ip_address=ip_address,
-        user_agent=user_agent or "", metadata=metadata or {}
+        user=user, 
+        action=action, 
+        ip_address=ip_address,
+        user_agent=user_agent, 
+        metadata=metadata or {}
     )
 
 def _create_user_session(user: UserType, refresh_token_jti: str, request_data: dict) -> UserSession:
@@ -163,8 +172,7 @@ def register_user(email: str, password: str, request_data: Optional[dict] = None
     _log_audit(
         user=user,
         action=AuditLog.Action.REGISTER,
-        ip_address=request_data.get('ip_address') if request_data else None,
-        user_agent=request_data.get('user_agent', '') if request_data else '',
+        request_data=request_data
     )
 
     if not send_registration_otp(user):

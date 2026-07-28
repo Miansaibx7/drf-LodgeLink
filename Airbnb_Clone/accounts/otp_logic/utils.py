@@ -155,6 +155,31 @@ def extract_request_data(request: Request) -> dict:
     }
 
 
+
+def get_client_ip(request) -> str:
+    """ Extracts the real client IP address from the request. Handles reverse proxies (Nginx, AWS ALB, Cloudflare). """
+
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        # X-Forwarded-For can be a comma-separated list. 
+        # The first IP is the original client.
+        ip = x_forwarded_for.split(',')[0].strip()
+    else:
+        # Fallback for local development without a proxy
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+# def post(self, request, *args, **kwargs):
+#     request_data = {
+#         'ip_address': get_client_ip(request), # <-- Get true IP here
+#         'user_agent': request.META.get('HTTP_USER_AGENT', ''),
+#         'device_name': request.data.get('device_name', ''),
+#         # ...
+#     }
+    
+#     # Pass it to your beautiful service layer
+#     user = authenticate_user(email, password, request_data)
+
+
 def api_success(message: str, data: dict[str, Any] | None = None, status_code: int = 200) -> Response:
     """Standardizes successful responses."""
     return Response({"success": True, "message": message, "data": data or {} }, status=status_code)
