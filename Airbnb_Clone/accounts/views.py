@@ -315,7 +315,7 @@ class LogoutView(APIView):
         AuditLog.objects.create(
             user=request.user,
             action=AuditLog.Action.LOGOUT,
-            ip_address=request.META.get('REMOTE_ADDR'),
+            ip_address=get_client_ip(request),
             user_agent=request.META.get('HTTP_USER_AGENT', ''),
         )
 
