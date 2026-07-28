@@ -6,12 +6,10 @@ from django.utils import timezone
 from django.db import transaction, IntegrityError
 
 
-from ..models import (
-    EmailOTP, PasswordResetOTP, UserProfile, UserSession,
-    AuditLog, LoginAttempt, UserDevice
-)
-from .utils import generate_otp, send_email_otp, send_password_reset_email
+from ..models import (EmailOTP, PasswordResetOTP, UserProfile, UserSession,
+    AuditLog, LoginAttempt, UserDevice)
 
+from .utils import generate_otp, send_email_otp, send_password_reset_email
 from ..exceptions import ServiceLayerError  # custom exception
 
 logger = logging.getLogger(__name__)
