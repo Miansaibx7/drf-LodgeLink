@@ -311,7 +311,7 @@ class LogoutView(APIView):
                 # Expected failure for malformed/expired tokens. 
                 # Logout still proceeds.
                 logger.warning("Could not resolve session for refresh token during logout.", exc_info=True)
-        # Log logout
+        # Log logout using the secure IP extraction
         AuditLog.objects.create(
             user=request.user,
             action=AuditLog.Action.LOGOUT,
