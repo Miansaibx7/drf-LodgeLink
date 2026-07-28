@@ -172,7 +172,7 @@ def register_user(email: str, password: str, request_data: Optional[dict] = None
     _log_audit(
         user=user,
         action=AuditLog.Action.REGISTER,
-        request_data=request_data
+        request_data=request_data # use helper function
     )
 
     if not send_registration_otp(user):
@@ -249,8 +249,7 @@ def handle_successful_login(user: User, request_data: dict, refresh_token_jti: s
     _log_audit(
         user=user,
         action=AuditLog.Action.LOGIN,
-        ip_address=request_data.get('ip_address'),
-        user_agent=request_data.get('user_agent', ''),
+        request_data=request_data, # use helper function
         metadata={'session_id': session.id}
     )
 
