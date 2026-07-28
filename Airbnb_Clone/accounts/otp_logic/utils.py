@@ -133,6 +133,7 @@ def send_password_reset_email(*, email: str, otp: str) -> bool:
 def get_tokens_for_user(user: User) -> dict[str, str]: # type: ignore
     """Generate JWT tokens for a user. The JTI is stored in UserSession so a
     refresh token can later be revoked individually."""
+
     refresh = RefreshToken.for_user(user)
     return {
     "access": str(refresh.access_token),
@@ -142,23 +143,9 @@ def get_tokens_for_user(user: User) -> dict[str, str]: # type: ignore
 
 
 
-def extract_request_data(request: Request) -> dict:
-    """Extract IP, user-agent, and other metadata from request."""
-    return {
-        'ip_address': request.META.get('REMOTE_ADDR'),
-        'user_agent': request.META.get('HTTP_USER_AGENT', ''),
-        'device_name': request.data.get('device_name', ''),
-        'browser': request.data.get('browser', ''),
-        'operating_system': request.data.get('operating_system', ''),
-        'location': request.data.get('location', ''),
-        'device_id': request.data.get('device_id', ''),
-    }
-
-
-
 def get_client_ip(request) -> str:
     """ Extracts the real client IP address from the request. Handles reverse proxies (Nginx, AWS ALB, Cloudflare). """
-
+    
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     if x_forwarded_for:
         # X-Forwarded-For can be a comma-separated list. 
@@ -168,6 +155,20 @@ def get_client_ip(request) -> str:
         # Fallback for local development without a proxy
         ip = request.META.get('REMOTE_ADDR')
     return ip
+
+
+
+def extract_request_data(request: Request) -> dict:
+    """Extract IP, user-agent, and other metadata from request."""
+    return {
+        'ip_address': get_client_ip(request),
+        'user_agent': request.META.get('HTTP_USER_AGENT', ''),
+        'device_name': request.data.get('device_name', ''),
+        'browser': request.data.get('browser', ''),
+        'operating_system': request.data.get('operating_system', ''),
+        'location': request.data.get('location', ''),
+        'device_id': request.data.get('device_id', ''),
+    }
 
 
 
