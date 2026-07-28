@@ -162,7 +162,7 @@ def register_user(email: str, password: str, request_data: Optional[dict] = None
     # Log registration
     _log_audit(
         user=user,
-        action="REGISTER",
+        action=AuditLog.Action.REGISTER,
         ip_address=request_data.get('ip_address') if request_data else None,
         user_agent=request_data.get('user_agent', '') if request_data else '',
     )
@@ -240,7 +240,7 @@ def handle_successful_login(user: User, request_data: dict, refresh_token_jti: s
     # Log login
     _log_audit(
         user=user,
-        action="LOGIN",
+        action=AuditLog.Action.LOGIN,
         ip_address=request_data.get('ip_address'),
         user_agent=request_data.get('user_agent', ''),
         metadata={'session_id': session.id}
@@ -267,7 +267,7 @@ class OTPService:
 
         _log_audit(
                 user=user,
-                action="OTP_SENT",
+                action=AuditLog.Action.OTP_SENT,
                 ip_address=request_data.get('ip_address') if request_data else None,
                 user_agent=request_data.get('user_agent', '') if request_data else '',
                 metadata={'otp_type': 'email_verification'}
@@ -310,7 +310,7 @@ class OTPService:
 
         _log_audit(
                 user=user,
-                action="EMAIL_VERIFY",
+                action=AuditLog.Action.EMAIL_VERIFY,
                 ip_address=request_data.get('ip_address') if request_data else None,
                 user_agent=request_data.get('user_agent', '') if request_data else '',
             )
