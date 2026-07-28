@@ -145,7 +145,7 @@ def get_tokens_for_user(user: User) -> dict[str, str]: # type: ignore
 
 def get_client_ip(request) -> str:
     """ Extracts the real client IP address from the request. Handles reverse proxies (Nginx, AWS ALB, Cloudflare). """
-    
+
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     if x_forwarded_for:
         # X-Forwarded-For can be a comma-separated list. 
@@ -159,7 +159,8 @@ def get_client_ip(request) -> str:
 
 
 def extract_request_data(request: Request) -> dict:
-    """Extract IP, user-agent, and other metadata from request."""
+    """ Extract IP, user-agent, and other metadata from request. """
+    
     return {
         'ip_address': get_client_ip(request),
         'user_agent': request.META.get('HTTP_USER_AGENT', ''),
