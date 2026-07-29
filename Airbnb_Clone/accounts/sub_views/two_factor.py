@@ -153,19 +153,24 @@ class TwoFactorService:
         logger.info("2FA disabled for user %s", user.email)
 
     @staticmethod
-    @transaction.atomic
-    def generate_new_backup_codes(user: User, password: str) -> list:
+    def generate_new_backup_codes(user: User, password: str, request_data: dict) -> list[str]:
         if not user.check_password(password):
+            _log_audit(user, AuditLog.Action.TWO_FA_ENABLED, request_data, {"status": "failed", "reason": "Incorrect password"})
             raise ServiceLayerError("Incorrect password.")
 
-        tfa = TwoFactorAuth.objects.select_for_update().filter(user=user, enabled=True).first()
+        tfa = TwoFactorAuth.objects.filter(user=user, enabled=True).first()
         if not tfa:
+            _log_audit(user, AuditLog.Action.TWO_FA_ENABLED, request_data, {"status": "failed", "reason": "2FA is not enabled"})
             raise ServiceLayerError("2FA is not enabled.")
 
-        backup_codes = [pyotp.random_base32()[:6] for _ in range(10)]
-        tfa.set_backup_codes(backup_codes)
-        return backup_codes
+        with transaction.atomic():
+            tfa = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
+            backup_codes = TwoFactorService._generate_backup_codes(count=10, length=6)
+            tfa.set_backup_codes(backup_codes)
 
+        _log_audit(user, AuditLog.Action.TWO_FA_ENABLED, request_data, {"status": "backup_codes_regenerated"})
+        return backup_codes
+    
     @staticmethod
     @transaction.atomic
     def verify_2fa_for_login(email: str, totp_code: str) -> User:
