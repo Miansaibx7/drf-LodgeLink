@@ -13,10 +13,10 @@ from rest_framework.throttling import AnonRateThrottle
 from django.db import transaction
 
 from ..otp_logic.utils import get_tokens_for_user, extract_request_data
-
+from ..otp_logic.services import _log_audit
 from django.contrib.auth.models import update_last_login
 
-from ..models import TwoFactorAuth, User
+from ..models import TwoFactorAuth, User, AuditLog
 from ..exceptions import ServiceLayerError
 
 logger = logging.getLogger(__name__)
@@ -72,11 +72,14 @@ class TwoFactorLoginChallengeSerializer(serializers.Serializer):
 
 # ====================================== Service Layer ==================================================================
 class TwoFactorService:
+    """Business logic layer managing Two-Factor Authentication secrets, verification, and backup codes."""
+
     @staticmethod
     def generate_secret() -> str:
         """ Generate a new base32-encoded TOTP secret key.This is the long-lived secret seeded into the user's 
         authenticator app (via the provisioning URI / QR code) — NOT a one-time code itself. """
         return pyotp.random_base32()
+    
 
     @staticmethod
     def get_provisioning_uri(user: User, secret: str) -> str:
@@ -121,7 +124,7 @@ class TwoFactorService:
 
         tfa.enabled = True
         tfa.enabled_at = timezone.now()
-        backup_codes = [ secrets.token_hex(4) for _ in range(10)]
+        backup_codes = [ pyotp.random_base32()[:6] for _ in range(10)]
         tfa.set_backup_codes(backup_codes)
 
         tfa.save(update_fields=['enabled', 'enabled_at'])
