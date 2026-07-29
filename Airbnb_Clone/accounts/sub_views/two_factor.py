@@ -2,6 +2,7 @@
 import logging
 from django.utils import timezone
 import pyotp
+import secrets
 
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -12,7 +13,6 @@ from rest_framework.throttling import AnonRateThrottle
 from django.db import transaction
 
 from ..otp_logic.utils import get_tokens_for_user, extract_request_data
-from ..otp_logic.services import handle_successful_login
 
 from django.contrib.auth.models import update_last_login
 
@@ -121,7 +121,7 @@ class TwoFactorService:
 
         tfa.enabled = True
         tfa.enabled_at = timezone.now()
-        backup_codes = [pyotp.random_base32()[:6] for _ in range(10)]
+        backup_codes = [ secrets.token_hex(4) for _ in range(10)]
         tfa.set_backup_codes(backup_codes)
 
         tfa.save(update_fields=['enabled', 'enabled_at'])
@@ -159,7 +159,7 @@ class TwoFactorService:
     def verify_2fa_for_login(email: str, totp_code: str) -> User:
         """ Verify TOTP or backup code for a user during login.
         Raises ServiceLayerError on any failure returns the User only on success."""
-        
+
         user = User.objects.filter(email__iexact=email).first()
         if not user:
             # return the same generic error as an invalid code so this endpoint doesn't confirm account
