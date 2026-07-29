@@ -108,27 +108,32 @@ class TwoFactorService:
         return {'secret': secret, 'provisioning_uri': TwoFactorService.get_provisioning_uri(user, secret)}
     
     @staticmethod
-    @transaction.atomic
-    def verify_and_enable_2fa(user: User, otp_code: str) -> dict:
-        # Prevent 500 error if user skips the setup step
-        tfa = TwoFactorAuth.objects.select_for_update().filter(user=user).first()
-        
+    def verify_and_enable_2fa(user: User, otp_code: str, request_data: dict) -> dict:
+        tfa = TwoFactorAuth.objects.filter(user=user).first()
+
         if not tfa:
+            _log_audit(user, AuditLog.Action.TWO_FA_ENABLED, request_data, {"status": "failed", "reason": "Setup not initiated"})
             raise ServiceLayerError("2FA setup not initiated. Please request a new secret.")
+
         if tfa.enabled:
+            _log_audit(user, AuditLog.Action.TWO_FA_ENABLED, request_data, {"status": "failed", "reason": "Already enabled"})
             raise ServiceLayerError("2FA is already enabled.")
-        
+
         if not TwoFactorService.verify_totp(tfa.secret_key, otp_code):
+            _log_audit(user, AuditLog.Action.TWO_FA_ENABLED, request_data, {"status": "failed", "reason": "Invalid OTP code"})
             raise ServiceLayerError("Invalid OTP code.")
 
-        tfa.enabled = True
-        tfa.enabled_at = timezone.now()
-        backup_codes = [ pyotp.random_base32()[:6] for _ in range(10)]
-        tfa.set_backup_codes(backup_codes)
+        with transaction.atomic():
+            tfa = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
+            tfa.enabled = True
+            tfa.enabled_at = timezone.now()
+            backup_codes = TwoFactorService._generate_backup_codes(count=10, length=6)
+            tfa.set_backup_codes(backup_codes)
+            tfa.save(update_fields=['enabled', 'enabled_at'])
 
-        tfa.save(update_fields=['enabled', 'enabled_at'])
+        _log_audit(user, AuditLog.Action.TWO_FA_ENABLED, request_data, {"status": "success"})
         return {'backup_codes': backup_codes}
-
+    
     @staticmethod
     @transaction.atomic
     def disable_2fa(user: User, password: str) -> None:
