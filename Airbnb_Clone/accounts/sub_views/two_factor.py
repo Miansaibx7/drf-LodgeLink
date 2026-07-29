@@ -13,6 +13,9 @@ from django.db import transaction
 
 from ..otp_logic.utils import get_tokens_for_user, extract_request_data
 from ..otp_logic.services import handle_successful_login
+
+from django.contrib.auth.models import update_last_login
+
 from ..models import TwoFactorAuth, User
 from ..exceptions import ServiceLayerError
 
@@ -180,6 +183,7 @@ class TwoFactorSetupView(APIView):
         serializer.is_valid(raise_exception=True)
 
         data = TwoFactorService.enable_2fa(user=request.user,password=serializer.validated_data['password'])
+
         return Response({'success': True,'message':'2FA setup initiated. Scan the QR code or enter the secret manually.',
             'data': data}, status=status.HTTP_200_OK)
 
@@ -193,6 +197,7 @@ class TwoFactorVerifyView(APIView):
         serializer.is_valid(raise_exception=True)
 
         result = TwoFactorService.verify_and_enable_2fa(user=request.user,otp_code=serializer.validated_data['otp_code'])
+
         return Response({'success': True,'message': '2FA enabled successfully. Please store your backup codes securely.',
             'backup_codes': result['backup_codes']}, status=status.HTTP_200_OK)
 
@@ -206,6 +211,7 @@ class TwoFactorDisableView(APIView):
         serializer.is_valid(raise_exception=True)
 
         TwoFactorService.disable_2fa(user=request.user,password=serializer.validated_data['password'])
+        
         return Response({'success': True, 'message': '2FA disabled successfully.'}, status=status.HTTP_200_OK)
 
 
@@ -218,6 +224,7 @@ class TwoFactorBackupCodesView(APIView):
         serializer.is_valid(raise_exception=True)
 
         codes = TwoFactorService.generate_new_backup_codes(user=request.user,password=serializer.validated_data['password'])
+
         return Response({'success': True,'message': 'New backup codes generated.','backup_codes': codes}, status=status.HTTP_200_OK)
 
 
@@ -240,15 +247,10 @@ class TwoFactorLoginView(APIView):
         email = serializer.validated_data['email']
         totp_code = serializer.validated_data['totp_code']
 
-        # Local import to avoid a circular import between views.py and
-        # otp_logic.services (services.py does not import from sub_views).
-        from ..otp_logic.services import handle_successful_login
-        from ..views import _extract_request_data
-        from django.contrib.auth.models import update_last_login
 
         user = TwoFactorService.verify_2fa_for_login(email, totp_code)
 
-        request_data = _extract_request_data(request)
+        request_data = extract_request_data(request)
         tokens = get_tokens_for_user(user)
         handle_successful_login(user, request_data, tokens['jti'])
         update_last_login(None, user)
