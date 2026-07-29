@@ -74,7 +74,7 @@ class TwoFactorLoginChallengeSerializer(serializers.Serializer):
 class TwoFactorService:
     @staticmethod
     def generate_secret() -> str:
-        """Generate a cryptographically secure 6-digit OTP."""
+        """ Generate a cryptographically secure base32 secret. """
         return pyotp.random_base32()
 
     @staticmethod
