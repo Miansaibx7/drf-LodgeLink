@@ -99,10 +99,7 @@ class TwoFactorService:
         tfa.backup_code_hashes = []
         tfa.save(update_fields=['secret_key', 'enabled', 'backup_code_hashes'])
 
-        return {
-            'secret': secret,
-            'provisioning_uri': TwoFactorService.get_provisioning_uri(user, secret),
-        }
+        return {'secret': secret, 'provisioning_uri': TwoFactorService.get_provisioning_uri(user, secret)}
     
     @staticmethod
     @transaction.atomic
