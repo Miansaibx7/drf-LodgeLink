@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 # ===================== Throttles =====================
 class TwoFactorLoginThrottle(AnonRateThrottle):
-    """ Prevents brute-force attacks on unauthenticated 2FA verification.Uses the 'login_requests' rate configured in Django settings. """
+    """ Prevents brute force attacks on unauthenticated 2FA verification.Uses the 'login_requests' rate configured in Django settings. """
     scope = 'login_requests'
 
 
