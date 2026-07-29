@@ -230,13 +230,9 @@ class TwoFactorBackupCodesView(APIView):
 
 class TwoFactorLoginView(APIView):
     """ 2FA challenge, called after LoginView responds with requires_2fa=True."""
-    # FIX (clarity): an empty list already behaves as "no permission checks",
-    # which happens to equal AllowAny, but it's implicit and easy to misread
-    # as "inherit the global IsAuthenticated default". Made explicit.
+    
     permission_classes = [AllowAny]
-    # FIX (security gap, see TwoFactorLoginThrottle above): this endpoint was
-    # unthrottled. It's the only remaining path to complete a login for a
-    # 2FA-protected account, and it accepts a 6-digit/6-character code — it
+    # (TwoFactorLoginThrottle above): this endpoint was unthrottled it accepts a 6-digit/6-character code — it
     # must be rate-limited independently of authentication.
     throttle_classes = [TwoFactorLoginThrottle]
 
@@ -256,14 +252,11 @@ class TwoFactorLoginView(APIView):
         update_last_login(None, user)
 
         logger.info("2FA login verified for %s", user.email)
-
-        return Response({
-            'success': True,
-            'message': '2FA verified.',
-            'tokens': tokens,
+    
+        return Response({'success': True,'message': '2FA verified.','tokens': tokens,
             'user': {
                 'id': user.id,
                 'email': user.email,
-                'name': user.get_full_name() or user.email,
+                'name': user.get_full_name() or user.email
             }
         }, status=status.HTTP_200_OK)
