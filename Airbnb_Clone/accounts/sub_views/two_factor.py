@@ -157,6 +157,9 @@ class TwoFactorService:
     @staticmethod
     @transaction.atomic
     def verify_2fa_for_login(email: str, totp_code: str) -> User:
+        """ Verify TOTP or backup code for a user during login.
+        Raises ServiceLayerError on any failure returns the User only on success."""
+        
         user = User.objects.filter(email__iexact=email).first()
         if not user:
             # return the same generic error as an invalid code so this endpoint doesn't confirm account
@@ -253,7 +256,7 @@ class TwoFactorLoginView(APIView):
 
         request_data = extract_request_data(request)
         tokens = get_tokens_for_user(user)
-        
+
         handle_successful_login(user, request_data, tokens['jti'])
         update_last_login(None, user)
 
