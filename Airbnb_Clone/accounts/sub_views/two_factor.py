@@ -1,5 +1,4 @@
-"""Two-Factor Authentication (2FA) endpoints. Uses TOTP (pyotp)."""
-
+""" Two-Factor Authentication (2FA) endpoints. Uses TOTP (pyotp). """
 import logging
 from django.utils import timezone
 import pyotp
@@ -12,33 +11,18 @@ from rest_framework.request import Request
 from rest_framework.throttling import AnonRateThrottle
 from django.db import transaction
 
-from ..otp_logic.utils import get_tokens_for_user
+from ..otp_logic.utils import get_tokens_for_user, extract_request_data
 from ..models import TwoFactorAuth, User
 from ..exceptions import ServiceLayerError
 
 logger = logging.getLogger(__name__)
 
 # ===================== Throttles =====================
-# FIX (security gap): TwoFactorLoginView is intentionally reachable without
-# authentication (a user proving identity via a TOTP/backup code has no
-# session yet). It relied on the *default* AnonRateThrottle, whose scope is
-# 'anon'. settings.py's DEFAULT_THROTTLE_RATES had no 'anon' key at all —
-# DRF treats a missing rate as "throttling disabled" for that scope, not as
-# an error. That made this endpoint a completely unthrottled surface for
-# brute-forcing 6-digit TOTP codes / 6-character backup codes. It now gets
-# its own explicit scope (reuses the 'login_requests' rate already defined
-# in settings), independent of whatever the global 'anon' default is.
 class TwoFactorLoginThrottle(AnonRateThrottle):
+    """ Prevents brute-force attacks on unauthenticated 2FA verification.Uses the 'login_requests' rate configured in Django settings. """
     scope = 'login_requests'
 
-
-# ===================== Serializers =====================
-# NOTE: these are the ONE canonical copy. serializers.py used to define
-# TwoFactorVerifySerializer / TwoFactorLoginSerializer a second time with
-# weaker validation (no digit check) — that duplicate has been removed from
-# serializers.py to eliminate the drift/ambiguity.
-
-
+# ====================================== Serializers ==================================================================
 class TwoFactorEnableSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
 
@@ -61,7 +45,6 @@ class TwoFactorVerifySerializer(serializers.Serializer):
 class TwoFactorDisableSerializer(TwoFactorEnableSerializer):
     pass
 
-
 class TwoFactorBackupCodesSerializer(TwoFactorEnableSerializer):
     pass
 
@@ -71,22 +54,13 @@ class TwoFactorLoginChallengeSerializer(serializers.Serializer):
     totp_code = serializers.CharField(max_length=6, min_length=6, required=True)
 
     def validate_email(self, value: str) -> str:
-        # FIX (consistency): every other email field in this codebase is
-        # normalized to lowercase/stripped before use (RegisterSerializer,
-        # LoginSerializer, BaseOTPSendSerializer, etc.). This one wasn't,
-        # which is inconsistent — TwoFactorService.verify_2fa_for_login()
-        # happens to use email__iexact so it still matches case-insensitively,
-        # but normalizing here keeps behavior consistent and avoids relying
-        # on iexact everywhere.
         return value.lower().strip()
 
     def validate_totp_code(self, value: str) -> str:
-        # Backup codes are alphanumeric, so we only enforce length here, not
-        # isdigit(), to allow either a TOTP code or a backup code.
+        # Accepts either a 6-digit TOTP code or a 6-character backup code
         if len(value) != 6:
             raise serializers.ValidationError("Code must be 6 characters.")
         return value
-
 
 # ===================== Service Layer =====================
 
