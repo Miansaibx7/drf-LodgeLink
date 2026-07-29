@@ -67,6 +67,12 @@ class TwoFactorService:
     """Business logic layer managing Two-Factor Authentication secrets, verification, and backup codes."""
 
     @staticmethod
+    def _generate_backup_codes(count: int = 10, length: int = 6) -> list[str]:
+        """Generate high-entropy, unambiguous backup codes."""
+        alphabet = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+        return [''.join(secrets.choice(alphabet) for _ in range(length)) for _ in range(count)]
+    
+    @staticmethod
     def generate_secret() -> str:
         """ Generate a new base32-encoded TOTP secret key.This is the long-lived secret seeded into the user's 
         authenticator app (via the provisioning URI / QR code) — NOT a one-time code itself. """
