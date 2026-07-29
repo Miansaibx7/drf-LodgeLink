@@ -12,15 +12,19 @@ from rest_framework.throttling import AnonRateThrottle
 from django.db import transaction
 
 from ..otp_logic.utils import get_tokens_for_user, extract_request_data
+from ..otp_logic.services import handle_successful_login
 from ..models import TwoFactorAuth, User
 from ..exceptions import ServiceLayerError
 
 logger = logging.getLogger(__name__)
 
+
+
 # ===================== Throttles =====================
 class TwoFactorLoginThrottle(AnonRateThrottle):
     """ Prevents brute-force attacks on unauthenticated 2FA verification.Uses the 'login_requests' rate configured in Django settings. """
     scope = 'login_requests'
+
 
 # ====================================== Serializers ==================================================================
 class TwoFactorEnableSerializer(serializers.Serializer):
@@ -62,8 +66,8 @@ class TwoFactorLoginChallengeSerializer(serializers.Serializer):
             raise serializers.ValidationError("Code must be 6 characters.")
         return value
 
-# ===================== Service Layer =====================
 
+# ====================================== Service Layer ==================================================================
 class TwoFactorService:
     @staticmethod
     def generate_secret() -> str:
@@ -101,7 +105,7 @@ class TwoFactorService:
             'secret': secret,
             'provisioning_uri': TwoFactorService.get_provisioning_uri(user, secret),
         }
-
+    
     @staticmethod
     @transaction.atomic
     def verify_and_enable_2fa(user: User, otp_code: str) -> dict:
