@@ -1,15 +1,17 @@
 """ Two-Factor Authentication (2FA) endpoints. Uses TOTP (pyotp). """
 import logging
-from django.utils import timezone
 import pyotp
 import secrets
+from typing import Optional
 
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.response import Response
 from rest_framework import status, serializers
+from rest_framework.response import Response
 from rest_framework.request import Request
+
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.throttling import AnonRateThrottle
+from django.utils import timezone
 from django.db import transaction
 
 from ..otp_logic.utils import get_tokens_for_user, extract_request_data
