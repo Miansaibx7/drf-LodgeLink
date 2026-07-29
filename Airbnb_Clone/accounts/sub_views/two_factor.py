@@ -172,29 +172,36 @@ class TwoFactorService:
         return backup_codes
     
     @staticmethod
-    @transaction.atomic
-    def verify_2fa_for_login(email: str, totp_code: str) -> User:
+    def verify_2fa_for_login(email: str, totp_code: str, request_data: dict) -> User:
         """ Verify TOTP or backup code for a user during login.
         Raises ServiceLayerError on any failure returns the User only on success."""
-
+        
         user = User.objects.filter(email__iexact=email).first()
         if not user:
-            # return the same generic error as an invalid code so this endpoint doesn't confirm account
+            _log_audit(None, AuditLog.Action.LOGIN, request_data, {"status": "failed", "email": email, "reason": "Invalid user"})
             raise ServiceLayerError("Invalid credentials.")
 
-        tfa = TwoFactorAuth.objects.select_for_update().filter(user=user).first()
+        tfa = TwoFactorAuth.objects.filter(user=user).first()
         if not tfa or not tfa.enabled:
+            _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "failed", "reason": "2FA not enabled"})
             raise ServiceLayerError("Invalid credentials.")
 
         if TwoFactorService.verify_totp(tfa.secret_key, totp_code):
-            tfa.last_used_at = timezone.now()
-            tfa.save(update_fields=['last_used_at'])
+            with transaction.atomic():
+                tfa = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
+                tfa.last_used_at = timezone.now()
+                tfa.save(update_fields=['last_used_at'])
+            _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "TOTP"})
             return user
 
-        if tfa.consume_backup_code(totp_code):
-            return user
+        with transaction.atomic():
+            tfa_locked = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
+            if tfa_locked.consume_backup_code(totp_code):
+                _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "Backup Code"})
+                return user
+
+        _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "failed", "reason": "Invalid TOTP or Backup code"})
         raise ServiceLayerError("Invalid 2FA code.")
-
 
 # ====================================== Views ==================================================================
 class TwoFactorSetupView(APIView):
@@ -205,11 +212,12 @@ class TwoFactorSetupView(APIView):
         serializer = TwoFactorEnableSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
 
-        data = TwoFactorService.enable_2fa(user=request.user,password=serializer.validated_data['password'])
+        request_data = extract_request_data(request)
+        data = TwoFactorService.enable_2fa(user=request.user, password=serializer.validated_data['password'],
+            request_data=request_data)
 
-        return Response({'success': True,'message':'2FA setup initiated. Scan the QR code or enter the secret manually.',
+        return Response({'success': True,'message': '2FA setup initiated. Scan the QR code or enter the secret manually.',
             'data': data}, status=status.HTTP_200_OK)
-
 
 class TwoFactorVerifyView(APIView):
     """ Verify OTP and enable 2FA. Returns backup codes for the user to store. """
