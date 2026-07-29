@@ -172,7 +172,7 @@ class TwoFactorService:
 
 # ====================================== Views ==================================================================
 class TwoFactorSetupView(APIView):
-    """ Step 1: Generate 2FA secret and provisioning URI. Requires password re-entry. """
+    """ Generate 2FA secret and provisioning URI. Requires password re-entry. """
     permission_classes = [IsAuthenticated]
 
     def post(self, request: Request) -> Response:
@@ -180,68 +180,49 @@ class TwoFactorSetupView(APIView):
         serializer.is_valid(raise_exception=True)
 
         data = TwoFactorService.enable_2fa(user=request.user,password=serializer.validated_data['password'])
-
-        return Response({'success': True,'message': '2FA setup initiated. Scan the QR code or enter the secret manually.',
+        return Response({'success': True,'message':'2FA setup initiated. Scan the QR code or enter the secret manually.',
             'data': data}, status=status.HTTP_200_OK)
 
 
 class TwoFactorVerifyView(APIView):
-    """  Verify OTP and enable 2FA. Returns backup codes for the user to store. """
+    """ Verify OTP and enable 2FA. Returns backup codes for the user to store. """
     permission_classes = [IsAuthenticated]
 
     def post(self, request: Request) -> Response:
         serializer = TwoFactorVerifySerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
 
-        result = TwoFactorService.verify_and_enable_2fa(
-            user=request.user,
-            otp_code=serializer.validated_data['otp_code']
-        )
-        return Response({
-            'success': True,
-            'message': '2FA enabled successfully. Please store your backup codes securely.',
-            'backup_codes': result['backup_codes']
-        }, status=status.HTTP_200_OK)
+        result = TwoFactorService.verify_and_enable_2fa(user=request.user,otp_code=serializer.validated_data['otp_code'])
+        return Response({'success': True,'message': '2FA enabled successfully. Please store your backup codes securely.',
+            'backup_codes': result['backup_codes']}, status=status.HTTP_200_OK)
 
 
 class TwoFactorDisableView(APIView):
-    """Disable 2FA for the authenticated user (requires password)."""
+    """ Disable 2FA for the authenticated user (requires password)."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request: Request) -> Response:
         serializer = TwoFactorDisableSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
 
-        TwoFactorService.disable_2fa(
-            user=request.user,
-            password=serializer.validated_data['password']
-        )
+        TwoFactorService.disable_2fa(user=request.user,password=serializer.validated_data['password'])
         return Response({'success': True, 'message': '2FA disabled successfully.'}, status=status.HTTP_200_OK)
 
 
 class TwoFactorBackupCodesView(APIView):
-    """Generate new backup codes (invalidates old ones)."""
+    """ Generate new backup codes (invalidates old ones). """
     permission_classes = [IsAuthenticated]
 
     def post(self, request: Request) -> Response:
         serializer = TwoFactorBackupCodesSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
 
-        codes = TwoFactorService.generate_new_backup_codes(
-            user=request.user,
-            password=serializer.validated_data['password']
-        )
-        return Response({
-            'success': True,
-            'message': 'New backup codes generated.',
-            'backup_codes': codes
-        }, status=status.HTTP_200_OK)
+        codes = TwoFactorService.generate_new_backup_codes(user=request.user,password=serializer.validated_data['password'])
+        return Response({'success': True,'message': 'New backup codes generated.','backup_codes': codes}, status=status.HTTP_200_OK)
 
 
 class TwoFactorLoginView(APIView):
-    """
-    2FA challenge, called after LoginView responds with requires_2fa=True.
-    """
+    """ 2FA challenge, called after LoginView responds with requires_2fa=True."""
     # FIX (clarity): an empty list already behaves as "no permission checks",
     # which happens to equal AllowAny, but it's implicit and easy to misread
     # as "inherit the global IsAuthenticated default". Made explicit.
