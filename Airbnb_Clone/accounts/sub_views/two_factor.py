@@ -66,21 +66,24 @@ class TwoFactorLoginChallengeSerializer(serializers.Serializer):
 class TwoFactorService:
     """Business logic layer managing Two-Factor Authentication secrets, verification, and backup codes."""
 
+    BACKUP_CODE_LENGTH = 6
+    BACKUP_CODE_COUNT = 10
+
     @staticmethod
-    def _generate_backup_codes(count: int = 10, length: int = 6) -> list[str]:
-        """Generate high-entropy, unambiguous backup codes."""
-        alphabet = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ"
-        return [''.join(secrets.choice(alphabet) for _ in range(length)) for _ in range(count)]
-    
+    def _generate_backup_codes() -> list[str]:
+        """Generate high-entropy, unambiguous backup codes using the cryptographically secure secrets module."""
+        # Removed 0, 1, I, O to avoid visual ambiguity for users
+        alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ" 
+        return [''.join(secrets.choice(alphabet) for _ in range(TwoFactorService.BACKUP_CODE_LENGTH)) 
+                for _ in range(TwoFactorService.BACKUP_CODE_COUNT)]
+
     @staticmethod
     def generate_secret() -> str:
-        """ Generate a new base32-encoded TOTP secret key.This is the long-lived secret seeded into the user's 
-        authenticator app (via the provisioning URI / QR code) — NOT a one-time code itself. """
         return pyotp.random_base32()
 
     @staticmethod
     def get_provisioning_uri(user: User, secret: str) -> str:
-        return pyotp.totp.TOTP(secret).provisioning_uri(name=user.email,issuer_name="Airbnb_Clone")
+        return pyotp.totp.TOTP(secret).provisioning_uri(name=user.email, issuer_name="Airbnb_Clone")
 
     @staticmethod
     def verify_totp(secret: str, otp_code: str) -> bool:
@@ -88,13 +91,15 @@ class TwoFactorService:
             return False
         totp = pyotp.TOTP(secret)
         return totp.verify(otp_code, valid_window=1)
-    
+
     @staticmethod
     def enable_2fa(user: User, password: str, request_data: dict) -> dict:
+        """Step 1 of setup. Removed @transaction.atomic decorator to allow failure logging."""
         if not user.check_password(password):
             _log_audit(user, AuditLog.Action.TWO_FA_ENABLED, request_data, {"status": "failed", "reason": "Incorrect password"})
             raise ServiceLayerError("Incorrect password.")
 
+        # ONLY wrap the DB mutations in the transaction
         with transaction.atomic():
             tfa, _ = TwoFactorAuth.objects.get_or_create(user=user)
             secret = TwoFactorService.generate_secret()
@@ -106,15 +111,16 @@ class TwoFactorService:
 
         _log_audit(user, AuditLog.Action.TWO_FA_ENABLED, request_data, {"status": "initiated"})
         return {'secret': secret, 'provisioning_uri': TwoFactorService.get_provisioning_uri(user, secret)}
-    
+
     @staticmethod
     def verify_and_enable_2fa(user: User, otp_code: str, request_data: dict) -> dict:
+        """Step 2 of setup."""
         tfa = TwoFactorAuth.objects.filter(user=user).first()
 
         if not tfa:
             _log_audit(user, AuditLog.Action.TWO_FA_ENABLED, request_data, {"status": "failed", "reason": "Setup not initiated"})
             raise ServiceLayerError("2FA setup not initiated. Please request a new secret.")
-
+        
         if tfa.enabled:
             _log_audit(user, AuditLog.Action.TWO_FA_ENABLED, request_data, {"status": "failed", "reason": "Already enabled"})
             raise ServiceLayerError("2FA is already enabled.")
@@ -124,16 +130,17 @@ class TwoFactorService:
             raise ServiceLayerError("Invalid OTP code.")
 
         with transaction.atomic():
+            # select_for_update inside the transaction block to prevent race conditions
             tfa = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
             tfa.enabled = True
             tfa.enabled_at = timezone.now()
-            backup_codes = TwoFactorService._generate_backup_codes(count=10, length=6)
+            backup_codes = TwoFactorService._generate_backup_codes()
             tfa.set_backup_codes(backup_codes)
             tfa.save(update_fields=['enabled', 'enabled_at'])
 
         _log_audit(user, AuditLog.Action.TWO_FA_ENABLED, request_data, {"status": "success"})
         return {'backup_codes': backup_codes}
-    
+
     @staticmethod
     def disable_2fa(user: User, password: str, request_data: dict) -> None:
         if not user.check_password(password):
@@ -149,8 +156,8 @@ class TwoFactorService:
             tfa = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
             tfa.disable()
 
-        _log_audit(user, AuditLog.Action.TWO_FA_DISABLED, request_data, {"status": "success"})
         logger.info("2FA disabled for user %s", user.email)
+        _log_audit(user, AuditLog.Action.TWO_FA_DISABLED, request_data, {"status": "success"})
 
     @staticmethod
     def generate_new_backup_codes(user: User, password: str, request_data: dict) -> list[str]:
@@ -165,32 +172,33 @@ class TwoFactorService:
 
         with transaction.atomic():
             tfa = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
-            backup_codes = TwoFactorService._generate_backup_codes(count=10, length=6)
+            backup_codes = TwoFactorService._generate_backup_codes()
             tfa.set_backup_codes(backup_codes)
 
         _log_audit(user, AuditLog.Action.TWO_FA_ENABLED, request_data, {"status": "backup_codes_regenerated"})
         return backup_codes
-    
+
     @staticmethod
-    def verify_2fa_for_login(email: str, totp_code: str, request_data: dict) -> User:
-        """ Verify TOTP or backup code for a user during login.
-        Raises ServiceLayerError on any failure returns the User only on success."""
-        
+    def verify_2fa_for_login(email: str, password: str, totp_code: str, request_data: dict) -> User:
         user = User.objects.filter(email__iexact=email).first()
         if not user:
-            _log_audit(None, AuditLog.Action.LOGIN, request_data, {"status": "failed", "email": email, "reason": "Invalid user"})
+            _log_audit(None, AuditLog.Action.LOGIN, request_data, {"status": "failed", "email": email, "reason": "Invalid credentials"})
+            raise ServiceLayerError("Invalid credentials.")
+
+        if not user.check_password(password):
+            _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "failed", "reason": "Incorrect password at 2FA stage"})
             raise ServiceLayerError("Invalid credentials.")
 
         tfa = TwoFactorAuth.objects.filter(user=user).first()
         if not tfa or not tfa.enabled:
-            _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "failed", "reason": "2FA not enabled"})
+            _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "failed", "reason": "2FA not enabled but reached 2FA endpoint"})
             raise ServiceLayerError("Invalid credentials.")
 
         if TwoFactorService.verify_totp(tfa.secret_key, totp_code):
             with transaction.atomic():
-                tfa = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
-                tfa.last_used_at = timezone.now()
-                tfa.save(update_fields=['last_used_at'])
+                tfa_locked = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
+                tfa_locked.last_used_at = timezone.now()
+                tfa_locked.save(update_fields=['last_used_at'])
             _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "TOTP"})
             return user
 
@@ -202,6 +210,8 @@ class TwoFactorService:
 
         _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "failed", "reason": "Invalid TOTP or Backup code"})
         raise ServiceLayerError("Invalid 2FA code.")
+
+
 
 # ====================================== Views ==================================================================
 class TwoFactorSetupView(APIView):
