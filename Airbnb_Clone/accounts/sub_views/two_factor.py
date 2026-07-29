@@ -74,7 +74,8 @@ class TwoFactorLoginChallengeSerializer(serializers.Serializer):
 class TwoFactorService:
     @staticmethod
     def generate_secret() -> str:
-        """ Generate a cryptographically secure base32 secret. """
+        """ Generate a new base32-encoded TOTP secret key.This is the long-lived secret seeded into the user's 
+        authenticator app (via the provisioning URI / QR code) — NOT a one-time code itself. """
         return pyotp.random_base32()
 
     @staticmethod
@@ -107,11 +108,14 @@ class TwoFactorService:
     @staticmethod
     @transaction.atomic
     def verify_and_enable_2fa(user: User, otp_code: str) -> dict:
-        tfa = TwoFactorAuth.objects.select_for_update().get(user=user)
-
+        # Prevent 500 error if user skips the setup step
+        tfa = TwoFactorAuth.objects.select_for_update().filter(user=user).first()
+        
+        if not tfa:
+            raise ServiceLayerError("2FA setup not initiated. Please request a new secret.")
         if tfa.enabled:
             raise ServiceLayerError("2FA is already enabled.")
-
+        
         if not TwoFactorService.verify_totp(tfa.secret_key, otp_code):
             raise ServiceLayerError("Invalid OTP code.")
 
