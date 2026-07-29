@@ -77,7 +77,6 @@ class TwoFactorService:
         """ Generate a new base32-encoded TOTP secret key.This is the long-lived secret seeded into the user's 
         authenticator app (via the provisioning URI / QR code) — NOT a one-time code itself. """
         return pyotp.random_base32()
-    
 
     @staticmethod
     def get_provisioning_uri(user: User, secret: str) -> str:
@@ -91,19 +90,21 @@ class TwoFactorService:
         return totp.verify(otp_code, valid_window=1)
     
     @staticmethod
-    @transaction.atomic
-    def enable_2fa(user: User, password: str) -> dict:
+    def enable_2fa(user: User, password: str, request_data: dict) -> dict:
         if not user.check_password(password):
+            _log_audit(user, AuditLog.Action.TWO_FA_ENABLED, request_data, {"status": "failed", "reason": "Incorrect password"})
             raise ServiceLayerError("Incorrect password.")
 
-        tfa, _ = TwoFactorAuth.objects.get_or_create(user=user)
-        secret = TwoFactorService.generate_secret()
+        with transaction.atomic():
+            tfa, _ = TwoFactorAuth.objects.get_or_create(user=user)
+            secret = TwoFactorService.generate_secret()
 
-        tfa.secret_key = secret
-        tfa.enabled = False
-        tfa.backup_code_hashes = []
-        tfa.save(update_fields=['secret_key', 'enabled', 'backup_code_hashes'])
+            tfa.secret_key = secret
+            tfa.enabled = False
+            tfa.backup_code_hashes = []
+            tfa.save(update_fields=['secret_key', 'enabled', 'backup_code_hashes'])
 
+        _log_audit(user, AuditLog.Action.TWO_FA_ENABLED, request_data, {"status": "initiated"})
         return {'secret': secret, 'provisioning_uri': TwoFactorService.get_provisioning_uri(user, secret)}
     
     @staticmethod
