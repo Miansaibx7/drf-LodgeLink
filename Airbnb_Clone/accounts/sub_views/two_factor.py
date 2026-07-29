@@ -265,9 +265,9 @@ class TwoFactorBackupCodesView(APIView):
 
         return Response({'success': True,'message': 'New backup codes generated.','backup_codes': codes},status=status.HTTP_200_OK)
 
-class TwoFactorLoginView(APIView):
-    """ 2FA challenge, called after LoginView responds with requires_2fa=True."""
     
+class TwoFactorLoginView(APIView):
+    """ 2FA challenge, called after LoginView responds with requires_2fa=True. """
     permission_classes = [AllowAny]
     # (TwoFactorLoginThrottle above): this endpoint was unthrottled it accepts a 6-digit/6-character code — it
     # must be rate-limited independently of authentication.
@@ -280,19 +280,18 @@ class TwoFactorLoginView(APIView):
         email = serializer.validated_data['email']
         totp_code = serializer.validated_data['totp_code']
 
-       # Local import to prevent circular dependency loop with services.py
-        from ..otp_logic.services import handle_successful_login
-        
-        user = TwoFactorService.verify_2fa_for_login(email, totp_code)
-
         request_data = extract_request_data(request)
+
+        # Local import to prevent circular dependency loop with services.py
+        from ..otp_logic.services import handle_successful_login
+
+        user = TwoFactorService.verify_2fa_for_login(email, totp_code, request_data)
         tokens = get_tokens_for_user(user)
 
         handle_successful_login(user, request_data, tokens['jti'])
         update_last_login(None, user)
 
         logger.info("2FA login verified for %s", user.email)
-    
         return Response({'success': True,'message': '2FA verified.','tokens': tokens,
             'user': {
                 'id': user.id,
