@@ -152,9 +152,7 @@ class TwoFactorService:
     def verify_2fa_for_login(email: str, totp_code: str) -> User:
         user = User.objects.filter(email__iexact=email).first()
         if not user:
-            # FIX (info-disclosure / timing): return the same generic error
-            # as an invalid code so this endpoint doesn't confirm account
-            # existence to an unauthenticated caller.
+            # return the same generic error as an invalid code so this endpoint doesn't confirm account
             raise ServiceLayerError("Invalid credentials.")
 
         tfa = TwoFactorAuth.objects.select_for_update().filter(user=user).first()
@@ -168,33 +166,27 @@ class TwoFactorService:
 
         if tfa.consume_backup_code(totp_code):
             return user
-
         raise ServiceLayerError("Invalid 2FA code.")
 
 
-# ===================== Views =====================
 
+# ====================================== Views ==================================================================
 class TwoFactorSetupView(APIView):
-    """Step 1: Generate 2FA secret and provisioning URI. Requires password re-entry."""
+    """ Step 1: Generate 2FA secret and provisioning URI. Requires password re-entry. """
     permission_classes = [IsAuthenticated]
 
     def post(self, request: Request) -> Response:
         serializer = TwoFactorEnableSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
 
-        data = TwoFactorService.enable_2fa(
-            user=request.user,
-            password=serializer.validated_data['password']
-        )
-        return Response({
-            'success': True,
-            'message': '2FA setup initiated. Scan the QR code or enter the secret manually.',
-            'data': data
-        }, status=status.HTTP_200_OK)
+        data = TwoFactorService.enable_2fa(user=request.user,password=serializer.validated_data['password'])
+
+        return Response({'success': True,'message': '2FA setup initiated. Scan the QR code or enter the secret manually.',
+            'data': data}, status=status.HTTP_200_OK)
 
 
 class TwoFactorVerifyView(APIView):
-    """Step 2: Verify OTP and enable 2FA. Returns backup codes for the user to store."""
+    """  Verify OTP and enable 2FA. Returns backup codes for the user to store. """
     permission_classes = [IsAuthenticated]
 
     def post(self, request: Request) -> Response:
