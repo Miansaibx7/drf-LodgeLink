@@ -42,8 +42,8 @@ class LoginRateThrottle(AnonRateThrottle):
     scope = 'login_requests'
 
 class RegisterRateThrottle(AnonRateThrottle):
-    # Registration gets its own scope so its rate can be tuned independently. Add
-    # 'register_requests' to DEFAULT_THROTTLE_RATES in settings.py.
+    # Registration gets its own scope so its rate can be tuned independently. 
+    # Add 'register_requests' to DEFAULT_THROTTLE_RATES in settings.py.
     scope = 'register_requests'
 
 
