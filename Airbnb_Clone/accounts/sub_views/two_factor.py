@@ -35,13 +35,6 @@ class TwoFactorLoginThrottle(AnonRateThrottle):
 class TwoFactorEnableSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
 
-    def validate_password(self, value: str) -> str:
-        user = self.context['request'].user
-        if not user.check_password(value):
-            raise serializers.ValidationError("Incorrect password.")
-        return value
-
-
 class TwoFactorVerifySerializer(serializers.Serializer):
     otp_code = serializers.CharField(max_length=6, min_length=6, required=True)
 
@@ -50,13 +43,11 @@ class TwoFactorVerifySerializer(serializers.Serializer):
             raise serializers.ValidationError("OTP must be numeric.")
         return value
 
-
 class TwoFactorDisableSerializer(TwoFactorEnableSerializer):
     pass
 
 class TwoFactorBackupCodesSerializer(TwoFactorEnableSerializer):
     pass
-
 
 class TwoFactorLoginChallengeSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
@@ -70,7 +61,6 @@ class TwoFactorLoginChallengeSerializer(serializers.Serializer):
         if len(value) != 6:
             raise serializers.ValidationError("Code must be 6 characters.")
         return value
-
 
 # ====================================== Service Layer ==================================================================
 class TwoFactorService:
