@@ -219,6 +219,7 @@ class TwoFactorSetupView(APIView):
         return Response({'success': True,'message': '2FA setup initiated. Scan the QR code or enter the secret manually.',
             'data': data}, status=status.HTTP_200_OK)
 
+
 class TwoFactorVerifyView(APIView):
     """ Verify OTP and enable 2FA. Returns backup codes for the user to store. """
     permission_classes = [IsAuthenticated]
@@ -227,7 +228,9 @@ class TwoFactorVerifyView(APIView):
         serializer = TwoFactorVerifySerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
 
-        result = TwoFactorService.verify_and_enable_2fa(user=request.user,otp_code=serializer.validated_data['otp_code'])
+        request_data = extract_request_data(request)
+        result = TwoFactorService.verify_and_enable_2fa(user=request.user,otp_code=serializer.validated_data['otp_code'],
+            request_data=request_data)
 
         return Response({'success': True,'message': '2FA enabled successfully. Please store your backup codes securely.',
             'backup_codes': result['backup_codes']}, status=status.HTTP_200_OK)
