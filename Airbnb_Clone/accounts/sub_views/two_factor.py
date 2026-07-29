@@ -246,10 +246,14 @@ class TwoFactorLoginView(APIView):
         email = serializer.validated_data['email']
         totp_code = serializer.validated_data['totp_code']
 
+       # Local import to prevent circular dependency loop with services.py
+        from ..otp_logic.services import handle_successful_login
+        
         user = TwoFactorService.verify_2fa_for_login(email, totp_code)
 
         request_data = extract_request_data(request)
         tokens = get_tokens_for_user(user)
+        
         handle_successful_login(user, request_data, tokens['jti'])
         update_last_login(None, user)
 
