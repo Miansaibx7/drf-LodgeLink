@@ -164,7 +164,7 @@ class TwoFactorService:
 
         tfa = TwoFactorAuth.objects.select_for_update().filter(user=user).first()
         if not tfa or not tfa.enabled:
-            return user  # 2FA not required for this account
+            raise ServiceLayerError("Invalid credentials.")
 
         if TwoFactorService.verify_totp(tfa.secret_key, totp_code):
             tfa.last_used_at = timezone.now()
@@ -174,7 +174,6 @@ class TwoFactorService:
         if tfa.consume_backup_code(totp_code):
             return user
         raise ServiceLayerError("Invalid 2FA code.")
-
 
 
 # ====================================== Views ==================================================================
