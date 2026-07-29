@@ -243,7 +243,6 @@ class TwoFactorLoginView(APIView):
         email = serializer.validated_data['email']
         totp_code = serializer.validated_data['totp_code']
 
-
         user = TwoFactorService.verify_2fa_for_login(email, totp_code)
 
         request_data = extract_request_data(request)
