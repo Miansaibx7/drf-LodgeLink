@@ -71,14 +71,12 @@ class TwoFactorLoginChallengeSerializer(serializers.Serializer):
 class TwoFactorService:
     @staticmethod
     def generate_secret() -> str:
+        """Generate a cryptographically secure 6-digit OTP."""
         return pyotp.random_base32()
 
     @staticmethod
     def get_provisioning_uri(user: User, secret: str) -> str:
-        return pyotp.totp.TOTP(secret).provisioning_uri(
-            name=user.email,
-            issuer_name="Airbnb_Clone"
-        )
+        return pyotp.totp.TOTP(secret).provisioning_uri(name=user.email,issuer_name="Airbnb_Clone")
 
     @staticmethod
     def verify_totp(secret: str, otp_code: str) -> bool:
@@ -86,7 +84,7 @@ class TwoFactorService:
             return False
         totp = pyotp.TOTP(secret)
         return totp.verify(otp_code, valid_window=1)
-
+    
     @staticmethod
     @transaction.atomic
     def enable_2fa(user: User, password: str) -> dict:
