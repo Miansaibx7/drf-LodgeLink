@@ -135,16 +135,21 @@ class TwoFactorService:
         return {'backup_codes': backup_codes}
     
     @staticmethod
-    @transaction.atomic
-    def disable_2fa(user: User, password: str) -> None:
+    def disable_2fa(user: User, password: str, request_data: dict) -> None:
         if not user.check_password(password):
+            _log_audit(user, AuditLog.Action.TWO_FA_DISABLED, request_data, {"status": "failed", "reason": "Incorrect password"})
             raise ServiceLayerError("Incorrect password.")
 
-        tfa = TwoFactorAuth.objects.select_for_update().filter(user=user, enabled=True).first()
+        tfa = TwoFactorAuth.objects.filter(user=user, enabled=True).first()
         if not tfa:
+            _log_audit(user, AuditLog.Action.TWO_FA_DISABLED, request_data, {"status": "failed", "reason": "2FA is not enabled"})
             raise ServiceLayerError("2FA is not enabled.")
 
-        tfa.disable()
+        with transaction.atomic():
+            tfa = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
+            tfa.disable()
+
+        _log_audit(user, AuditLog.Action.TWO_FA_DISABLED, request_data, {"status": "success"})
         logger.info("2FA disabled for user %s", user.email)
 
     @staticmethod
