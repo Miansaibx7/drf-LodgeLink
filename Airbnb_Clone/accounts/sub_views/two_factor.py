@@ -258,9 +258,8 @@ class TwoFactorDisableView(APIView):
         serializer.is_valid(raise_exception=True)
         request_data = extract_request_data(request)
 
-        TwoFactorService.disable_2fa(
-            user=request.user, password=serializer.validated_data['password'], request_data=request_data
-        )
+        TwoFactorService.disable_2fa(user=request.user, password=serializer.validated_data['password'], 
+            request_data=request_data)
         return Response({'success': True, 'message': '2FA disabled successfully.'}, status=status.HTTP_200_OK)
     
 
@@ -292,75 +291,8 @@ class TwoFactorLoginView(APIView):
         totp_code = serializer.validated_data['totp_code']
         request_data = extract_request_data(request)
 
-        user = TwoFactorService.verify_2fa_for_login(
-            email=email, password=password, totp_code=totp_code, request_data=request_data
-        )
-        tokens = get_tokens_for_user(user)
-
-        handle_successful_login(user, request_data, tokens['jti'])
-        update_last_login(None, user)
-
-        logger.info("2FA login verified for %s", user.email)
-        return Response({'success': True, 'message': '2FA verified.', 'tokens': tokens,
-            'user': {
-                'id': user.id,
-                'email': user.email,
-                'name': user.get_full_name() or user.email
-            }
-        }, status=status.HTTP_200_OK)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class TwoFactorBackupCodesView(APIView):
-    """Generate new backup codes (invalidates old ones)."""
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request: Request) -> Response:
-        serializer = TwoFactorPasswordSerializer(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
-        request_data = extract_request_data(request)
-
-        codes = TwoFactorService.generate_new_backup_codes(
-            user=request.user, password=serializer.validated_data['password'], request_data=request_data
-        )
-        return Response({'success': True, 'message': 'New backup codes generated.', 'backup_codes': codes}, status=status.HTTP_200_OK)
-
-
-class TwoFactorLoginView(APIView):
-    """2FA challenge, called after LoginView responds with requires_2fa=True."""
-    permission_classes = [AllowAny]
-    throttle_classes = [TwoFactorLoginThrottle]
-
-    def post(self, request: Request) -> Response:
-        serializer = TwoFactorLoginChallengeSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        email = serializer.validated_data['email']
-        password = serializer.validated_data['password']
-        totp_code = serializer.validated_data['totp_code']
-        request_data = extract_request_data(request)
-
-        user = TwoFactorService.verify_2fa_for_login(
-            email=email, password=password, totp_code=totp_code, request_data=request_data
-        )
+        user = TwoFactorService.verify_2fa_for_login(email=email, password=password, totp_code=totp_code,
+            request_data=request_data)
         tokens = get_tokens_for_user(user)
 
         handle_successful_login(user, request_data, tokens['jti'])
