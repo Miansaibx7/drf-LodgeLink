@@ -19,6 +19,7 @@ from ..otp_logic.services import _log_audit, handle_successful_login
 from django.contrib.auth.models import update_last_login
 
 from ..models import TwoFactorAuth, User, AuditLog
+from django.contrib.auth.hashers import check_password
 from ..exceptions import ServiceLayerError
 
 logger = logging.getLogger(__name__)
@@ -161,21 +162,6 @@ class TwoFactorService:
 
     @staticmethod
     def generate_new_backup_codes(user: User, password: str, request_data: dict) -> list[str]:
-        try:
-            TwoFactorService._verify_password(user, password)
-            with transaction.atomic():
-                tfa = TwoFactorService._get_locked_tfa(user, require_enabled=True)
-                backup_codes = TwoFactorService._generate_backup_codes()
-                tfa.set_backup_codes(backup_codes)
-                tfa.save(update_fields=['backup_code_hashes'])
-        except ServiceLayerError as exc:
-            TwoFactorService._log_failure(user, AuditLog.Action.TWO_FA_DISABLED, request_data, str(exc), context="backup_code_regeneration")
-            raise
-
-        _log_audit(user, AuditLog.Action.TWO_FA_DISABLED, request_data, {"status": "backup_codes_regenerated"})
-        return backup_codes
-    @staticmethod
-    def generate_new_backup_codes(user: User, password: str, request_data: dict) -> list[str]:
             try:
                 TwoFactorService._verify_password(user, password)
                 with transaction.atomic():
@@ -184,12 +170,6 @@ class TwoFactorService:
                     # set_backup_codes() already saves this field itself in models.py file.
                     tfa.set_backup_codes(backup_codes)
             except ServiceLayerError as exc:
-                # NOTE (still needs a models.py change to fully close): logged
-                # under TWO_FA_DISABLED, which is wrong — this is neither a
-                # disable nor an enable event. Add a dedicated
-                # AuditLog.Action.BACKUP_CODES_REGENERATED choice in models.py
-                # and swap both references below to it, once that migration
-                # exists.
                 TwoFactorService._log_failure(user, AuditLog.Action.BACKUP_CODES_REGENERATED, request_data, str(exc), context="backup_code_regeneration")
                 raise
     
@@ -198,10 +178,60 @@ class TwoFactorService:
     
     @staticmethod
     def verify_2fa_for_login(email: str, password: str, totp_code: str, request_data: dict) -> User:
+            """ Verify BOTH factors for login completion: password AND a TOTP/backup code. """
+            user = User.objects.filter(email__iexact=email).first()
+    
+            if not user:
+                User().set_password('dummy_to_prevent_timing_attack')
+                TwoFactorService._log_failure(None, AuditLog.Action.LOGIN, request_data, "Invalid credentials", email=email)
+                raise ServiceLayerError("Invalid credentials.")
+    
+            try:
+                TwoFactorService._verify_password(user, password)
+                tfa = TwoFactorAuth.objects.filter(user=user).first()
+                if not tfa or not tfa.enabled:
+                    raise ServiceLayerError("Invalid credentials.")
+            except ServiceLayerError as exc:
+                TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, str(exc))
+                # FIX: re-raise the caught exception with a bare `raise` instead
+                # of constructing a new ServiceLayerError. Same visible message
+                # either way, but this preserves the original traceback and
+                # matches the pattern used everywhere else in this class.
+                raise
+    
+            if TwoFactorService.verify_totp(tfa.secret_key, totp_code):
+                with transaction.atomic():
+                    tfa_locked = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
+                    tfa_locked.last_used_at = timezone.now()
+                    tfa_locked.save(update_fields=['last_used_at'])
+                _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "TOTP"})
+                return user
+    
+            with transaction.atomic():
+                tfa_locked = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
+                if tfa_locked.consume_backup_code(totp_code):
+                    # FIX: consume_backup_code() already saves backup_code_hashes
+                    # AND calls self.refresh_from_db() internally before
+                    # returning True (see models.py) — no extra save needed
+                    # here; the prior extra save() was redundant.
+                    _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "Backup Code"})
+                    return user
+    
+            TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, "Invalid TOTP or Backup code")
+            raise ServiceLayerError("Invalid 2FA code.")
+
+
+    # Pre-computed dummy hash matching your default password hasher cost factor
+    DUMMY_PASSWORD_HASH = "pbkdf2_sha256$800000$dummy_salt$1234567890abcdefghijklmnopqrstuvwxyz"
+
+    @staticmethod
+    def verify_2fa_for_login(email: str, password: str, auth_code: str, request_data: dict) -> User:
+        """Verify BOTH factors for login completion: password AND a TOTP/backup code."""
         user = User.objects.filter(email__iexact=email).first()
-        
+
         if not user:
-            User().set_password('dummy_to_prevent_timing_attack') 
+            # Perform actual password hashing work to equalize endpoint response timing
+            check_password(password, DUMMY_PASSWORD_HASH)
             TwoFactorService._log_failure(None, AuditLog.Action.LOGIN, request_data, "Invalid credentials", email=email)
             raise ServiceLayerError("Invalid credentials.")
 
@@ -209,31 +239,31 @@ class TwoFactorService:
             TwoFactorService._verify_password(user, password)
             tfa = TwoFactorAuth.objects.filter(user=user).first()
             if not tfa or not tfa.enabled:
-                raise ServiceLayerError("Invalid credentials.") 
+                raise ServiceLayerError("Invalid credentials.")
         except ServiceLayerError as exc:
             TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, str(exc))
-            raise ServiceLayerError("Invalid credentials.")
+            raise
 
-        if TwoFactorService.verify_totp(tfa.secret_key, totp_code):
+        #  Check standard TOTP
+        if auth_code.isdigit() and TwoFactorService.verify_totp(tfa.secret_key, auth_code):
             with transaction.atomic():
                 tfa_locked = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
                 tfa_locked.last_used_at = timezone.now()
                 tfa_locked.save(update_fields=['last_used_at'])
-            _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "TOTP"})
-            return user
 
-        with transaction.atomic():
-            tfa_locked = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
-            if tfa_locked.consume_backup_code(totp_code):
-                # BUG FIX: Save the instance so the consumed backup code is actually removed from the database
-                tfa_locked.save(update_fields=['backup_code_hashes'])
-                _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "Backup Code"})
+                _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "TOTP"})
                 return user
 
-        TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, "Invalid TOTP or Backup code")
-        raise ServiceLayerError("Invalid 2FA code.")
+            #  Check Backup Codes
+            with transaction.atomic():
+                tfa_locked = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
+                if tfa_locked.consume_backup_code(auth_code):
+                    _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "Backup Code"})
+                    return user
 
-
+                #  Validation failure
+                TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, "Invalid TOTP or Backup code")
+                raise ServiceLayerError("Invalid 2FA code.")
 
 # ====================================== Views ==================================================================
 class TwoFactorSetupView(APIView):
@@ -357,50 +387,7 @@ class TwoFactorService:
 
 
     
-    @staticmethod
-    def verify_2fa_for_login(email: str, password: str, totp_code: str, request_data: dict) -> User:
-        """Verify BOTH factors for login completion: password AND a
-        TOTP/backup code."""
-        user = User.objects.filter(email__iexact=email).first()
-
-        if not user:
-            User().set_password('dummy_to_prevent_timing_attack')
-            TwoFactorService._log_failure(None, AuditLog.Action.LOGIN, request_data, "Invalid credentials", email=email)
-            raise ServiceLayerError("Invalid credentials.")
-
-        try:
-            TwoFactorService._verify_password(user, password)
-            tfa = TwoFactorAuth.objects.filter(user=user).first()
-            if not tfa or not tfa.enabled:
-                raise ServiceLayerError("Invalid credentials.")
-        except ServiceLayerError as exc:
-            TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, str(exc))
-            # FIX: re-raise the caught exception with a bare `raise` instead
-            # of constructing a new ServiceLayerError. Same visible message
-            # either way, but this preserves the original traceback and
-            # matches the pattern used everywhere else in this class.
-            raise
-
-        if TwoFactorService.verify_totp(tfa.secret_key, totp_code):
-            with transaction.atomic():
-                tfa_locked = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
-                tfa_locked.last_used_at = timezone.now()
-                tfa_locked.save(update_fields=['last_used_at'])
-            _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "TOTP"})
-            return user
-
-        with transaction.atomic():
-            tfa_locked = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
-            if tfa_locked.consume_backup_code(totp_code):
-                # FIX: consume_backup_code() already saves backup_code_hashes
-                # AND calls self.refresh_from_db() internally before
-                # returning True (see models.py) — no extra save needed
-                # here; the prior extra save() was redundant.
-                _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "Backup Code"})
-                return user
-
-        TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, "Invalid TOTP or Backup code")
-        raise ServiceLayerError("Invalid 2FA code.")
+    
 
 
 # ====================================== Views ==================================================================
