@@ -230,9 +230,8 @@ class TwoFactorSetupView(APIView):
         serializer.is_valid(raise_exception=True)
         request_data = extract_request_data(request)
 
-        data = TwoFactorService.enable_2fa(
-            user=request.user, password=serializer.validated_data['password'], request_data=request_data
-        )
+        data = TwoFactorService.enable_2fa(user=request.user, password=serializer.validated_data['password'],
+            request_data=request_data)
         return Response({'success': True, 'message': '2FA setup initiated. Scan the QR code or enter the secret manually.', 'data': data}, status=status.HTTP_200_OK)
 
 
@@ -245,9 +244,8 @@ class TwoFactorVerifyView(APIView):
         serializer.is_valid(raise_exception=True)
         request_data = extract_request_data(request)
 
-        result = TwoFactorService.verify_and_enable_2fa(
-            user=request.user, otp_code=serializer.validated_data['otp_code'], request_data=request_data
-        )
+        result = TwoFactorService.verify_and_enable_2fa(user=request.user, otp_code=serializer.validated_data['otp_code'],
+            request_data=request_data)
         return Response({'success': True, 'message': '2FA enabled successfully. Please store your backup codes securely.', 'backup_codes': result['backup_codes']}, status=status.HTTP_200_OK)
 
 
@@ -336,35 +334,7 @@ class TwoFactorLoginView(APIView):
     
 
 
-# ====================================== Views ==================================================================
-class TwoFactorSetupView(APIView):
-    """Generate 2FA secret and provisioning URI. Requires password re-entry."""
-    permission_classes = [IsAuthenticated]
 
-    def post(self, request: Request) -> Response:
-        serializer = TwoFactorPasswordSerializer(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
-        request_data = extract_request_data(request)
-
-        data = TwoFactorService.enable_2fa(
-            user=request.user, password=serializer.validated_data['password'], request_data=request_data
-        )
-        return Response({'success': True, 'message': '2FA setup initiated. Scan the QR code or enter the secret manually.', 'data': data}, status=status.HTTP_200_OK)
-
-
-class TwoFactorVerifyView(APIView):
-    """Verify OTP and enable 2FA. Returns backup codes for the user to store."""
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request: Request) -> Response:
-        serializer = TwoFactorVerifySerializer(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
-        request_data = extract_request_data(request)
-
-        result = TwoFactorService.verify_and_enable_2fa(
-            user=request.user, otp_code=serializer.validated_data['otp_code'], request_data=request_data
-        )
-        return Response({'success': True, 'message': '2FA enabled successfully. Please store your backup codes securely.', 'backup_codes': result['backup_codes']}, status=status.HTTP_200_OK)
 
 
 class TwoFactorDisableView(APIView):
