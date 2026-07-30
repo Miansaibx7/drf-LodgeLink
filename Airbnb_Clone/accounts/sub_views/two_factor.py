@@ -273,9 +273,8 @@ class TwoFactorBackupCodesView(APIView):
         serializer.is_valid(raise_exception=True)
         request_data = extract_request_data(request)
 
-        codes = TwoFactorService.generate_new_backup_codes(
-            user=request.user, password=serializer.validated_data['password'], request_data=request_data
-        )
+        codes = TwoFactorService.generate_new_backup_codes(user=request.user, password=serializer.validated_data['password'], 
+            request_data=request_data)
         return Response({'success': True, 'message': 'New backup codes generated.', 'backup_codes': codes}, status=status.HTTP_200_OK)
 
 
@@ -328,28 +327,6 @@ class TwoFactorLoginView(APIView):
 
 
 
-
-
-    
-    
-
-
-
-
-
-class TwoFactorDisableView(APIView):
-    """Disable 2FA for the authenticated user (requires password)."""
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request: Request) -> Response:
-        serializer = TwoFactorPasswordSerializer(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
-        request_data = extract_request_data(request)
-
-        TwoFactorService.disable_2fa(
-            user=request.user, password=serializer.validated_data['password'], request_data=request_data
-        )
-        return Response({'success': True, 'message': '2FA disabled successfully.'}, status=status.HTTP_200_OK)
 
 
 class TwoFactorBackupCodesView(APIView):
