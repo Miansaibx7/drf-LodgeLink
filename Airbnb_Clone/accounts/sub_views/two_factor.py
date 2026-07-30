@@ -79,7 +79,7 @@ class TwoFactorService:
         """DRY helper for password verification."""
         if not user.check_password(password):
             raise ServiceLayerError("Incorrect password.")
-
+    
     @staticmethod
     def _get_locked_tfa(user: User, require_enabled: bool) -> TwoFactorAuth:
         """DRY helper to fetch the row, lock it for update, and check its boolean state."""
@@ -329,30 +329,9 @@ class TwoFactorLoginView(APIView):
 class TwoFactorService:
     
 
-    @staticmethod
-    def _log_failure(user, action, request_data, reason: str, **extra) -> None:
-        """Centralized failure audit logging."""
-        metadata = {"status": "failed", "reason": reason}
-        metadata.update(extra)
-        _log_audit(user, action, request_data, metadata)
+    
 
-    @staticmethod
-    def _verify_password(user: User, password: str) -> None:
-        """DRY helper for password verification."""
-        if not user.check_password(password):
-            raise ServiceLayerError("Incorrect password.")
-
-    @staticmethod
-    def _get_locked_tfa(user: User, require_enabled: bool) -> TwoFactorAuth:
-        """DRY helper to fetch the row, lock it for update, and check its boolean state."""
-        tfa = TwoFactorAuth.objects.select_for_update().filter(user=user).first()
-        if not tfa:
-            raise ServiceLayerError("2FA is not enabled." if require_enabled else "2FA setup not initiated. Please request a new secret.")
-        if require_enabled and not tfa.enabled:
-            raise ServiceLayerError("2FA is not enabled.")
-        if not require_enabled and tfa.enabled:
-            raise ServiceLayerError("2FA is already enabled.")
-        return tfa
+    
 
     @staticmethod
     def generate_secret() -> str:
