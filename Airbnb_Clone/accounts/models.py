@@ -339,6 +339,7 @@ class AuditLog(models.Model):
         TWO_FA_ENABLED = "2FA_ENABLED", "2FA Enabled"
         TWO_FA_DISABLED = "2FA_DISABLED", "2FA Disabled"
         ACCOUNT_DELETE = "ACCOUNT_DELETE", "Account Delete"
+        BACKUP_CODES_REGENERATED = "BACKUP_CODES_REGENERATED", "BACKUP_CODES_REGENERATED"
 
     user = models.ForeignKey(User,on_delete=models.SET_NULL,null=True,related_name='audit_logs')
 

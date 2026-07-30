@@ -174,7 +174,28 @@ class TwoFactorService:
 
         _log_audit(user, AuditLog.Action.TWO_FA_DISABLED, request_data, {"status": "backup_codes_regenerated"})
         return backup_codes
-
+    @staticmethod
+    def generate_new_backup_codes(user: User, password: str, request_data: dict) -> list[str]:
+            try:
+                TwoFactorService._verify_password(user, password)
+                with transaction.atomic():
+                    tfa = TwoFactorService._get_locked_tfa(user, require_enabled=True)
+                    backup_codes = TwoFactorService._generate_backup_codes()
+                    # set_backup_codes() already saves this field itself in models.py file.
+                    tfa.set_backup_codes(backup_codes)
+            except ServiceLayerError as exc:
+                # NOTE (still needs a models.py change to fully close): logged
+                # under TWO_FA_DISABLED, which is wrong — this is neither a
+                # disable nor an enable event. Add a dedicated
+                # AuditLog.Action.BACKUP_CODES_REGENERATED choice in models.py
+                # and swap both references below to it, once that migration
+                # exists.
+                TwoFactorService._log_failure(user, AuditLog.Action.BACKUP_CODES_REGENERATED, request_data, str(exc), context="backup_code_regeneration")
+                raise
+    
+            _log_audit(user, AuditLog.Action.TWO_FA_DISABLED, request_data, {"status": "backup_codes_regenerated"})
+            return backup_codes
+    
     @staticmethod
     def verify_2fa_for_login(email: str, password: str, totp_code: str, request_data: dict) -> User:
         user = User.objects.filter(email__iexact=email).first()
@@ -335,29 +356,7 @@ class TwoFactorService:
 
 
 
-    @staticmethod
-    def generate_new_backup_codes(user: User, password: str, request_data: dict) -> list[str]:
-        try:
-            TwoFactorService._verify_password(user, password)
-            with transaction.atomic():
-                tfa = TwoFactorService._get_locked_tfa(user, require_enabled=True)
-                backup_codes = TwoFactorService._generate_backup_codes()
-                # FIX: same redundant-save removal as verify_and_enable_2fa —
-                # set_backup_codes() already saves this field itself.
-                tfa.set_backup_codes(backup_codes)
-        except ServiceLayerError as exc:
-            # NOTE (still needs a models.py change to fully close): logged
-            # under TWO_FA_DISABLED, which is wrong — this is neither a
-            # disable nor an enable event. Add a dedicated
-            # AuditLog.Action.BACKUP_CODES_REGENERATED choice in models.py
-            # and swap both references below to it, once that migration
-            # exists.
-            TwoFactorService._log_failure(user, AuditLog.Action.TWO_FA_DISABLED, request_data, str(exc), context="backup_code_regeneration")
-            raise
-
-        _log_audit(user, AuditLog.Action.TWO_FA_DISABLED, request_data, {"status": "backup_codes_regenerated"})
-        return backup_codes
-
+    
     @staticmethod
     def verify_2fa_for_login(email: str, password: str, totp_code: str, request_data: dict) -> User:
         """Verify BOTH factors for login completion: password AND a
