@@ -57,16 +57,16 @@ class TwoFactorLoginChallengeSerializer(serializers.Serializer):
 # ====================================== Service Layer ==================================================================
 class TwoFactorService:
     """Business logic layer managing Two-Factor Authentication secrets, verification, and backup codes."""
-
+    
     BACKUP_CODE_LENGTH = 6
     BACKUP_CODE_COUNT = 10
-
+    
     @staticmethod
     def _generate_backup_codes() -> list[str]:
-        alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"  # excludes 0/1/I/O
+        alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"  # excludes 0/1/I/O for readability
         return [''.join(secrets.choice(alphabet) for _ in range(TwoFactorService.BACKUP_CODE_LENGTH))
-                for _ in range(TwoFactorService.BACKUP_CODE_COUNT)]
-
+                    for _ in range(TwoFactorService.BACKUP_CODE_COUNT)]
+    
     @staticmethod
     def _log_failure(user, action, request_data, reason: str, **extra) -> None:
         """Centralized failure audit logging."""
@@ -322,27 +322,12 @@ class TwoFactorLoginView(APIView):
 
 
 
-class TwoFactorLoginChallengeSerializer(serializers.Serializer):
-    email = serializers.EmailField(required=True)
-    password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
-    totp_code = serializers.CharField(max_length=6, min_length=6, required=True)
 
-    def validate_email(self, value: str) -> str:
-        return value.lower().strip()
 
 
 # ====================================== Service Layer ==================================================================
 class TwoFactorService:
-    """Business logic layer managing Two-Factor Authentication secrets, verification, and backup codes."""
-
-    BACKUP_CODE_LENGTH = 6
-    BACKUP_CODE_COUNT = 10
-
-    @staticmethod
-    def _generate_backup_codes() -> list[str]:
-        alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"  # excludes 0/1/I/O for readability
-        return [''.join(secrets.choice(alphabet) for _ in range(TwoFactorService.BACKUP_CODE_LENGTH))
-                for _ in range(TwoFactorService.BACKUP_CODE_COUNT)]
+    
 
     @staticmethod
     def _log_failure(user, action, request_data, reason: str, **extra) -> None:
