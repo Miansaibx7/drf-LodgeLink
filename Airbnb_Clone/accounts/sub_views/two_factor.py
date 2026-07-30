@@ -51,7 +51,7 @@ from ..exceptions import ServiceLayerError
 logger = logging.getLogger(__name__)
 
 
-# ===================== Throttles =====================
+# ===================== Throttles =====================================================================================
 class TwoFactorLoginThrottle(AnonRateThrottle):
     """ Prevents brute force attacks on unauthenticated 2FA verification. """
     scope = 'login_requests'
