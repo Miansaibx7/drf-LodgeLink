@@ -75,7 +75,6 @@ class TwoFactorVerifySerializer(serializers.Serializer):
 class TwoFactorLoginChallengeSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
-    # Note: No custom validate_totp_code needed. min/max_length handles length validation natively.
     totp_code = serializers.CharField(max_length=6, min_length=6, required=True)
 
     def validate_email(self, value: str) -> str:
@@ -165,8 +164,6 @@ class TwoFactorService:
                 tfa.enabled_at = timezone.now()
                 backup_codes = TwoFactorService._generate_backup_codes()
                 tfa.set_backup_codes(backup_codes)
-                
-                # BUG FIX: Added 'backup_code_hashes' so the generated codes actually save
                 tfa.save(update_fields=['enabled', 'enabled_at', 'backup_code_hashes'])
         except ServiceLayerError as exc:
             TwoFactorService._log_failure(user, AuditLog.Action.TWO_FA_ENABLED, request_data, str(exc))
@@ -197,8 +194,6 @@ class TwoFactorService:
                 tfa = TwoFactorService._get_locked_tfa(user, require_enabled=True)
                 backup_codes = TwoFactorService._generate_backup_codes()
                 tfa.set_backup_codes(backup_codes)
-                
-                # BUG FIX: Explicitly save the newly generated backup code hashes
                 tfa.save(update_fields=['backup_code_hashes'])
         except ServiceLayerError as exc:
             TwoFactorService._log_failure(user, AuditLog.Action.TWO_FA_DISABLED, request_data, str(exc), context="backup_code_regeneration")
@@ -212,7 +207,6 @@ class TwoFactorService:
         user = User.objects.filter(email__iexact=email).first()
         
         if not user:
-            # BUG FIX: Force a hash computation to prevent timing attacks exposing valid emails.
             User().set_password('dummy_to_prevent_timing_attack') 
             TwoFactorService._log_failure(None, AuditLog.Action.LOGIN, request_data, "Invalid credentials", email=email)
             raise ServiceLayerError("Invalid credentials.")
@@ -220,8 +214,6 @@ class TwoFactorService:
         try:
             TwoFactorService._verify_password(user, password)
             tfa = TwoFactorAuth.objects.filter(user=user).first()
-            
-            # Use generic error to prevent an attacker from knowing 2FA status
             if not tfa or not tfa.enabled:
                 raise ServiceLayerError("Invalid credentials.") 
         except ServiceLayerError as exc:
@@ -239,11 +231,14 @@ class TwoFactorService:
         with transaction.atomic():
             tfa_locked = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
             if tfa_locked.consume_backup_code(totp_code):
+                # BUG FIX: Save the instance so the consumed backup code is actually removed from the database
+                tfa_locked.save(update_fields=['backup_code_hashes'])
                 _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "Backup Code"})
                 return user
 
         TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, "Invalid TOTP or Backup code")
         raise ServiceLayerError("Invalid 2FA code.")
+
 
 
 # ====================================== Views ==================================================================
