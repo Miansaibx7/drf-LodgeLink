@@ -19,7 +19,7 @@ from ..otp_logic.services import _log_audit, handle_successful_login
 from django.contrib.auth.models import update_last_login
 
 from ..models import TwoFactorAuth, User, AuditLog
-from django.contrib.auth.hashers import check_password
+from django.contrib.auth.hashers import check_password,make_password
 from ..exceptions import ServiceLayerError
 
 logger = logging.getLogger(__name__)
@@ -29,13 +29,10 @@ logger = logging.getLogger(__name__)
 class TwoFactorLoginThrottle(AnonRateThrottle):
     """ Prevents brute force attacks on unauthenticated 2FA verification. """
     scope = 'login_requests'
-
-
 # ====================================== Serializers ==================================================================
 class TwoFactorPasswordSerializer(serializers.Serializer):
     """ Reusable serializer for endpoints that only require password confirmation. """
     password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
-
 
 class TwoFactorVerifySerializer(serializers.Serializer):
     otp_code = serializers.CharField(max_length=6, min_length=6, required=True)
@@ -44,7 +41,6 @@ class TwoFactorVerifySerializer(serializers.Serializer):
         if not value.isdigit():
             raise serializers.ValidationError("OTP must be numeric.")
         return value
-
 
 class TwoFactorLoginChallengeSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
@@ -55,19 +51,22 @@ class TwoFactorLoginChallengeSerializer(serializers.Serializer):
         return value.lower().strip()
 
 
+
 # ====================================== Service Layer ==================================================================
 class TwoFactorService:
     """Business logic layer managing Two-Factor Authentication secrets, verification, and backup codes."""
-    
+
     BACKUP_CODE_LENGTH = 6
     BACKUP_CODE_COUNT = 10
-    
+    # Generate a valid Django PBKDF2 hash at module load time for accurate timing equalization
+    DUMMY_PASSWORD_HASH = make_password("dummy_password_for_timing_protection")
+
     @staticmethod
     def _generate_backup_codes() -> list[str]:
         alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"  # excludes 0/1/I/O for readability
         return [''.join(secrets.choice(alphabet) for _ in range(TwoFactorService.BACKUP_CODE_LENGTH))
-                    for _ in range(TwoFactorService.BACKUP_CODE_COUNT)]
-    
+                for _ in range(TwoFactorService.BACKUP_CODE_COUNT)]
+
     @staticmethod
     def _log_failure(user, action, request_data, reason: str, **extra) -> None:
         """Centralized failure audit logging."""
@@ -80,7 +79,7 @@ class TwoFactorService:
         """DRY helper for password verification."""
         if not user.check_password(password):
             raise ServiceLayerError("Incorrect password.")
-    
+
     @staticmethod
     def _get_locked_tfa(user: User, require_enabled: bool) -> TwoFactorAuth:
         """DRY helper to fetch the row, lock it for update, and check its boolean state."""
@@ -162,22 +161,18 @@ class TwoFactorService:
 
     @staticmethod
     def generate_new_backup_codes(user: User, password: str, request_data: dict) -> list[str]:
-            try:
-                TwoFactorService._verify_password(user, password)
-                with transaction.atomic():
-                    tfa = TwoFactorService._get_locked_tfa(user, require_enabled=True)
-                    backup_codes = TwoFactorService._generate_backup_codes()
-                    # set_backup_codes() already saves this field itself in models.py file.
-                    tfa.set_backup_codes(backup_codes)
-            except ServiceLayerError as exc:
-                TwoFactorService._log_failure(user, AuditLog.Action.BACKUP_CODES_REGENERATED, request_data, str(exc), context="backup_code_regeneration")
-                raise
-    
-            _log_audit(user, AuditLog.Action.TWO_FA_DISABLED, request_data, {"status": "backup_codes_regenerated"})
-            return backup_codes
-    
-    # Pre-computed dummy hash matching your default password hasher cost factor
-    DUMMY_PASSWORD_HASH = "pbkdf2_sha256$800000$dummy_salt$1234567890abcdefghijklmnopqrstuvwxyz"
+        try:
+            TwoFactorService._verify_password(user, password)
+            with transaction.atomic():
+                tfa = TwoFactorService._get_locked_tfa(user, require_enabled=True)
+                backup_codes = TwoFactorService._generate_backup_codes()
+                tfa.set_backup_codes(backup_codes)
+        except ServiceLayerError as exc:
+            TwoFactorService._log_failure(user, AuditLog.Action.BACKUP_CODES_REGENERATED, request_data, str(exc), context="backup_code_regeneration")
+            raise
+
+        _log_audit(user, AuditLog.Action.BACKUP_CODES_REGENERATED, request_data, {"status": "backup_codes_regenerated"})
+        return backup_codes
 
     @staticmethod
     def verify_2fa_for_login(email: str, password: str, auth_code: str, request_data: dict) -> User:
@@ -186,7 +181,7 @@ class TwoFactorService:
 
         if not user:
             # Perform actual password hashing work to equalize endpoint response timing
-            check_password(password, DUMMY_PASSWORD_HASH)
+            check_password(password, TwoFactorService.DUMMY_PASSWORD_HASH)
             TwoFactorService._log_failure(None, AuditLog.Action.LOGIN, request_data, "Invalid credentials", email=email)
             raise ServiceLayerError("Invalid credentials.")
 
@@ -199,28 +194,39 @@ class TwoFactorService:
             TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, str(exc))
             raise
 
-        #  Check standard TOTP
+        # Check standard TOTP
         if auth_code.isdigit() and TwoFactorService.verify_totp(tfa.secret_key, auth_code):
             with transaction.atomic():
                 tfa_locked = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
                 tfa_locked.last_used_at = timezone.now()
                 tfa_locked.save(update_fields=['last_used_at'])
 
-                _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "TOTP"})
+            _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "TOTP"})
+            return user
+
+        # Check Backup Codes (OUTSIDE of the TOTP if-block)
+        with transaction.atomic():
+            tfa_locked = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
+            if tfa_locked.consume_backup_code(auth_code):
+                _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "Backup Code"})
                 return user
 
-            #  Check Backup Codes
-            with transaction.atomic():
-                tfa_locked = TwoFactorAuth.objects.select_for_update().get(id=tfa.id)
-                if tfa_locked.consume_backup_code(auth_code):
-                    _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "Backup Code"})
-                    return user
+        #  Validation failure
+        TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, "Invalid TOTP or Backup code")
+        raise ServiceLayerError("Invalid 2FA code.")
 
-                #  Validation failure
-                TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, "Invalid TOTP or Backup code")
-                raise ServiceLayerError("Invalid 2FA code.")
 
-# ====================================== Views ==================================================================
+    
+
+# ====================================== Views ===========================================================================
+class Base2FAView(APIView):
+    """ Base API view handling ServiceLayerError exception translation to DRF Response. """
+    def handle_exception(self, exc):
+        if isinstance(exc, ServiceLayerError):
+            return Response({'success': False, 'message': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return super().handle_exception(exc)
+
+    
 class TwoFactorSetupView(APIView):
     """ Generate 2FA secret and provisioning URI. Requires password re-entry. """
     permission_classes = [IsAuthenticated]
@@ -261,7 +267,7 @@ class TwoFactorDisableView(APIView):
         TwoFactorService.disable_2fa(user=request.user, password=serializer.validated_data['password'], 
             request_data=request_data)
         return Response({'success': True, 'message': '2FA disabled successfully.'}, status=status.HTTP_200_OK)
-    
+
 
 class TwoFactorBackupCodesView(APIView):
     """ Generate new backup codes (invalidates old ones). """
@@ -277,7 +283,7 @@ class TwoFactorBackupCodesView(APIView):
         return Response({'success': True, 'message': 'New backup codes generated.', 'backup_codes': codes}, status=status.HTTP_200_OK)
 
 
-class TwoFactorLoginView(APIView):
+class TwoFactorLoginView(Base2FAView):
     """ 2FA challenge, called after LoginView responds with requires_2fa=True. """
     permission_classes = [AllowAny]
     throttle_classes = [TwoFactorLoginThrottle]
@@ -288,10 +294,10 @@ class TwoFactorLoginView(APIView):
 
         email = serializer.validated_data['email']
         password = serializer.validated_data['password']
-        totp_code = serializer.validated_data['totp_code']
+        auth_code = serializer.validated_data['auth_code']
         request_data = extract_request_data(request)
 
-        user = TwoFactorService.verify_2fa_for_login(email=email, password=password, totp_code=totp_code,
+        user = TwoFactorService.verify_2fa_for_login(email=email, password=password, auth_code=auth_code,
             request_data=request_data)
         tokens = get_tokens_for_user(user)
 
