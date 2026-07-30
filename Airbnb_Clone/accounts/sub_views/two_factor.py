@@ -129,7 +129,7 @@ class TwoFactorService:
         try:
             with transaction.atomic():
                 tfa = TwoFactorService._get_locked_tfa(user, require_enabled=False)
-                
+
                 if not TwoFactorService.verify_totp(tfa.secret_key, otp_code):
                     raise ServiceLayerError("Invalid OTP code.")
 
@@ -137,7 +137,7 @@ class TwoFactorService:
                 tfa.enabled_at = timezone.now()
                 backup_codes = TwoFactorService._generate_backup_codes()
                 tfa.set_backup_codes(backup_codes)
-                tfa.save(update_fields=['enabled', 'enabled_at', 'backup_code_hashes'])
+                tfa.save(update_fields=['enabled', 'enabled_at'])
         except ServiceLayerError as exc:
             TwoFactorService._log_failure(user, AuditLog.Action.TWO_FA_ENABLED, request_data, str(exc))
             raise
@@ -334,64 +334,6 @@ class TwoFactorService:
     
 
 
-
-    @staticmethod
-    def enable_2fa(user: User, password: str, request_data: dict) -> dict:
-        try:
-            TwoFactorService._verify_password(user, password)
-            with transaction.atomic():
-                tfa, _ = TwoFactorAuth.objects.get_or_create(user=user)
-                secret = TwoFactorService.generate_secret()
-                tfa.secret_key = secret
-                tfa.enabled = False
-                tfa.backup_code_hashes = []
-                tfa.save(update_fields=['secret_key', 'enabled', 'backup_code_hashes'])
-        except ServiceLayerError as exc:
-            TwoFactorService._log_failure(user, AuditLog.Action.TWO_FA_ENABLED, request_data, str(exc))
-            raise
-
-        _log_audit(user, AuditLog.Action.TWO_FA_ENABLED, request_data, {"status": "setup_initiated"})
-        return {'secret': secret, 'provisioning_uri': TwoFactorService.get_provisioning_uri(user, secret)}
-
-    @staticmethod
-    def verify_and_enable_2fa(user: User, otp_code: str, request_data: dict) -> dict:
-        try:
-            with transaction.atomic():
-                tfa = TwoFactorService._get_locked_tfa(user, require_enabled=False)
-
-                if not TwoFactorService.verify_totp(tfa.secret_key, otp_code):
-                    raise ServiceLayerError("Invalid OTP code.")
-
-                tfa.enabled = True
-                tfa.enabled_at = timezone.now()
-                backup_codes = TwoFactorService._generate_backup_codes()
-                # FIX: set_backup_codes() already persists backup_code_hashes
-                # internally via its own save() call (see models.py) — it
-                # doesn't need to be repeated in this save's update_fields.
-                # Including it caused a harmless but unnecessary duplicate
-                # write of the same column, previously mislabeled as a fix.
-                tfa.set_backup_codes(backup_codes)
-                tfa.save(update_fields=['enabled', 'enabled_at'])
-        except ServiceLayerError as exc:
-            TwoFactorService._log_failure(user, AuditLog.Action.TWO_FA_ENABLED, request_data, str(exc))
-            raise
-
-        _log_audit(user, AuditLog.Action.TWO_FA_ENABLED, request_data, {"status": "success"})
-        return {'backup_codes': backup_codes}
-
-    @staticmethod
-    def disable_2fa(user: User, password: str, request_data: dict) -> None:
-        try:
-            TwoFactorService._verify_password(user, password)
-            with transaction.atomic():
-                tfa = TwoFactorService._get_locked_tfa(user, require_enabled=True)
-                tfa.disable()
-        except ServiceLayerError as exc:
-            TwoFactorService._log_failure(user, AuditLog.Action.TWO_FA_DISABLED, request_data, str(exc))
-            raise
-
-        logger.info("2FA disabled for user %s", user.email)
-        _log_audit(user, AuditLog.Action.TWO_FA_DISABLED, request_data, {"status": "success"})
 
     @staticmethod
     def generate_new_backup_codes(user: User, password: str, request_data: dict) -> list[str]:
