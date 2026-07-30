@@ -317,25 +317,9 @@ class TwoFactorLoginView(APIView):
 
 
 
-# ===================== Throttles =====================================================================================
-class TwoFactorLoginThrottle(AnonRateThrottle):
-    """Prevents brute force attacks on unauthenticated 2FA verification."""
-    scope = 'login_requests'
 
 
-# ====================================== Serializers ==================================================================
-class TwoFactorPasswordSerializer(serializers.Serializer):
-    """Reusable serializer for endpoints that only require password confirmation."""
-    password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
 
-
-class TwoFactorVerifySerializer(serializers.Serializer):
-    otp_code = serializers.CharField(max_length=6, min_length=6, required=True)
-
-    def validate_otp_code(self, value: str) -> str:
-        if not value.isdigit():
-            raise serializers.ValidationError("OTP must be numeric.")
-        return value
 
 
 class TwoFactorLoginChallengeSerializer(serializers.Serializer):
