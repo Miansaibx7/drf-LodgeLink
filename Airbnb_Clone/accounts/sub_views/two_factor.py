@@ -333,19 +333,7 @@ class TwoFactorService:
 
     
 
-    @staticmethod
-    def generate_secret() -> str:
-        return pyotp.random_base32()
 
-    @staticmethod
-    def get_provisioning_uri(user: User, secret: str) -> str:
-        return pyotp.totp.TOTP(secret).provisioning_uri(name=user.email, issuer_name="Airbnb_Clone")
-
-    @staticmethod
-    def verify_totp(secret: str, otp_code: str) -> bool:
-        if not secret:
-            return False
-        return pyotp.TOTP(secret).verify(otp_code, valid_window=1)
 
     @staticmethod
     def enable_2fa(user: User, password: str, request_data: dict) -> dict:
