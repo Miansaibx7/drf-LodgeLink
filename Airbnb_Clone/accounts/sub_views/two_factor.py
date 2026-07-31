@@ -338,11 +338,7 @@ class TwoFactorBackupCodesView(Base2FAView):
             password=serializer.validated_data['password'], 
             request_data=request_data
         )
-        return Response({
-            'success': True, 
-            'message': 'New backup codes generated.', 
-            'backup_codes': codes
-        }, status=status.HTTP_200_OK)
+        return Response({'success': True, 'message': 'New backup codes generated.', 'backup_codes': codes},status=status.HTTP_200_OK)
 
 
 class TwoFactorLoginView(Base2FAView):
