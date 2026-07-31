@@ -340,7 +340,7 @@ class AuditLog(models.Model):
         TWO_FA_DISABLED = "2FA_DISABLED", "2FA Disabled"
         ACCOUNT_DELETE = "ACCOUNT_DELETE", "Account Delete"
         BACKUP_CODES_REGENERATED = "BACKUP_CODES_REGENERATED", "BACKUP_CODES_REGENERATED"
-
+    
     user = models.ForeignKey(User,on_delete=models.SET_NULL,null=True,related_name='audit_logs')
 
     action = models.CharField(max_length=50, choices=Action.choices)
@@ -449,12 +449,12 @@ class TwoFactorAuth(models.Model):
         self.save(update_fields=["enabled", "secret_key", "backup_code_hashes", "disabled_at"])
 
     def set_backup_codes(self, raw_codes: list) -> None:
-        """Hash and store a new set of one‑time backup codes."""
+        """ Hash and store a new set of one‑time backup codes."""
         self.backup_code_hashes = [make_password(code) for code in raw_codes]
         self.save(update_fields=["backup_code_hashes"])
 
     def consume_backup_code(self, raw_code: str) -> bool:
-        """Verify and consume a backup code atomically.Returns True if the code was valid and used, False otherwise."""
+        """ Verify and consume a backup code atomically.Returns True if the code was valid and used, False otherwise. """
         with transaction.atomic():
             # Lock the row to prevent concurrent consumption of the same code
             obj = TwoFactorAuth.objects.select_for_update().get(pk=self.pk)
