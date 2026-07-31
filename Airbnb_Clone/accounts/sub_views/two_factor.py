@@ -257,15 +257,7 @@ class TwoFactorService:
     
 
 # ====================================== Views ===========================================================================
-class Base2FAView(APIView):
-    """ Base API view handling ServiceLayerError exception translation to DRF Response. """
-    def handle_exception(self, exc):
-        if isinstance(exc, ServiceLayerError):
-            return Response({'success': False, 'message': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        return super().handle_exception(exc)
-
-
-class TwoFactorSetupView(Base2FAView):
+class TwoFactorSetupView(APIView):
     """ Generate 2FA secret and provisioning URI. Requires password re-entry. """
     permission_classes = [IsAuthenticated]
 
@@ -286,7 +278,7 @@ class TwoFactorSetupView(Base2FAView):
         }, status=status.HTTP_200_OK)
 
 
-class TwoFactorVerifyView(Base2FAView):
+class TwoFactorVerifyView(APIView):
     """ Verify OTP and enable 2FA. Returns backup codes for the user to store. """
     permission_classes = [IsAuthenticated]
 
