@@ -299,7 +299,7 @@ class TwoFactorVerifyView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-class TwoFactorDisableView(Base2FAView):
+class TwoFactorDisableView(APIView):
     """ Disable 2FA for the authenticated user (requires password). """
     permission_classes = [IsAuthenticated]
 
@@ -316,7 +316,7 @@ class TwoFactorDisableView(Base2FAView):
         return Response({'success': True, 'message': '2FA disabled successfully.'}, status=status.HTTP_200_OK)
 
 
-class TwoFactorBackupCodesView(Base2FAView):
+class TwoFactorBackupCodesView(APIView):
     """ Generate new backup codes (invalidates old ones). """
     permission_classes = [IsAuthenticated]
 
@@ -333,7 +333,7 @@ class TwoFactorBackupCodesView(Base2FAView):
         return Response({'success': True, 'message': 'New backup codes generated.', 'backup_codes': codes},status=status.HTTP_200_OK)
 
 
-class TwoFactorLoginView(Base2FAView):
+class TwoFactorLoginView(APIView):
     """ 2FA challenge, called after LoginView responds with requires_2fa=True. """
     permission_classes = [AllowAny]
     # Employs dual-layer throttling against both volumetric IP and targeted account attacks
