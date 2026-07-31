@@ -361,10 +361,7 @@ class TwoFactorLoginView(APIView):
         update_last_login(None, user)
 
         logger.info("2FA login verified for %s", user.email)
-        return Response({
-            'success': True, 
-            'message': '2FA verified.', 
-            'tokens': tokens,
+        return Response({'success': True, 'message': '2FA verified.', 'tokens': tokens,
             'user': {
                 'id': user.id,
                 'email': user.email,
