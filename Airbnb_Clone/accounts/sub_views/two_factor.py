@@ -431,11 +431,7 @@ class TwoFactorAccountThrottle(SimpleRateThrottle):
     scope = 'login_account_requests'
 
     def get_cache_key(self, request, view):
-        """Key the throttle bucket on the normalized (lowercased, stripped)
-        submitted email rather than the client IP. Returns None (meaning
-        "don't throttle on this key") when no email is present -- that
-        case is instead caught by the serializer's required=True
-        validation, which runs before this ever matters."""
+        """ Key the throttle bucket on the normalized (lowercased, stripped) submitted email rather than the client IP. """
         email = request.data.get('email', '')
         if not email:
             return None
@@ -457,34 +453,13 @@ class TwoFactorVerifySerializer(serializers.Serializer):
 
 
 class TwoFactorLoginChallengeSerializer(serializers.Serializer):
-    """Input serializer for the login-time 2FA challenge.
-
-    FIX (security-critical, restored after being dropped and re-added
-    several times across this file's history): `password` MUST be
-    present here. Without it, verify_2fa_for_login() would have no way
-    to check password knowledge at all -- anyone who knew a user's email
-    and could produce a valid TOTP/backup code would get full tokens
-    with zero proof they know the account's password. This field,
-    combined with the check_password() call in
-    TwoFactorService.verify_2fa_for_login(), is what makes this endpoint
-    genuinely enforce two independent factors rather than one.
-    """
+    """Input serializer for the login-time 2FA challenge. """
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
-    # FIX (entropy, external review): TOTP codes are always 6 digits, but
-    # backup codes are now 10 characters (see BACKUP_CODE_LENGTH below --
-    # 32^6 ~= 1.07 billion combinations was thin for a static,
-    # non-expiring credential; 32^10 ~= 1.15 quintillion matches industry
-    # norms like Google/GitHub). This field accepts either length; the
-    # service layer distinguishes them by checking .isdigit() and length
-    # rather than this serializer trying to guess the format.
     auth_code = serializers.CharField(max_length=10, min_length=6, required=True)
 
     def validate_email(self, value: str) -> str:
-        """Normalize email the same way every other email field in this
-        codebase does (RegisterSerializer, LoginSerializer,
-        BaseOTPSendSerializer, etc.) -- consistency matters here because
-        User.email is stored lowercased/stripped by User.save()."""
+        """Normalize email the same way every other email field. """
         return value.lower().strip()
 
 
@@ -578,30 +553,15 @@ class TwoFactorService:
 
     @staticmethod
     def _verify_password(user: User, password: str) -> None:
-        """Raise ServiceLayerError if the given password doesn't match
-        the user's stored password hash. Centralizing this in one helper
-        (rather than repeating `if not user.check_password(...)` at every
-        call site) means there's exactly one place that defines what
-        "incorrect password" means across every 2FA endpoint."""
+        """Raise ServiceLayerError if the given password doesn't match the user's stored password hash.
+        Centralizing this in one helper method rather than repeating. """
         if not user.check_password(password):
             raise ServiceLayerError("Incorrect password.")
 
     @staticmethod
     def _get_locked_tfa(user: User, require_enabled: bool) -> TwoFactorAuth:
-        """Fetch a user's TwoFactorAuth row under select_for_update() and
-        validate its enabled/disabled state in one place.
-
-        `require_enabled=True` is for operations that only make sense on
-        an already-enabled account (disable, regenerate backup codes).
-        `require_enabled=False` is for the setup-confirmation step, which
-        expects a row that exists but is NOT yet enabled.
-
-        Locking happens here, as the very first database operation, and
-        this method must always be called from inside an already-open
-        transaction.atomic() block in the caller -- that's what makes the
-        subsequent check-then-write sequence in each caller atomic and
-        race-free, rather than leaving a window between an unlocked read
-        and a later locked write."""
+        """ Fetch a user's TwoFactorAuth row under select_for_update() and 
+        validate its enabled/disabled state in one place."""
         tfa = TwoFactorAuth.objects.select_for_update().filter(user=user).first()
         if not tfa:
             raise ServiceLayerError(
