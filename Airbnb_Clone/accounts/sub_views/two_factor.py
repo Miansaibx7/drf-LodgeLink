@@ -465,43 +465,17 @@ class TwoFactorLoginChallengeSerializer(serializers.Serializer):
 
 # ====================================== Service Layer ==================================================================
 class TwoFactorService:
-    """Business logic layer managing Two-Factor Authentication secrets,
-    verification, and backup codes. Views in this file are intentionally
-    thin -- all real logic, locking, and audit logging lives here."""
+    """ Business logic layer managing Two-Factor Authentication secrets, verification, and backup codes. 
+    Views in this file are intentionally thin -- all real logic, locking, and audit logging lives here. """
 
-    # FIX (entropy, external review): 6 characters from this 32-character
-    # alphabet gives only 32^6 ~= 1.07 billion combinations -- thin for a
-    # STATIC credential that never expires until used (unlike a TOTP
-    # code, which rotates every 30 seconds). 10 characters gives
-    # 32^10 ~= 1.15 quintillion, matching industry norms (Google, GitHub).
-    # Account-level throttling already makes brute-forcing impractical
-    # either way, but this is cheap insurance with no real UX cost.
     BACKUP_CODE_LENGTH = 10
     BACKUP_CODE_COUNT = 10
-
-    # Precomputed once at class-body evaluation time (i.e. once per
-    # process, not once per request) so that the "email doesn't exist"
-    # branch in verify_2fa_for_login() can perform a real password-hash
-    # comparison against SOMETHING, equalizing its response time against
-    # the "email exists but password is wrong" branch. Without this, an
-    # attacker could distinguish "no such account" from "wrong password"
-    # purely by how long the response takes, which leaks account
-    # existence -- exactly the kind of side channel authenticate_user()
-    # already guards against on the primary login path.
+    # Generated at module load for accurate timing equalization (prevents user-enumeration timing attacks)
     DUMMY_PASSWORD_HASH = make_password("dummy_password_for_timing_protection")
 
     @staticmethod
     def _generate_backup_codes() -> list[str]:
-        """Generate a fresh batch of one-time backup codes.
-
-        Uses a restricted alphabet excluding visually ambiguous
-        characters (0/O, 1/I) since these codes are meant to be manually
-        typed by a user from a printed/saved copy -- misreading a
-        lookalike character is a common real-world failure mode for
-        backup-code logins. Length and count MUST stay in sync with
-        TwoFactorLoginChallengeSerializer.auth_code (exactly 6
-        characters) -- that field validates any code, TOTP or backup, at
-        that fixed length."""
+        """ Generate a fresh batch of one-time backup codes. """
         alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
         return [''.join(secrets.choice(alphabet) for _ in range(TwoFactorService.BACKUP_CODE_LENGTH))
                 for _ in range(TwoFactorService.BACKUP_CODE_COUNT)]
@@ -512,39 +486,12 @@ class TwoFactorService:
 
     @staticmethod
     def _sanitize_metadata(metadata: dict) -> dict:
-        """FIX (defense-in-depth, external review): extract_request_data()
-        in otp_logic/utils.py already only ever whitelists specific
-        non-sensitive keys (ip_address, user_agent, device_name, browser,
-        operating_system, location, device_id) out of request.data -- it
-        does NOT pass through raw request.data, so passwords do not
-        currently reach AuditLog.metadata via that path. This helper is a
-        cheap additional safeguard: if this method or any future caller
-        ever accidentally includes a sensitive key in the **extra kwargs
-        passed to _log_failure, it gets stripped here before the write,
-        rather than relying solely on every future caller remembering not
-        to pass it."""
+        """ Remove any sensitive keys from the metadata dict before logging to AuditLog. """
         return {k: v for k, v in metadata.items() if k not in TwoFactorService._SENSITIVE_METADATA_KEYS}
 
     @staticmethod
     def _log_failure(user: User | None, action: str, request_data: dict, reason: str, **extra) -> None:
-        """Centralized failure-path audit logging. Every ServiceLayerError
-        raised anywhere in this class should be preceded by a call to
-        this helper (with the one exception of the top-level
-        "email doesn't exist" branch in verify_2fa_for_login, which calls
-        it directly with user=None). Keeping this in one place means the
-        metadata shape ({"status": "failed", "reason": ..., **extra}) can
-        never drift between call sites the way it did before this helper
-        existed.
-
-        FIX (audit continuity, external review): wrapped the actual
-        _log_audit() call in its own try/except. If AuditLog.objects.create()
-        itself raises (e.g. a DB connectivity blip, deadlock, or the audit
-        table specifically being unavailable), that failure is logged via
-        the application logger and swallowed here -- it must NEVER mask
-        or replace the real ServiceLayerError the caller is about to
-        raise. Losing one audit-log row to a transient DB hiccup is
-        acceptable; losing the actual security-relevant exception to a
-        logging failure is not."""
+        """ Centralized failure audit logging. """
         metadata = TwoFactorService._sanitize_metadata({"status": "failed", "reason": reason, **extra})
         try:
             _log_audit(user, action, request_data, metadata)
@@ -553,20 +500,17 @@ class TwoFactorService:
 
     @staticmethod
     def _verify_password(user: User, password: str) -> None:
-        """Raise ServiceLayerError if the given password doesn't match the user's stored password hash.
+        """ Raise ServiceLayerError if the given password doesn't match the user's stored password hash.
         Centralizing this in one helper method rather than repeating. """
         if not user.check_password(password):
             raise ServiceLayerError("Incorrect password.")
 
     @staticmethod
     def _get_locked_tfa(user: User, require_enabled: bool) -> TwoFactorAuth:
-        """ Fetch a user's TwoFactorAuth row under select_for_update() and 
-        validate its enabled/disabled state in one place."""
+        """ Fetch a user's TwoFactorAuth row under select_for_update() and validate its enabled/disabled state in one place."""
         tfa = TwoFactorAuth.objects.select_for_update().filter(user=user).first()
         if not tfa:
-            raise ServiceLayerError(
-                "2FA is not enabled." if require_enabled else "2FA setup not initiated. Please request a new secret."
-            )
+            raise ServiceLayerError("2FA is not enabled." if require_enabled else "2FA setup not initiated. Please request a new secret.")
         if require_enabled and not tfa.enabled:
             raise ServiceLayerError("2FA is not enabled.")
         if not require_enabled and tfa.enabled:
@@ -575,17 +519,12 @@ class TwoFactorService:
 
     @staticmethod
     def generate_secret() -> str:
-        """Generate a new base32-encoded TOTP secret key. This is the
-        long-lived secret seeded into the user's authenticator app (via
-        the provisioning URI / QR code) -- NOT a one-time code itself.
-        The app uses this secret plus the current time to derive a fresh
-        6-digit TOTP code every ~30 seconds."""
+        """ Generate a new base32-encoded TOTP secret key. """
         return pyotp.random_base32()
 
     @staticmethod
     def get_provisioning_uri(user: User, secret: str) -> str:
-        """Build the otpauth:// URI used to render the QR code the user
-        scans into their authenticator app during setup."""
+        """ Build the URI used to render the QR code the user scans into their authenticator app during setup."""
         return pyotp.totp.TOTP(secret).provisioning_uri(name=user.email, issuer_name="Airbnb_Clone")
 
     @staticmethod
