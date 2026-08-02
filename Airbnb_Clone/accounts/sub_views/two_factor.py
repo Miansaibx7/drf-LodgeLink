@@ -233,12 +233,8 @@ class TwoFactorService:
 
     @staticmethod
     def generate_new_backup_codes(user: User, password: str, request_data: dict) -> list[str]:
-        """Invalidate all existing backup codes and issue a fresh set.
-        Requires password re-entry, since this rotates a security
-        credential. Logged under its own dedicated BACKUP_CODES_REGENERATED
-        action -- NOT under TWO_FA_ENABLED or TWO_FA_DISABLED, which this
-        operation is neither of. (Requires AuditLog.Action to define
-        BACKUP_CODES_REGENERATED in models.py.)"""
+        """ Invalidate all existing backup codes and issue a fresh set. Requires password re-entry, since this rotates
+        a security credential. """
         try:
             TwoFactorService._verify_password(user, password)
             with transaction.atomic():
