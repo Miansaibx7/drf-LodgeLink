@@ -318,8 +318,7 @@ class TwoFactorService:
 
 # ====================================== Views ==================================================================
 class TwoFactorSetupView(APIView):
-    """Step 1: Generate 2FA secret and provisioning URI for QR-code
-    display. Requires password re-entry."""
+    """ Generate 2FA secret and provisioning URI for QR-code display. Requires password re-entry."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request: Request) -> Response:
