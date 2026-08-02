@@ -296,10 +296,7 @@ class TwoFactorService:
                     tfa_locked.save(update_fields=['last_used_at'])
                     _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "TOTP"})
                     return user
-                # Falls through to the backup-code path below if the code
-                # doesn't verify -- a 6-digit numeric string could in
-                # principle also collide with a backup code's format, so
-                # we don't short-circuit on a failed TOTP check alone.
+                
 
         # --- Path 2: backup code. Normalized to uppercase since
         # _generate_backup_codes() only ever produces uppercase
