@@ -342,16 +342,11 @@ class TwoFactorVerifyView(APIView):
         serializer.is_valid(raise_exception=True)
         request_data = extract_request_data(request)
 
-        result = TwoFactorService.verify_and_enable_2fa(
-            user=request.user,
-            otp_code=serializer.validated_data['otp_code'],
-            request_data=request_data
-        )
-        return Response({
-            'success': True,
-            'message': '2FA enabled successfully. Please store your backup codes securely.',
-            'backup_codes': result['backup_codes']
-        }, status=status.HTTP_200_OK)
+        result = TwoFactorService.verify_and_enable_2fa(user=request.user,otp_code=serializer.validated_data['otp_code'],
+            request_data=request_data)
+        
+        return Response({'success': True,'message': '2FA enabled successfully. Please store your backup codes securely.',
+            'backup_codes': result['backup_codes']}, status=status.HTTP_200_OK)
 
 
 class TwoFactorDisableView(APIView):
