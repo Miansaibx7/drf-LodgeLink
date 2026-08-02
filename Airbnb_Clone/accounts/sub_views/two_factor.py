@@ -186,22 +186,7 @@ class TwoFactorService:
 
     @staticmethod
     def verify_and_enable_2fa(user: User, otp_code: str, request_data: dict) -> dict:
-        """Step 2 of setup: confirm the user can produce a valid code
-        from the secret issued in enable_2fa(), then flip 2FA on and
-        issue a fresh set of backup codes.
-
-        The lock (via _get_locked_tfa) is taken as the FIRST operation
-        inside this method's transaction.atomic() block, before any of
-        the enabled/expired checks run. This means the entire
-        check-then-write sequence is one atomic unit: two near-simultaneous
-        calls can no longer both pass the "not yet enabled" check and then
-        each overwrite the other's freshly-generated backup codes -- the
-        second call blocks until the first commits, then correctly sees
-        enabled=True and cleanly rejects with "already enabled" instead.
-
-        Audit logging on the failure path happens via try/except AFTER
-        the atomic block exits (not inside it), so a rolled-back
-        transaction never also discards the record of why it failed."""
+        """ Verify a live TOTP code and, if valid, enable 2FA for the user and return backup codes. """
         try:
             with transaction.atomic():
                 tfa = TwoFactorService._get_locked_tfa(user, require_enabled=False)
@@ -212,9 +197,7 @@ class TwoFactorService:
                 tfa.enabled = True
                 tfa.enabled_at = timezone.now()
                 backup_codes = TwoFactorService._generate_backup_codes()
-                # set_backup_codes() persists backup_code_hashes itself
-                # (see models.py) -- it does not need to be repeated in
-                # this save's update_fields below.
+                # set_backup_codes() persists backup_code_hashes itself (see models.py).So does not need to be repeated it.
                 tfa.set_backup_codes(backup_codes)
                 tfa.save(update_fields=['enabled', 'enabled_at'])
         except ServiceLayerError as exc:
