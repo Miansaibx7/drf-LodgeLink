@@ -298,10 +298,8 @@ class TwoFactorService:
                     return user
                 
 
-        # --- Path 2: backup code. Normalized to uppercase since
-        # _generate_backup_codes() only ever produces uppercase
-        # characters -- without this, a user typing their saved code in
-        # lowercase would always fail the hash comparison. ---
+        # backup code. Normalized to uppercase since _generate_backup_codes() only ever produces uppercase characters 
+        # without this, a user typing their saved code in lowercase would always fail the hash comparison.
         auth_code_upper = auth_code_clean.upper()
         with transaction.atomic():
             tfa_locked = TwoFactorAuth.objects.select_for_update().filter(id=tfa.id).first()
@@ -319,20 +317,6 @@ class TwoFactorService:
 
 
 # ====================================== Views ==================================================================
-# FIX (architectural regression, removed): a previous draft of this file
-# introduced a Base2FAView with its own handle_exception() override that
-# translated ServiceLayerError into a Response directly, bypassing
-# custom_global_exception_handler entirely. That created TWO places in
-# the codebase that decide how a ServiceLayerError becomes an HTTP
-# response, and they disagreed: the override's response omitted the
-# "errors" key present on every other endpoint's error responses, and it
-# skipped the logger.warning(...) call that custom_global_exception_handler
-# performs for every handled client error, creating a blind spot in
-# application logs specifically for 2FA errors. ServiceLayerError already
-# flows correctly through custom_global_exception_handler for every other
-# view in this codebase -- there is no reason these views need special
-# handling. All views below are plain APIView; no exception override.
-
 class TwoFactorSetupView(APIView):
     """Step 1: Generate 2FA secret and provisioning URI for QR-code
     display. Requires password re-entry."""
