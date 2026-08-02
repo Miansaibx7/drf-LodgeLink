@@ -365,9 +365,8 @@ class TwoFactorDisableView(APIView):
 
 
 class TwoFactorBackupCodesView(APIView):
-    """Generate a fresh set of backup codes, invalidating all previous
-    ones. Requires password re-entry, since this rotates a security
-    credential."""
+    """ Generate a fresh set of backup codes, invalidating all previous ones. Requires password re-entry, 
+    since this rotates a security credential. """
     permission_classes = [IsAuthenticated]
 
     def post(self, request: Request) -> Response:
