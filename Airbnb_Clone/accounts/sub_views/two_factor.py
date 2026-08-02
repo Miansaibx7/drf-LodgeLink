@@ -257,35 +257,13 @@ class TwoFactorService:
 
     @staticmethod
     def verify_2fa_for_login(email: str, password: str, auth_code: str, request_data: dict) -> User:
-        """Verify BOTH factors for login completion: the account
-        password AND a TOTP/backup code. This is the ONLY place that
-        should ever issue tokens for a 2FA-protected account -- both
-        factors are checked independently here, and every failure path
-        (nonexistent email, wrong password, 2FA not enabled, wrong code)
-        raises the SAME generic "Invalid credentials." / "Invalid 2FA
-        code." message, so this endpoint never confirms account
-        existence or 2FA status to an unauthenticated caller.
-
-        Handles two categories of race condition:
-        1. TOCTOU on the TwoFactorAuth row itself: select_for_update()
-           is used with .filter(...).first() (not .get()) so that if the
-           row is deleted between the initial unlocked read and the
-           locked re-read (e.g. a concurrent disable_2fa() call), this
-           raises a clean, audited ServiceLayerError instead of a raw
-           DoesNotExist.
-        2. Timing side-channel on account existence: the "email doesn't
-           exist" branch performs a real check_password() call against a
-           precomputed dummy hash, so its response time is equalized
-           against the "email exists, password wrong" branch below it.
-        """
+        """ Verify both the password and a TOTP/backup code for a 2FA-enabled account. 
+        Returns the User on success, raises. ServiceLayerError on failure. """
         user = User.objects.filter(email__iexact=email).first()
 
         if not user:
-            # Perform real hashing work here so this branch's timing
-            # matches the "user exists but password is wrong" branch
-            # below -- otherwise an attacker could distinguish
-            # "no such account" from "wrong password" purely by response
-            # time, which leaks account existence.
+            # Perform real hashing work here so this branch's timing matches the "user exists but password is wrong" branch
+            # below otherwise an attacker could distinguish "no such account" from "wrong password" purely by response time.
             check_password(password, TwoFactorService.DUMMY_PASSWORD_HASH)
             TwoFactorService._log_failure(None, AuditLog.Action.LOGIN, request_data, "Invalid credentials", email=email)
             raise ServiceLayerError("Invalid credentials.")
@@ -294,46 +272,17 @@ class TwoFactorService:
             TwoFactorService._verify_password(user, password)
             tfa = TwoFactorAuth.objects.filter(user=user).first()
             if not tfa or not tfa.enabled:
-                # Password may have been correct, but this account has no
-                # 2FA configured. This branch shouldn't be reachable in
-                # normal flow (LoginView only ever returns
-                # requires_2fa=True when tfa.enabled is True), so treat
-                # it the same as any other invalid request rather than
-                # silently completing login here.
+                # Password may have been correct, but this account has no 2FA configured.This branch shouldn't be reachable in
+                # normal flow (LoginView only ever returns requires_2fa=True when tfa.enabled is True), so treat
+                # it the same as any other invalid request rather than silently completing login here.
                 raise ServiceLayerError("Invalid credentials.")
         except ServiceLayerError as exc:
             TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, str(exc))
-            # FIX (account enumeration, external review -- confirmed real):
-            # _verify_password() raises ServiceLayerError("Incorrect
-            # password.") specifically, which is a DIFFERENT string than
-            # the "Invalid credentials." raised for a nonexistent email
-            # above. A bare `raise` here would let "Incorrect password."
-            # propagate straight to the client, letting an attacker
-            # distinguish "valid email, wrong password" from "no such
-            # account" just by reading the response body -- completely
-            # defeating the DUMMY_PASSWORD_HASH timing-equalization work
-            # above, which only protects against a TIMING side-channel,
-            # not a TEXT side-channel. Every failure in this method must
-            # surface the exact same message regardless of which check
-            # actually failed.
             raise ServiceLayerError("Invalid credentials.")
 
-        # Sanitize incidental whitespace a user might paste in around a
-        # copied code, without changing the code's actual characters.
+        # Sanitize incidental whitespace a user might paste in around a copied code, without changing the code's actual characters.
         auth_code_clean = auth_code.strip()
 
-        # --- Path 1: standard TOTP code (always purely numeric, 6 digits) ---
-        # FIX (TOCTOU race, external review -- confirmed real): TOTP
-        # verification previously ran against the UNLOCKED `tfa.secret_key`
-        # fetched earlier, before the atomic block even opened. If a
-        # concurrent enable_2fa()/verify_and_enable_2fa() call rotated the
-        # secret in the window between that unlocked read and the locked
-        # re-read below, the code would have been validated against a
-        # secret that might already be stale by the time the lock was
-        # acquired -- yet last_used_at would still be saved as if the
-        # validation were current. The check now runs entirely INSIDE the
-        # atomic block, against tfa_locked.secret_key (the definitively
-        # current value under the row lock), not the earlier unlocked copy.
         if auth_code_clean.isdigit() and len(auth_code_clean) == 6:
             with transaction.atomic():
                 # .filter().first() instead of .get() -- handles the edge
