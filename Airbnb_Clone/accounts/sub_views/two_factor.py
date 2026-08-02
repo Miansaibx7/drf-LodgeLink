@@ -326,16 +326,11 @@ class TwoFactorSetupView(APIView):
         serializer.is_valid(raise_exception=True)
         request_data = extract_request_data(request)
 
-        data = TwoFactorService.enable_2fa(
-            user=request.user,
-            password=serializer.validated_data['password'],
-            request_data=request_data
-        )
-        return Response({
-            'success': True,
-            'message': '2FA setup initiated. Scan the QR code or enter the secret manually.',
-            'data': data
-        }, status=status.HTTP_200_OK)
+        data = TwoFactorService.enable_2fa(user=request.user,password=serializer.validated_data['password'],
+            request_data=request_data)
+        
+        return Response({'success': True,'message': '2FA setup initiated. Scan the QR code or enter the secret manually.',
+            'data': data}, status=status.HTTP_200_OK)
 
 
 class TwoFactorVerifyView(APIView):
