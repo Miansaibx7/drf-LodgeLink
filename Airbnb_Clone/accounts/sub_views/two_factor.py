@@ -350,8 +350,7 @@ class TwoFactorVerifyView(APIView):
 
 
 class TwoFactorDisableView(APIView):
-    """Disable 2FA for the authenticated user. Requires password
-    re-entry, since this downgrades account security."""
+    """ Disable 2FA for the authenticated user. Requires password re-entry, since this downgrades account security. """
     permission_classes = [IsAuthenticated]
 
     def post(self, request: Request) -> Response:
@@ -359,11 +358,9 @@ class TwoFactorDisableView(APIView):
         serializer.is_valid(raise_exception=True)
         request_data = extract_request_data(request)
 
-        TwoFactorService.disable_2fa(
-            user=request.user,
-            password=serializer.validated_data['password'],
-            request_data=request_data
-        )
+        TwoFactorService.disable_2fa(user=request.user,password=serializer.validated_data['password'],
+            request_data=request_data)
+        
         return Response({'success': True, 'message': '2FA disabled successfully.'}, status=status.HTTP_200_OK)
 
 
