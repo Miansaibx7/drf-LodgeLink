@@ -164,20 +164,7 @@ class TwoFactorService:
 
     @staticmethod
     def enable_2fa(user: User, password: str, request_data: dict) -> dict:
-        """Step 1 of setup: verify the password, generate a fresh TOTP
-        secret, and return the provisioning URI for the QR code.
-
-        2FA is NOT active yet after this call -- `enabled` is explicitly
-        set False here. verify_and_enable_2fa() below must separately
-        confirm the user can produce a valid code from this secret before
-        2FA actually turns on. This two-step design prevents a user from
-        locking themselves out by enabling 2FA with a secret their
-        authenticator app never actually received (e.g. a failed QR scan).
-
-        Every call to this endpoint generates and persists a brand-new
-        secret, overwriting any previous one -- that's a security-relevant
-        event on its own, so it's logged to AuditLog regardless of
-        whether 2FA ends up actually being enabled afterward."""
+        """ Verify the password, generate a fresh TOTP secret, and return the provisioning URI for the QR code. """
         try:
             TwoFactorService._verify_password(user, password)
             with transaction.atomic():
@@ -191,21 +178,11 @@ class TwoFactorService:
             TwoFactorService._log_failure(user, AuditLog.Action.TWO_FA_ENABLED, request_data, str(exc))
             raise
         except Exception as exc:
-            # FIX (audit continuity, external review): the ServiceLayerError
-            # branch above only catches EXPECTED business-logic failures.
-            # An unexpected DB-level error (OperationalError, IntegrityError,
-            # a deadlock, the DB going away mid-transaction) would skip it
-            # entirely and leave no AuditLog trace of the failed attempt.
-            # This still records a failure entry before re-raising the
-            # original exception unchanged -- it does not swallow or mask it.
             TwoFactorService._log_failure(user, AuditLog.Action.TWO_FA_ENABLED, request_data, f"Unexpected error: {exc.__class__.__name__}")
             raise
 
         _log_audit(user, AuditLog.Action.TWO_FA_ENABLED, request_data, {"status": "setup_initiated"})
-        return {
-            'secret': secret,
-            'provisioning_uri': TwoFactorService.get_provisioning_uri(user, secret)
-        }
+        return {'secret': secret,'provisioning_uri': TwoFactorService.get_provisioning_uri(user, secret)}
 
     @staticmethod
     def verify_and_enable_2fa(user: User, otp_code: str, request_data: dict) -> dict:
