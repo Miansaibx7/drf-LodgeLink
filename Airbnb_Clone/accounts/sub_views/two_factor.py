@@ -286,9 +286,6 @@ class TwoFactorService:
         if auth_code_clean.isdigit() and len(auth_code_clean) == 6:
             with transaction.atomic():
                 # .filter().first() instead of .get() -- handles the edge
-                # case where the row was deleted (e.g. a concurrent
-                # disable_2fa()) between the unlocked read above and this
-                # locked re-read, without raising a raw DoesNotExist.
                 tfa_locked = TwoFactorAuth.objects.select_for_update().filter(id=tfa.id).first()
                 if not tfa_locked:
                     TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data,"2FA configuration modified mid-request (TOTP path)")
