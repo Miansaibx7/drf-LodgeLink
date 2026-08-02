@@ -240,25 +240,19 @@ class TwoFactorService:
             with transaction.atomic():
                 tfa = TwoFactorService._get_locked_tfa(user, require_enabled=True)
                 backup_codes = TwoFactorService._generate_backup_codes()
-                # set_backup_codes() persists backup_code_hashes itself --
-                # no separate .save() call needed here.
+                # set_backup_codes() persists backup_code_hashes itself no separate .save() call needed here.
                 tfa.set_backup_codes(backup_codes)
         except ServiceLayerError as exc:
-            TwoFactorService._log_failure(
-                user, AuditLog.Action.BACKUP_CODES_REGENERATED, request_data, str(exc),
-                context="backup_code_regeneration"
-            )
+            TwoFactorService._log_failure(user, AuditLog.Action.BACKUP_CODES_REGENERATED, request_data, str(exc),
+                context="backup_code_regeneration")
             raise
         except Exception as exc:
             # See enable_2fa() for why this broader net exists.
-            TwoFactorService._log_failure(
-                user, AuditLog.Action.BACKUP_CODES_REGENERATED, request_data,
-                f"Unexpected error: {exc.__class__.__name__}", context="backup_code_regeneration"
-            )
+            TwoFactorService._log_failure(user, AuditLog.Action.BACKUP_CODES_REGENERATED, request_data,
+                f"Unexpected error: {exc.__class__.__name__}", context="backup_code_regeneration")
             raise
 
-        _log_audit(user, AuditLog.Action.BACKUP_CODES_REGENERATED, request_data,
-                   {"status": "backup_codes_regenerated"})
+        _log_audit(user, AuditLog.Action.BACKUP_CODES_REGENERATED, request_data,{"status": "backup_codes_regenerated"})
         return backup_codes
 
     @staticmethod
