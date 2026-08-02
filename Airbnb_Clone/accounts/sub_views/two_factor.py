@@ -381,18 +381,7 @@ class TwoFactorBackupCodesView(APIView):
 
 
 class TwoFactorLoginView(APIView):
-    """2FA login challenge -- called after LoginView responds with
-    requires_2fa=True for an email+password pair belonging to a
-    2FA-enabled account. This is the ONLY endpoint that issues tokens
-    for such an account; it independently re-verifies both the password
-    AND a TOTP/backup code before doing so.
-
-    Unauthenticated by design (permission_classes=[AllowAny]) since no
-    session exists yet at this point in the login flow -- protected
-    instead by dual-layer throttling: a volumetric per-IP limit and a
-    targeted per-account limit, so neither a single attacking IP nor a
-    distributed attack against one victim account can bypass rate
-    limiting by working around just one dimension of it."""
+    """ Handle the login-time 2FA challenge. Requires both the user's password and a valid TOTP or backup code. """
     permission_classes = [AllowAny]
     throttle_classes = [TwoFactorIPThrottle, TwoFactorAccountThrottle]
 
@@ -405,34 +394,14 @@ class TwoFactorLoginView(APIView):
         auth_code = serializer.validated_data['auth_code']
         request_data = extract_request_data(request)
 
-        user = TwoFactorService.verify_2fa_for_login(
-            email=email,
-            password=password,
-            auth_code=auth_code,
-            request_data=request_data
-        )
+        user = TwoFactorService.verify_2fa_for_login(email=email,password=password,auth_code=auth_code,request_data=request_data)
         tokens = get_tokens_for_user(user)
 
-        # .get('jti') rather than tokens['jti'] -- defends against a
-        # KeyError if the jti claim is ever absent from the token dict,
-        # matching the same defensive pattern already used in
-        # LogoutView elsewhere in this codebase.
         handle_successful_login(user, request_data, tokens.get('jti'))
-        # FIX (external review): Django's default update_last_login
-        # receiver ignores `sender` entirely, so passing None "worked" --
-        # but the documented signature is update_last_login(sender, user,
-        # **kwargs), where sender is conventionally the model class. If
-        # any custom signal receiver is ever connected that DOES inspect
-        # sender, passing None instead of the real model class would
-        # silently break it. Passing user.__class__ costs nothing and
-        # matches the documented contract.
         update_last_login(user.__class__, user)
 
         logger.info("2FA login verified for %s", user.email)
-        return Response({
-            'success': True,
-            'message': '2FA verified.',
-            'tokens': tokens,
+        return Response({'success': True,'message': '2FA verified.','tokens': tokens,
             'user': {
                 'id': user.id,
                 'email': user.email,
