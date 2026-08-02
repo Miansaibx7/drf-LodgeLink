@@ -334,10 +334,7 @@ class TwoFactorSetupView(APIView):
 
 
 class TwoFactorVerifyView(APIView):
-    """Step 2: Verify a live TOTP code to confirm setup and actually
-    enable 2FA. Returns backup codes for the user to store securely --
-    these are shown exactly once and cannot be retrieved again later
-    (only regenerated, which invalidates the old set)."""
+    """ Verify a live TOTP code to confirm setup and actually enable 2FA. Returns backup codes for the user to store securely. """
     permission_classes = [IsAuthenticated]
 
     def post(self, request: Request) -> Response:
