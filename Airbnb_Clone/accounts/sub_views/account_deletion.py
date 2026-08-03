@@ -92,9 +92,7 @@ class AccountDeletionService:
             return
 
         user = request_obj.user
-        user_email = user.email  # capture before delete -- AuditLog.user
-        # will be SET_NULL once the User row is gone (see models.py), so
-        # the email needs to live in metadata to remain readable afterward.
+        user_email = user.email 
 
         request_obj.complete()
         # FIX (missing audit trail): log BEFORE user.delete() while `user`
