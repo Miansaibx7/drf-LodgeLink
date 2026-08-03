@@ -48,8 +48,7 @@ class AccountDeletionService:
     @staticmethod
     @transaction.atomic
     def create_deletion_request(user: User, reason: str, confirm: bool, request_data: dict = None) -> AccountDeletionRequest:
-        """Create a pending deletion request with a 7-day grace period.
-        Logs an ACCOUNT_DELETE AuditLog entry (status: 'requested')."""
+        """ Create a pending deletion request with a 7-day grace period. """
         if not confirm:
             raise ServiceLayerError("Deletion not confirmed.")
 
