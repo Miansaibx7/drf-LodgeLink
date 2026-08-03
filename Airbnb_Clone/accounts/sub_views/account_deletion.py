@@ -41,8 +41,7 @@ class AccountDeletionStatusSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-# ===================== Service Layer =====================
-
+# =================================== Service Layer ==========================================================================
 class AccountDeletionService:
     """Business logic for account deletion requests."""
 
