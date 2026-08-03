@@ -20,10 +20,6 @@ logger = logging.getLogger(__name__)
 
 # ======================================== Serializers ========================================================================
 class AccountDeletionRequestSerializer(serializers.Serializer):
-    # FIX: added max_length -- previously unbounded, allowing arbitrarily
-    # long text into AccountDeletionRequest.reason (a TextField). Cheap
-    # defensive cap; adjust the number to whatever your product actually
-    # needs to display.
     reason = serializers.CharField(required=False, allow_blank=True, max_length=1000)
     confirm = serializers.BooleanField(required=True)
 
