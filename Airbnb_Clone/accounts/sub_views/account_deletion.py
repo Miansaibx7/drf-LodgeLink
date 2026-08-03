@@ -126,7 +126,7 @@ class AccountDeletionRequestView(APIView):
 
 
 class AccountDeletionCancelView(APIView):
-    """Cancel a pending deletion request."""
+    """ Cancel a pending deletion request. """
     permission_classes = [IsAuthenticated]
 
     def post(self, request: Request) -> Response:
