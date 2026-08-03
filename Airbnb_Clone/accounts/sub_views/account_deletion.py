@@ -113,10 +113,8 @@ class AccountDeletionRequestView(APIView):
         request_data = extract_request_data(request)
 
         deletion_request = AccountDeletionService.create_deletion_request(user=request.user,
-            reason=serializer.validated_data.get('reason', ''),
-            confirm=serializer.validated_data['confirm'],
-            request_data=request_data
-        )
+            reason=serializer.validated_data.get('reason', ''),confirm=serializer.validated_data['confirm'],
+            request_data=request_data)
 
         return Response({'success': True,
             'message': 'Deletion request submitted. Your account will be deleted on {}.'.format(
