@@ -52,19 +52,6 @@ class AccountDeletionService:
         if not confirm:
             raise ServiceLayerError("Deletion not confirmed.")
 
-        # FIX (concurrency, real bug): select_for_update() can only lock a
-        # ROW THAT ALREADY EXISTS. The previous version locked the
-        # AccountDeletionRequest queryset -- but the exact race this is
-        # meant to prevent (two simultaneous "delete my account" clicks)
-        # is precisely the case where NO such row exists yet for either
-        # request to lock. Both concurrent calls would see existing=None,
-        # both pass the check, and both create a row -- silently producing
-        # two AccountDeletionRequest rows for the same user, bypassing the
-        # duplicate-request guard entirely. This is the same class of bug
-        # found and fixed in BaseOAuthLoginSerializer earlier in this
-        # review. Fix: lock the User row itself (which definitely exists),
-        # so two concurrent calls for the same user are fully serialized
-        # regardless of whether a pending request already exists.
         user = User.objects.select_for_update().get(pk=user.pk)
 
         existing = AccountDeletionRequest.objects.filter(
