@@ -259,7 +259,7 @@ class TwoFactorService:
     @staticmethod
     def verify_2fa_for_login(email: str, password: str, auth_code: str, request_data: dict) -> User:
         """ Verify both the password and a TOTP/backup code for a 2FA-enabled account. 
-        Returns the User on success, raises. ServiceLayerError on failure. """
+        Returns the User on success, raises ServiceLayerError on failure. """
         user = User.objects.filter(email__iexact=email).first()
 
         if not user:
@@ -273,9 +273,7 @@ class TwoFactorService:
             TwoFactorService._verify_password(user, password)
             tfa = TwoFactorAuth.objects.filter(user=user).first()
             if not tfa or not tfa.enabled:
-                # Password may have been correct, but this account has no 2FA configured.This branch shouldn't be reachable in
-                # normal flow (LoginView only ever returns requires_2fa=True when tfa.enabled is True), so treat
-                # it the same as any other invalid request rather than silently completing login here.
+                # Password may have been correct, but this account has no 2FA configured.
                 raise ServiceLayerError("Invalid credentials.")
         except ServiceLayerError as exc:
             TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, str(exc))
@@ -284,26 +282,27 @@ class TwoFactorService:
         # Sanitize incidental whitespace a user might paste in around a copied code, without changing the code's actual characters.
         auth_code_clean = auth_code.strip()
 
-        if auth_code_clean.isdigit() and len(auth_code_clean) == 6:
-                # .filter().first() instead of .get() -- handles the edge
-            with transaction.atomic():
-                tfa_locked = TwoFactorAuth.objects.select_for_update().filter(id=tfa.id).first()
-                if not tfa_locked:
-                    TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, "2FA configuration modified mid-request")
-                    raise ServiceLayerError("2FA configuration was modified. Please try again.")
-        # Path A: Attempt standard 6-digit TOTP
-        if auth_code_clean.isdigit() and len(auth_code_clean) == 6:
-            if TwoFactorService.verify_totp(tfa_locked.secret_key, auth_code_clean):
-                tfa_locked.last_used_at = timezone.now()
-                tfa_locked.save(update_fields=['last_used_at'])
-            _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "TOTP"})
-            return user
-        # Path B: Attempt backup code
-        else:
-            auth_code_upper = auth_code_clean.upper()
-            if tfa_locked.consume_backup_code(auth_code_upper):
-                _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "Backup Code"})
-            return user
+        # Both TOTP and Backup Codes must be verified inside the atomic lock
+        with transaction.atomic():
+            tfa_locked = TwoFactorAuth.objects.select_for_update().filter(id=tfa.id).first()
+            if not tfa_locked:
+                TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, "2FA configuration modified mid-request")
+                raise ServiceLayerError("2FA configuration was modified. Please try again.")
+            
+            # Path A: Attempt standard 6-digit TOTP
+            if auth_code_clean.isdigit() and len(auth_code_clean) == 6:
+                if TwoFactorService.verify_totp(tfa_locked.secret_key, auth_code_clean):
+                    tfa_locked.last_used_at = timezone.now()
+                    tfa_locked.save(update_fields=['last_used_at'])
+                    _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "TOTP"})
+                    return user # Placed INSIDE the successful validation check
+            
+            # Path B: Attempt backup code
+            else:
+                auth_code_upper = auth_code_clean.upper()
+                if tfa_locked.consume_backup_code(auth_code_upper):
+                    _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "Backup Code"})
+                    return user # Placed INSIDE the successful validation check
 
         # Neither a valid TOTP code nor a valid backup code.
         TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, "Invalid TOTP or Backup code")
