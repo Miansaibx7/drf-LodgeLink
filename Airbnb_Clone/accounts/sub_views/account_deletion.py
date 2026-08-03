@@ -100,8 +100,7 @@ class AccountDeletionService:
         logger.info("Account for user %s has been permanently deleted.", user_email)
 
 
-# ===================== Views =====================
-
+# ================================== Views ==================================================================================
 class AccountDeletionRequestView(APIView):
     """ Create a deletion request for the authenticated user (7-day grace period)."""
     permission_classes = [IsAuthenticated]
