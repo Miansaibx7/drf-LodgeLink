@@ -154,7 +154,7 @@ class TwoFactorService:
     @staticmethod
     def get_provisioning_uri(user: User, secret: str) -> str:
         """ Build the URI used to render the QR code the user scans into their authenticator app during setup."""
-        return pyotp.totp.TOTP(secret).provisioning_uri(name=user.email, issuer_name=settings.ROOT_URLCONF)
+        return pyotp.totp.TOTP(secret).provisioning_uri(name=user.email, issuer_name="Airbnb_Clone")
 
     @staticmethod
     def verify_totp(secret: str, otp_code: str) -> bool:
@@ -285,32 +285,25 @@ class TwoFactorService:
         auth_code_clean = auth_code.strip()
 
         if auth_code_clean.isdigit() and len(auth_code_clean) == 6:
-            with transaction.atomic():
                 # .filter().first() instead of .get() -- handles the edge
+            with transaction.atomic():
                 tfa_locked = TwoFactorAuth.objects.select_for_update().filter(id=tfa.id).first()
                 if not tfa_locked:
-                    TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data,"2FA configuration modified mid-request (TOTP path)")
+                    TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, "2FA configuration modified mid-request")
                     raise ServiceLayerError("2FA configuration was modified. Please try again.")
-
-                if TwoFactorService.verify_totp(tfa_locked.secret_key, auth_code_clean):
-                    tfa_locked.last_used_at = timezone.now()
-                    tfa_locked.save(update_fields=['last_used_at'])
-                    _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "TOTP"})
-                    return user
-                
-
-        # backup code. Normalized to uppercase since _generate_backup_codes() only ever produces uppercase characters 
-        # without this, a user typing their saved code in lowercase would always fail the hash comparison.
-        auth_code_upper = auth_code_clean.upper()
-        with transaction.atomic():
-            tfa_locked = TwoFactorAuth.objects.select_for_update().filter(id=tfa.id).first()
-            if not tfa_locked:
-                TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data,"2FA configuration modified mid-request (backup code path)")
-                raise ServiceLayerError("2FA configuration was modified. Please try again.")
-
+        # Path A: Attempt standard 6-digit TOTP
+        if auth_code_clean.isdigit() and len(auth_code_clean) == 6:
+            if TwoFactorService.verify_totp(tfa_locked.secret_key, auth_code_clean):
+                tfa_locked.last_used_at = timezone.now()
+                tfa_locked.save(update_fields=['last_used_at'])
+            _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "TOTP"})
+            return user
+        # Path B: Attempt backup code
+        else:
+            auth_code_upper = auth_code_clean.upper()
             if tfa_locked.consume_backup_code(auth_code_upper):
                 _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "Backup Code"})
-                return user
+            return user
 
         # Neither a valid TOTP code nor a valid backup code.
         TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, "Invalid TOTP or Backup code")
@@ -399,7 +392,7 @@ class TwoFactorLoginView(APIView):
         tokens = get_tokens_for_user(user)
 
         handle_successful_login(user, request_data, tokens.get('jti'))
-        update_last_login(user.__class__, user)
+        update_last_login(None, user)
 
         logger.info("2FA login verified for %s", user.email)
         return Response({'success': True,'message': '2FA verified.','tokens': tokens,
