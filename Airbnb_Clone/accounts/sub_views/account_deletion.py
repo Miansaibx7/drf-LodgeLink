@@ -71,9 +71,7 @@ class AccountDeletionService:
     @transaction.atomic
     def cancel_deletion_request(user: User, request_data: dict = None) -> None:
         """ Cancel a pending deletion request. Logs an ACCOUNT_DELETE. """
-        request_obj = AccountDeletionRequest.objects.select_for_update().filter(
-            user=user, completed=False, cancelled=False
-        ).first()
+        request_obj = AccountDeletionRequest.objects.select_for_update().filter(user=user, completed=False, cancelled=False).first()
         if not request_obj:
             raise ServiceLayerError("No pending deletion request found.")
 
@@ -84,9 +82,7 @@ class AccountDeletionService:
 
     @staticmethod
     def get_user_deletion_status(user: User) -> Optional[AccountDeletionRequest]:
-        return AccountDeletionRequest.objects.filter(
-            user=user, completed=False, cancelled=False
-        ).first()
+        return AccountDeletionRequest.objects.filter(user=user, completed=False, cancelled=False).first()
 
     @staticmethod
     @transaction.atomic
