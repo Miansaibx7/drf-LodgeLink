@@ -20,6 +20,7 @@ from rest_framework.throttling import AnonRateThrottle, SimpleRateThrottle
 
 from django.utils import timezone
 from django.db import transaction
+from django.conf import settings
 from django.contrib.auth.models import update_last_login
 from django.contrib.auth.hashers import check_password, make_password
 
@@ -153,7 +154,7 @@ class TwoFactorService:
     @staticmethod
     def get_provisioning_uri(user: User, secret: str) -> str:
         """ Build the URI used to render the QR code the user scans into their authenticator app during setup."""
-        return pyotp.totp.TOTP(secret).provisioning_uri(name=user.email, issuer_name="Airbnb_Clone")
+        return pyotp.totp.TOTP(secret).provisioning_uri(name=user.email, issuer_name=settings.ROOT_URLCONF)
 
     @staticmethod
     def verify_totp(secret: str, otp_code: str) -> bool:
