@@ -43,7 +43,7 @@ class AccountDeletionStatusSerializer(serializers.ModelSerializer):
 
 # =================================== Service Layer ==========================================================================
 class AccountDeletionService:
-    """Business logic for account deletion requests."""
+    """ Business logic for account deletion requests. """
 
     @staticmethod
     @transaction.atomic
