@@ -87,26 +87,6 @@ class AccountDeletionService:
     @staticmethod
     @transaction.atomic
     def complete_deletion_request(request_obj: AccountDeletionRequest) -> None:
-        """
-        Actually delete the user account. This must be invoked by a scheduled
-        job (Celery beat / cron management command), not by any request/response
-        cycle.
-
-        MISSING PIECE (flagging, not silently fixing): nothing in this codebase
-        currently calls this method. There is no Celery worker/beat config, no
-        management command, and no cron entry wired up anywhere in the files
-        you shared. As written, AccountDeletionRequest rows will sit at
-        completed=False forever and accounts will never actually be deleted
-        after the 7-day grace period. You need one of:
-          1. A Celery periodic task (celery beat) that queries
-             AccountDeletionRequest.objects.filter(scheduled_for__lte=now(),
-             completed=False, cancelled=False) and calls this method for each, or
-          2. A Django management command (`manage.py process_account_deletions`)
-             invoked by a system cron job on the same schedule.
-
-        No request_data is available here (this runs outside any HTTP
-        request cycle) -- _log_audit() handles request_data=None gracefully.
-        """
         request_obj = AccountDeletionRequest.objects.select_for_update().get(pk=request_obj.pk)
         if request_obj.completed or request_obj.cancelled:
             return
