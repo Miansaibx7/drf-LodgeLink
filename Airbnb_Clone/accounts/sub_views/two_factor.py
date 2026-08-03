@@ -289,20 +289,27 @@ class TwoFactorService:
                 TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, "2FA configuration modified mid-request")
                 raise ServiceLayerError("2FA configuration was modified. Please try again.")
             
-            # Path A: Attempt standard 6-digit TOTP
+            # Attempt standard 6-digit TOTP
             if auth_code_clean.isdigit() and len(auth_code_clean) == 6:
+                
+                # --- REPLAY ATTACK MITIGATION ---
+                # Ensure this TOTP code (or another from the same time step) wasn't just successfully used.
+                if tfa_locked.last_used_at and (timezone.now() - tfa_locked.last_used_at).total_seconds() < 30:
+                    TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, "TOTP Replay attack prevented")
+                    raise ServiceLayerError("This code has already been used. Please wait for the next code.")
+
                 if TwoFactorService.verify_totp(tfa_locked.secret_key, auth_code_clean):
                     tfa_locked.last_used_at = timezone.now()
                     tfa_locked.save(update_fields=['last_used_at'])
                     _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "TOTP"})
-                    return user # Placed INSIDE the successful validation check
+                    return user 
             
             # Path B: Attempt backup code
             else:
                 auth_code_upper = auth_code_clean.upper()
                 if tfa_locked.consume_backup_code(auth_code_upper):
                     _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "Backup Code"})
-                    return user # Placed INSIDE the successful validation check
+                    return user 
 
         # Neither a valid TOTP code nor a valid backup code.
         TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, "Invalid TOTP or Backup code")
