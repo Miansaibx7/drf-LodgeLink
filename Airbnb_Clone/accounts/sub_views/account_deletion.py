@@ -147,7 +147,4 @@ class AccountDeletionStatusView(APIView):
         if request_obj:
             serializer = AccountDeletionStatusSerializer(request_obj)
             return Response({'success': True, 'data': serializer.data}, status=status.HTTP_200_OK)
-        return Response(
-            {'success': True, 'message': 'No active deletion request found.', 'data': None},
-            status=status.HTTP_200_OK
-        )
+        return Response({'success': True, 'message': 'No active deletion request found.', 'data': None},status=status.HTTP_200_OK)
