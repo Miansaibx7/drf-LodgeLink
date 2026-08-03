@@ -18,8 +18,7 @@ from ..otp_logic.services import _log_audit
 logger = logging.getLogger(__name__)
 
 
-# ===================== Serializers =====================
-
+# ======================================== Serializers ========================================================================
 class AccountDeletionRequestSerializer(serializers.Serializer):
     # FIX: added max_length -- previously unbounded, allowing arbitrarily
     # long text into AccountDeletionRequest.reason (a TextField). Cheap
