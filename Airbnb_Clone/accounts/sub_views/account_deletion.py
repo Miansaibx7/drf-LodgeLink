@@ -95,11 +95,6 @@ class AccountDeletionService:
         user_email = user.email 
 
         request_obj.complete()
-        # FIX (missing audit trail): log BEFORE user.delete() while `user`
-        # is still a valid FK target. AuditLog.user is on_delete=SET_NULL,
-        # so this row survives the deletion with user=NULL but retains the
-        # email in metadata -- the only way to have a durable record of
-        # *which* account was deleted after it no longer exists to look up.
         _log_audit(user, AuditLog.Action.ACCOUNT_DELETE, None,
                    {"status": "completed", "email": user_email})
         user.delete()
