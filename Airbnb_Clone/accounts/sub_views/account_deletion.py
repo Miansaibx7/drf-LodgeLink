@@ -59,21 +59,10 @@ class AccountDeletionService:
             raise ServiceLayerError("You already have a pending deletion request.")
 
         scheduled_for = timezone.now() + timedelta(days=7)
-
-        request_obj = AccountDeletionRequest.objects.create(
-            user=user,
-            reason=reason,
-            scheduled_for=scheduled_for,
-            completed=False,
-            cancelled=False
-        )
+        request_obj = AccountDeletionRequest.objects.create(user=user,reason=reason,scheduled_for=scheduled_for,
+            completed=False,cancelled=False)
 
         logger.info("Deletion request created for user %s, scheduled for %s", user.email, scheduled_for)
-        # FIX (missing audit trail): AuditLog.Action already defines
-        # ACCOUNT_DELETE specifically for this feature, but nothing in
-        # this file ever created an entry. Requesting deletion is a
-        # security/compliance-relevant action -- there should be a record
-        # of who asked, and when.
         _log_audit(user, AuditLog.Action.ACCOUNT_DELETE, request_data,
                    {"status": "requested", "scheduled_for": scheduled_for.isoformat(), "reason": reason})
         return request_obj
