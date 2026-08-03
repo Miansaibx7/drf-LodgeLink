@@ -30,7 +30,7 @@ class AccountDeletionRequestSerializer(serializers.Serializer):
 
 
 class AccountDeletionCancelSerializer(serializers.Serializer):
-    """No input fields required; kept for symmetry / future extension (e.g. a reason-for-cancel field)."""
+    """ No input fields required; kept for symmetry / future extension (e.g. a reason-for-cancel field). """
     pass
 
 
