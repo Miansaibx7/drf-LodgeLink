@@ -304,7 +304,7 @@ class TwoFactorService:
                     _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "TOTP"})
                     return user 
             
-            # Path B: Attempt backup code
+            # Attempt backup code
             else:
                 auth_code_upper = auth_code_clean.upper()
                 if tfa_locked.consume_backup_code(auth_code_upper):
