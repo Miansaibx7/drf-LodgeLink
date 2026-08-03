@@ -16,11 +16,10 @@ from rest_framework.response import Response
 from rest_framework.request import Request
 
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.throttling import AnonRateThrottle, SimpleRateThrottle, UserRateThrottle
+from rest_framework.throttling import AnonRateThrottle, SimpleRateThrottle
 
 from django.utils import timezone
 from django.db import transaction
-from django.conf import settings
 from django.contrib.auth.models import update_last_login
 from django.contrib.auth.hashers import check_password, make_password
 
@@ -35,16 +34,28 @@ logger = logging.getLogger(__name__)
 
 # ===================== Throttles =====================================================================================
 class TwoFactorIPThrottle(AnonRateThrottle):
-    """Prevents volumetric brute-force attacks from a single IP address hammering the unauthenticated 2FA login-challenge
-    endpoint. REQUIRED SETTINGS: add 'login_ip_requests' to REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] in settings.py. """
+    """Prevents volumetric brute-force attacks from a single IP address
+    hammering the unauthenticated 2FA login-challenge endpoint.
 
+    REQUIRED SETTINGS: add 'login_ip_requests' to
+    REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] in settings.py. If this key
+    is missing, DRF silently disables throttling for this scope entirely
+    (no error raised) -- this is the exact same failure mode that once
+    left TwoFactorLoginView completely unthrottled earlier in this
+    codebase's history, so it's called out explicitly here.
+    """
     scope = 'login_ip_requests'
 
 
 class TwoFactorAccountThrottle(SimpleRateThrottle):
-    """ Prevents a distributed/botnet attack that spreads requests across many IPs but targets one victim account. REQUIRED SETTINGS: add 'login_account_requests' to
-    REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] in settings.py. """
+    """Prevents a distributed/botnet attack that spreads requests across
+    many IPs but targets one victim account, by keying the throttle on
+    the submitted email instead of the client IP.
 
+    REQUIRED SETTINGS: add 'login_account_requests' to
+    REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] in settings.py -- same
+    silent-disable risk as TwoFactorIPThrottle above if omitted.
+    """
     scope = 'login_account_requests'
 
     def get_cache_key(self, request, view):
@@ -53,14 +64,6 @@ class TwoFactorAccountThrottle(SimpleRateThrottle):
         if not email:
             return None
         return self.cache_format % {'scope': self.scope, 'ident': email.lower().strip()}
-
-
-class TwoFactorSetupThrottle(UserRateThrottle):
-    """ Prevents brute-forcing the 6-digit TOTP code during the setup phase if a session is compromised.
-    REQUIRED SETTINGS: add 'setup_2fa_requests' to REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']. """
-
-    scope = 'setup_2fa_requests'
-
 
 
 # ====================================== Serializers ==================================================================
@@ -251,7 +254,7 @@ class TwoFactorService:
 
         _log_audit(user, AuditLog.Action.BACKUP_CODES_REGENERATED, request_data,{"status": "backup_codes_regenerated"})
         return backup_codes
-            
+
     @staticmethod
     def verify_2fa_for_login(email: str, password: str, auth_code: str, request_data: dict) -> User:
         """ Verify both the password and a TOTP/backup code for a 2FA-enabled account. 
@@ -274,8 +277,8 @@ class TwoFactorService:
         except ServiceLayerError as exc:
             TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, str(exc))
             raise ServiceLayerError("Invalid credentials.")
-        
-    # Sanitize incidental whitespace a user might paste in around a copied code, without changing the code's actual characters.
+
+        # Sanitize incidental whitespace a user might paste in around a copied code, without changing the code's actual characters.
         auth_code_clean = auth_code.strip()
 
         # Both TOTP and Backup Codes must be verified inside the atomic lock
@@ -287,25 +290,19 @@ class TwoFactorService:
             
             # Attempt standard 6-digit TOTP
             if auth_code_clean.isdigit() and len(auth_code_clean) == 6:
-                
-                # --- REPLAY ATTACK MITIGATION FIX ---
-                # Cooldown increased to 90 seconds to cover pyotp's valid_window=1 
-                if tfa_locked.last_used_at and (timezone.now() - tfa_locked.last_used_at).total_seconds() < 90:
-                    TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, "TOTP Replay attack prevented")
-                    raise ServiceLayerError("Please wait a moment before requesting another code.")
-
                 if TwoFactorService.verify_totp(tfa_locked.secret_key, auth_code_clean):
                     tfa_locked.last_used_at = timezone.now()
                     tfa_locked.save(update_fields=['last_used_at'])
                     _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "TOTP"})
-                    return user 
+                    return user # Placed INSIDE the successful validation check
             
             # Attempt backup code
             else:
                 auth_code_upper = auth_code_clean.upper()
                 if tfa_locked.consume_backup_code(auth_code_upper):
                     _log_audit(user, AuditLog.Action.LOGIN, request_data, {"status": "success", "method": "Backup Code"})
-                    return user 
+                    return user # Placed INSIDE the successful validation check
+
         # Neither a valid TOTP code nor a valid backup code.
         TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, "Invalid TOTP or Backup code")
         raise ServiceLayerError("Invalid 2FA code.")
@@ -331,7 +328,6 @@ class TwoFactorSetupView(APIView):
 class TwoFactorVerifyView(APIView):
     """ Verify a live TOTP code to confirm setup and actually enable 2FA. Returns backup codes for the user to store securely. """
     permission_classes = [IsAuthenticated]
-    throttle_classes = [TwoFactorSetupThrottle]
 
     def post(self, request: Request) -> Response:
         serializer = TwoFactorVerifySerializer(data=request.data, context={'request': request})
