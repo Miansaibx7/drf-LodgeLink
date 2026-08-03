@@ -95,8 +95,7 @@ class AccountDeletionService:
         user_email = user.email 
 
         request_obj.complete()
-        _log_audit(user, AuditLog.Action.ACCOUNT_DELETE, None,
-                   {"status": "completed", "email": user_email})
+        _log_audit(user, AuditLog.Action.ACCOUNT_DELETE, None,{"status": "completed", "email": user_email})
         user.delete()
         logger.info("Account for user %s has been permanently deleted.", user_email)
 
