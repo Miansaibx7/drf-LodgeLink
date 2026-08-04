@@ -21,8 +21,7 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 
 # ALLOWED_HOSTS was an empty list. With DEBUG=False (as it now
 # correctly is by default) Django will refuse ALL requests until this is
-# set. Read from env so each environment (local/staging/prod) configures its
-# own hosts.
+# set. Read from env so each environment (local/staging/prod) configures its own hosts.
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
 
 # Allows every frontend to call your API.
