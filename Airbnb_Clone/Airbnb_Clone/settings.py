@@ -10,7 +10,7 @@ SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 
-# FIX (security bug): DEBUG was hardcoded to True. Shipping DEBUG=True to
+# (security bug): DEBUG was hardcoded to True. Shipping DEBUG=True to
 # production leaks full stack traces, local file paths, settings values, and
 # SQL queries to anyone who can trigger a 500 — a critical info-disclosure
 # risk. It must be driven by the environment and default to False.
@@ -19,7 +19,7 @@ DEBUG = config('DEBUG', default=False, cast=bool)
 
 # Allows hosts - update this with your domain when moving to production.
 
-# FIX: ALLOWED_HOSTS was an empty list. With DEBUG=False (as it now
+# ALLOWED_HOSTS was an empty list. With DEBUG=False (as it now
 # correctly is by default) Django will refuse ALL requests until this is
 # set. Read from env so each environment (local/staging/prod) configures its
 # own hosts.
