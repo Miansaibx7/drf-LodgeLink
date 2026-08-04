@@ -153,8 +153,7 @@ X_FRAME_OPTIONS = 'DENY'
 
 
 
-# FIX (missing hardening): these were absent entirely. They're no-ops in
-# local DEBUG (no HTTPS locally) but are the standard baseline for any
+# These were absent entirely. They're no-ops in local DEBUG (no HTTPS locally) but are the standard baseline for any
 # production Django deployment served over HTTPS behind a reverse proxy.
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
