@@ -92,7 +92,7 @@ REST_FRAMEWORK = {
 
         # 3. Throttling / Rate Limiting (Added to protect OTP and Login endpoints)
         'DEFAULT_THROTTLE_RATES': {
-            # FIX (security gap): the previous rates dict had NO 'anon' entry.
+            # (security gap): the previous rates dict had NO 'anon' entry.
             # DRF's SimpleRateThrottle.get_rate() returns None for a scope that
             # isn't in this dict, and get_cache_key() returns None whenever the
             # resolved rate is None — which means the throttle silently allows
@@ -121,10 +121,9 @@ REST_FRAMEWORK = {
 
 
 # DRF's throttle counters use Django's default cache backend. Without an explicit CACHES setting, that's LocMemCache an
-# in-process dict. If you ever run more than one worker process (gunicorn with >1 worker, multiple containers, etc.), 
-# each process has its own independent throttle counter, so the real effective rate limit is
-# (configured rate x number of workers), silently. For a single dev process
-# this "works", but it's a false sense of security in production. Use a
+# in-process dict. If you ever run more than one worker process (gunicorn with >1 worker, multiple containers, etc.), each
+# process has its own independent throttle counter, so the real effective rate limit is(configured rate x number of workers),
+# silently. For a single dev process this "works", but it's a false sense of security in production. Use a
 # shared backend (Redis shown here) once you have more than one process.
 CACHES = {
     "default": {
