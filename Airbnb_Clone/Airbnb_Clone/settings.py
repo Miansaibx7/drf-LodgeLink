@@ -61,9 +61,8 @@ INSTALLED_APPS = [
 ]
 
 
-# Argon2 first (current best-practice default against GPU cracking), PBKDF2
-# kept as a fallback so existing PBKDF2 hashes (if any) still verify — Django
-# rehashes to the first hasher transparently on next successful login.
+# Argon2 first (current best-practice default against GPU cracking), PBKDF2 kept as a fallback so existing PBKDF2 hashes
+# (if any) still verify — Django rehashes to the first hasher transparently on next successful login.
 # `pip install argon2-cffi` (or `uv add argon2-cffi`) is required for this.
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.Argon2PasswordHasher",
