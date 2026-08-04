@@ -120,11 +120,9 @@ REST_FRAMEWORK = {
     
 
 
-# FIX (scaling bug): DRF's throttle counters use Django's default cache
-# backend. Without an explicit CACHES setting, that's LocMemCache — an
-# in-process dict. If you ever run more than one worker process (gunicorn
-# with >1 worker, multiple containers, etc.), each process has its own
-# independent throttle counter, so the real effective rate limit is
+# DRF's throttle counters use Django's default cache backend. Without an explicit CACHES setting, that's LocMemCache an
+# in-process dict. If you ever run more than one worker process (gunicorn with >1 worker, multiple containers, etc.), 
+# each process has its own independent throttle counter, so the real effective rate limit is
 # (configured rate x number of workers), silently. For a single dev process
 # this "works", but it's a false sense of security in production. Use a
 # shared backend (Redis shown here) once you have more than one process.
@@ -150,7 +148,6 @@ CACHES = {
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
-
 
 
 # These were absent entirely. They're no-ops in local DEBUG (no HTTPS locally) but are the standard baseline for any
