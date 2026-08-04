@@ -53,8 +53,8 @@ class AccountDeletionService:
             raise ServiceLayerError("Deletion not confirmed.")
 
         user = User.objects.select_for_update().get(pk=user.pk)
-
         existing = AccountDeletionRequest.objects.filter(user=user, completed=False, cancelled=False).first()
+        
         if existing:
             raise ServiceLayerError("You already have a pending deletion request.")
 
