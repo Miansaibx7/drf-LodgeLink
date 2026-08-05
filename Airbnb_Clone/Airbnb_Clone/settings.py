@@ -86,7 +86,7 @@ REST_FRAMEWORK = {
             'rest_framework.throttling.UserRateThrottle'
         ],
 
-        # 3. Throttling / Rate Limiting (Added to protect OTP and Login endpoints)
+        # Throttling / Rate Limiting (Added to protect OTP and Login endpoints)
         'DEFAULT_THROTTLE_RATES': {
             # (security gap): the previous rates dict had NO 'anon' entry.
             # DRF's SimpleRateThrottle.get_rate() returns None for a scope that
