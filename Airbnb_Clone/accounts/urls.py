@@ -1,4 +1,3 @@
-
 from django.urls import path
 
 from .views import (
@@ -7,15 +6,17 @@ from .views import (
     PasswordResetOTPSendView, PasswordResetOTPVerifyView, ChangePasswordView,
     GoogleLoginView, GitHubLoginView, FacebookLoginView, LinkedInLoginView
 )
-# Bringing in the isolated sub_views!
+
+# Account Deletion Views
 from .sub_views.account_deletion import (
     AccountDeletionRequestView, AccountDeletionCancelView, AccountDeletionStatusView
 )
+
+# Two-Factor Auth Views – fixed import names and added missing routes
 from .sub_views.two_factor import (
     TwoFactorSetupView, TwoFactorVerifyView, TwoFactorDisableView,
     TwoFactorBackupCodesView, TwoFactorLoginView,
 )
-
 
 urlpatterns = [
     # --------------------- Register, Login & Logout ---------------------
@@ -43,7 +44,6 @@ urlpatterns = [
     path("2fa/setup/", TwoFactorSetupView.as_view(), name="2fa_setup"),
     path("2fa/verify/", TwoFactorVerifyView.as_view(), name="2fa_verify"),
     path("2fa/disable/", TwoFactorDisableView.as_view(), name="2fa_disable"),
-    # these two views existed in sub_views/two_factor.py
     path("2fa/backup-codes/", TwoFactorBackupCodesView.as_view(), name="2fa_backup_codes"),
     path("2fa/login/", TwoFactorLoginView.as_view(), name="2fa_login"),
 
