@@ -264,9 +264,8 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER)
 # ─────────────────── App-specific settings (MISSING) ───────────────────
 # (would-crash-on-first-use bug): otp_logic/utils.py's get_email_context() reads settings.COMPANY_NAME, 
 # settings.SCHOOL_NAME, settings.FRONTEND_URL, settings.BACKEND_URL, settings.SUPPORT_EMAIL,
-# settings.PRIMARY_COLOR, and services.py reads settings.OTP_EXPIRY_MINUTES —
-# NONE of these existed anywhere in the settings.py you shared. The very
-# first OTP email send (registration) would have raised AttributeError and
+# settings.PRIMARY_COLOR, and services.py reads settings.OTP_EXPIRY_MINUTES NONE of these existed anywhere 
+# in the settings.py you shared. The very first OTP email send (registration) would have raised AttributeError and
 # been caught by the broad `except Exception` in _send_email(), silently
 # returning False, which register_user() turns into "Unable to send
 # verification email" — i.e. registration would be completely broken in a
