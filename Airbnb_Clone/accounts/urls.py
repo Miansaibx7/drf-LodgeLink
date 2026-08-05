@@ -11,9 +11,6 @@ from .views import (
 from .sub_views.account_deletion import (
     AccountDeletionRequestView, AccountDeletionCancelView, AccountDeletionStatusView
 )
-
-# the two missing routes.
-# Bringing in the isolated sub_views!
 from .sub_views.two_factor import (
     TwoFactorSetupView, TwoFactorVerifyView, TwoFactorDisableView,
     TwoFactorBackupCodesView, TwoFactorLoginView,
