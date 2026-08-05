@@ -43,5 +43,5 @@ urlpatterns = [
     # ------------------------- Account Deletion (GDPR) --------------------
     path("deletion/request/", AccountDeletionRequestView.as_view(), name="account_delete_request"),
     path("deletion/cancel/", AccountDeletionCancelView.as_view(), name="account_delete_cancel"),
-    path("deletion/status/", AccountDeletionStatusView.as_view(), name="account_delete_status"),
+    path("deletion/status/", AccountDeletionStatusView.as_view(), name="account_delete_status")
 ]
