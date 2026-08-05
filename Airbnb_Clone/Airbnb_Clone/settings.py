@@ -27,12 +27,10 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv(
 # Allows every frontend to call your API.
 # In production, you may want to change this to False and use CORS_ALLOWED_ORIGINS
 
-# (security bug): CORS_ALLOW_ALL_ORIGINS = True lets ANY website's
-# JavaScript make authenticated (well, credentialed) requests to your API.
-# Combined with JWT-in-body this is somewhat mitigated (no cookies), but it
-# still allows any origin to hit your login/OTP endpoints, which is exactly
-# the kind of thing your OTPRateThrottle/LoginRateThrottle are trying to
-# guard against, and it makes CSRF-adjacent abuse trivial. Lock this down to
+# (security bug): CORS_ALLOW_ALL_ORIGINS = True lets ANY website's JavaScript make authenticated (well, credentialed)
+# requests to your API. Combined with JWT-in-body this is somewhat mitigated (no cookies), but it still allows any 
+# origin to hit your login/OTP endpoints, which is exactly the kind of thing your OTPRateThrottle/LoginRateThrottle
+# are trying to guard against, and it makes CSRF-adjacent abuse trivial. Lock this down to
 # an explicit allowlist driven by env config; only allow-all in local DEBUG.
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='', cast=Csv())
