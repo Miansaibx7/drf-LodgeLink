@@ -12,7 +12,6 @@ from .sub_views.account_deletion import (
     AccountDeletionRequestView, AccountDeletionCancelView, AccountDeletionStatusView
 )
 
-# FIX (import bug — this would raise ImportError and crash the entire app on
 # startup): urls.py imported `EnableTOTPView, VerifyTOTPView, DisableTOTPView`
 # from sub_views.two_factor, but the classes actually defined there are named
 # `TwoFactorSetupView, TwoFactorVerifyView, TwoFactorDisableView`
