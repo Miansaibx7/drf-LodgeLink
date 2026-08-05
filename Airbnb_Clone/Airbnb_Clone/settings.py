@@ -106,7 +106,7 @@ REST_FRAMEWORK = {
 
             'otp_requests': '5/min', # Limit anon users to 5 OTP requests per minute
             'login_requests': '10/min', # Limit anon users to 10 login attempts per minute
-            # FIX: RegisterView now uses its own throttle scope
+            # RegisterView now uses its own throttle scope
             # (RegisterRateThrottle in views.py) instead of reusing
             # 'login_requests'; add its rate here.
             'register_requests': '5/min',
