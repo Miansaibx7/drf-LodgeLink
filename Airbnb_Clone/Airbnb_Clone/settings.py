@@ -69,7 +69,7 @@ PASSWORD_HASHERS = [
 
 # Django REST Framework Configuration
 REST_FRAMEWORK = {
-    # 1. Authentication & Permissions
+    # Authentication & Permissions
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
@@ -77,8 +77,8 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ),
     
-    # 2. Custom Exception Handler (Added from previous step)
-    # IMPORTANT: Change 'accounts' to the app name where you saved exceptions.py
+    # Custom Exception Handler (Added from previous step)
+    # Change 'accounts' to the app name where you saved exceptions.py
     'EXCEPTION_HANDLER': 'accounts.exceptions.custom_global_exception_handler',
 
     'DEFAULT_THROTTLE_CLASSES': [
