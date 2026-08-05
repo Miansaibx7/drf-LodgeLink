@@ -279,7 +279,7 @@ LOGO_URL = config('LOGO_URL', default='')
 OTP_EXPIRY_MINUTES = config('OTP_EXPIRY_MINUTES', default=10, cast=int)
 
 # ─────────────────────────────── Logging ───────────────────────────────
-# FIX (missing config): every file uses `logger = logging.getLogger(__name__)`
+# (config): every file uses `logger = logging.getLogger(__name__)`
 # and calls logger.info/warning/error/exception extensively (login attempts,
 # OTP flows, 2FA, account deletion) — all of that was going nowhere useful
 # without an explicit LOGGING dict; Django's logging defaults only surface
