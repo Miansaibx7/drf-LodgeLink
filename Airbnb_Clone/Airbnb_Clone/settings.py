@@ -235,10 +235,8 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 
-# Without these,
-# uploaded avatars have nowhere defined to be written to / served from
-# (`value.url` generation and `upload_to` resolution both depend on
-# MEDIA_ROOT/MEDIA_URL being set).
+# Without these, uploaded avatars have nowhere defined to be written to / served from 
+# (`value.url` generation and `upload_to` resolution both depend on MEDIA_ROOT/MEDIA_URL being set).
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
