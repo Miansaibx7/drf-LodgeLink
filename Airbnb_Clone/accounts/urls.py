@@ -12,7 +12,6 @@ from .sub_views.account_deletion import (
     AccountDeletionRequestView, AccountDeletionCancelView, AccountDeletionStatusView
 )
 
-# startup): urls.py imported `EnableTOTPView, VerifyTOTPView, DisableTOTPView`
 # from sub_views.two_factor, but the classes actually defined there are named
 # `TwoFactorSetupView, TwoFactorVerifyView, TwoFactorDisableView`
 # (plus `TwoFactorBackupCodesView` and `TwoFactorLoginView`, which existed
