@@ -12,10 +12,6 @@ from .sub_views.account_deletion import (
     AccountDeletionRequestView, AccountDeletionCancelView, AccountDeletionStatusView
 )
 
-# from sub_views.two_factor, but the classes actually defined there are named
-# `TwoFactorSetupView, TwoFactorVerifyView, TwoFactorDisableView`
-# (plus `TwoFactorBackupCodesView` and `TwoFactorLoginView`, which existed
-# but were never routed at all). Corrected the import names below and added
 # the two missing routes.
 # Bringing in the isolated sub_views!
 from .sub_views.two_factor import (
