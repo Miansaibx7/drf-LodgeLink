@@ -17,7 +17,7 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
 
 
-# Allows hosts - update this with your domain when moving to production.
+# Allows hosts update this with your domain when moving to production.
 
 # ALLOWED_HOSTS was an empty list. With DEBUG=False (as it now
 # correctly is by default) Django will refuse ALL requests until this is
