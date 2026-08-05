@@ -10,8 +10,7 @@ from .views import (
 # Account Deletion Views
 from .sub_views.account_deletion import AccountDeletionRequestView, AccountDeletionCancelView, AccountDeletionStatusView
 
-
-# Two-Factor Auth Views – fixed import names and added missing routes
+# Two-Factor Auth Views 
 from .sub_views.two_factor import (
     TwoFactorSetupView, TwoFactorVerifyView, TwoFactorDisableView,
     TwoFactorBackupCodesView, TwoFactorLoginView,
