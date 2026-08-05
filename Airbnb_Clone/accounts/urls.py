@@ -12,8 +12,7 @@ from .sub_views.account_deletion import AccountDeletionRequestView, AccountDelet
 
 # Two-Factor Auth Views 
 from .sub_views.two_factor import (TwoFactorSetupView, TwoFactorVerifyView, TwoFactorDisableView,
-    TwoFactorBackupCodesView, TwoFactorLoginView,
-)
+    TwoFactorBackupCodesView, TwoFactorLoginView)
 
 urlpatterns = [
     # --------------------- Register, Login & Logout ---------------------
