@@ -235,8 +235,7 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 
-# FIX (missing settings): UserProfile.avatar is an ImageField uploading to
-# "avatars/", but MEDIA_URL/MEDIA_ROOT were never defined. Without these,
+# Without these,
 # uploaded avatars have nowhere defined to be written to / served from
 # (`value.url` generation and `upload_to` resolution both depend on
 # MEDIA_ROOT/MEDIA_URL being set).
