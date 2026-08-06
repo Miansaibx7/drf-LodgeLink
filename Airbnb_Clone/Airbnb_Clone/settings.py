@@ -171,7 +171,7 @@ SIMPLE_JWT = {
 }
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware', # Keep this at the top of the middleware stack
+    'corsheaders.middleware.CorsMiddleware', # Keep this at the top of the middleware stack for 
     
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
