@@ -116,8 +116,7 @@ class AccountDeletionRequestView(APIView):
             reason=serializer.validated_data.get('reason', ''),confirm=serializer.validated_data['confirm'],
             request_data=request_data)
 
-        return Response({'success': True,
-            'message': 'Deletion request submitted. Your account will be deleted on {}.'.format(
+        return Response({'success': True,'message': 'Deletion request submitted. Your account will be deleted on {}.'.format(
                 deletion_request.scheduled_for.strftime('%Y-%m-%d %H:%M:%S')
             ),'request_id': deletion_request.id,'scheduled_for': deletion_request.scheduled_for
         }, status=status.HTTP_201_CREATED)
