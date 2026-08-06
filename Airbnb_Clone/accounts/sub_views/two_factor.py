@@ -50,7 +50,7 @@ class TwoFactorAccountThrottle(SimpleRateThrottle):
 
     REQUIRED SETTINGS: add 'login_account_requests' to REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] in settings.py
     same silent-disable risk as TwoFactorIPThrottle above if omitted. """
-    
+
     scope = 'login_account_requests'
 
     def get_cache_key(self, request, view):
@@ -82,7 +82,7 @@ class TwoFactorLoginChallengeSerializer(serializers.Serializer):
     auth_code = serializers.CharField(max_length=10, min_length=6, required=True)
 
     def validate_email(self, value: str) -> str:
-        """Normalize email the same way every other email field. """
+        """ Normalize email the same way every other email field. """
         return value.lower().strip()
 
 
