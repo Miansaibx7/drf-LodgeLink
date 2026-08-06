@@ -40,7 +40,7 @@ urlpatterns = [
     path("2fa/backup-codes/", TwoFactorBackupCodesView.as_view(), name="2fa_backup_codes"),
     path("2fa/login/", TwoFactorLoginView.as_view(), name="2fa_login"),
 
-    # ------------------------- Account Deletion (GDPR) --------------------
+    # ------------------------- Account Deletion ----------------------------------------------------
     path("deletion/request/", AccountDeletionRequestView.as_view(), name="account_delete_request"),
     path("deletion/cancel/", AccountDeletionCancelView.as_view(), name="account_delete_cancel"),
     path("deletion/status/", AccountDeletionStatusView.as_view(), name="account_delete_status")
