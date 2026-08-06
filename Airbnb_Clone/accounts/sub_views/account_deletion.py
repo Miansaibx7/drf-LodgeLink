@@ -72,6 +72,7 @@ class AccountDeletionService:
     def cancel_deletion_request(user: User, request_data: dict = None) -> None:
         """ Cancel a pending deletion request. Logs an ACCOUNT_DELETE. """
         request_obj = AccountDeletionRequest.objects.select_for_update().filter(user=user, completed=False, cancelled=False).first()
+
         if not request_obj:
             raise ServiceLayerError("No pending deletion request found.")
 
