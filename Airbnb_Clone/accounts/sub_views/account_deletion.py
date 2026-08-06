@@ -136,7 +136,7 @@ class AccountDeletionCancelView(APIView):
 
 
 class AccountDeletionStatusView(APIView):
-    """ Get the current deletion request status."""
+    """ Get the current deletion request status. """
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
