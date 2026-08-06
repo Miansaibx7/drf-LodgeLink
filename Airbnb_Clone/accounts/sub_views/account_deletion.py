@@ -89,6 +89,7 @@ class AccountDeletionService:
     @transaction.atomic
     def complete_deletion_request(request_obj: AccountDeletionRequest) -> None:
         request_obj = AccountDeletionRequest.objects.select_for_update().get(pk=request_obj.pk)
+
         if request_obj.completed or request_obj.cancelled:
             return
 
