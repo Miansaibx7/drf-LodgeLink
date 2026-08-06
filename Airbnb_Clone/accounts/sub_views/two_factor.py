@@ -48,10 +48,9 @@ class TwoFactorAccountThrottle(SimpleRateThrottle):
     """ Prevents a distributed/botnet attack that spreads requests across many IPs but targets one victim account,
     by keying the throttle on the submitted email instead of the client IP.
 
-    REQUIRED SETTINGS: add 'login_account_requests' to
-    REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] in settings.py -- same
-    silent-disable risk as TwoFactorIPThrottle above if omitted.
-    """
+    REQUIRED SETTINGS: add 'login_account_requests' to REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] in settings.py
+    same silent-disable risk as TwoFactorIPThrottle above if omitted. """
+    
     scope = 'login_account_requests'
 
     def get_cache_key(self, request, view):
