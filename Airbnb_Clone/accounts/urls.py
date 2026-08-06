@@ -27,7 +27,7 @@ urlpatterns = [
     path("password-reset/verify/", PasswordResetOTPVerifyView.as_view(), name="password_reset_verify"),
     path("change-password/", ChangePasswordView.as_view(), name="change_password"),
 
-    # ------------------------- OAuth Paths ------------------------------
+    # ------------------------- OAuth Paths ----------------------------------------------------
     path("oauth/google/", GoogleLoginView.as_view(), name="google_login"),
     path("oauth/github/", GitHubLoginView.as_view(), name="github_login"),
     path("oauth/facebook/", FacebookLoginView.as_view(), name="facebook_login"),
