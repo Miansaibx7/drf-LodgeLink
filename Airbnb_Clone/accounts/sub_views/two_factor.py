@@ -76,7 +76,7 @@ class TwoFactorVerifySerializer(serializers.Serializer):
 
 
 class TwoFactorLoginChallengeSerializer(serializers.Serializer):
-    """Input serializer for the login-time 2FA challenge. """
+    """ Input serializer for the login-time 2FA challenge. """
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
     auth_code = serializers.CharField(max_length=10, min_length=6, required=True)
