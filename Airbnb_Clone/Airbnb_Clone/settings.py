@@ -211,7 +211,7 @@ DATABASES = {
 }
 
 
-# NOTE: SQLite is fine for local dev but does not handle concurrent writers
+# SQLite is fine for local dev but does not handle concurrent writers
 # well (it locks the whole DB file per write transaction). This codebase uses
 # select_for_update() extensively (OTP verification, login attempts, 2FA,
 # account deletion) — those row-locking semantics only really work correctly
