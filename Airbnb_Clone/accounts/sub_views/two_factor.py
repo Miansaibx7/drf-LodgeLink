@@ -283,7 +283,7 @@ class TwoFactorService:
                 TwoFactorService._log_failure(user, AuditLog.Action.LOGIN, request_data, "2FA configuration modified mid-request")
                 raise ServiceLayerError("2FA configuration was modified. Please try again.")
             
-            # Attempt standard 6-digit TOTP
+            # Attempt standard 6 digit TOTP
             if auth_code_clean.isdigit() and len(auth_code_clean) == 6:
                 if TwoFactorService.verify_totp(tfa_locked.secret_key, auth_code_clean):
                     tfa_locked.last_used_at = timezone.now()
