@@ -237,7 +237,7 @@ STATIC_URL = 'static/'
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Default primary key field type REQUIRED for modern Django (3.2+) to prevent migration warnings
+# Default primary key field type ""REQUIRED for modern Django (3.2+) to prevent migration warnings""
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
