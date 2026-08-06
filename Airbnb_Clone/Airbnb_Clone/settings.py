@@ -262,7 +262,7 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER)
 # and services.py reads settings.OTP_EXPIRY_MINUTES NONE of these existed anywhere in the settings.py you shared. 
 # The very first OTP email send (registration) would have raised AttributeError and been caught by the broad `except
 # Exception` in _send_email(), silently returning False, which register_user() turns into "Unable to send verification
-# email" i.e. registration would be completely broken in a way that looks like an SMTP problem but is actually a missing-setting bug.
+# email" i.e. registration would be completely broken in a way that looks like an SMTP problem.
 COMPANY_NAME = config('COMPANY_NAME', default='Your Company')
 SCHOOL_NAME = config('SCHOOL_NAME', default='Your Platform')
 FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000')
