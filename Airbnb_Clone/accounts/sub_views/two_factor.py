@@ -45,7 +45,7 @@ class TwoFactorIPThrottle(AnonRateThrottle):
 
 
 class TwoFactorAccountThrottle(SimpleRateThrottle):
-    """Prevents a distributed/botnet attack that spreads requests across many IPs but targets one victim account,
+    """ Prevents a distributed/botnet attack that spreads requests across many IPs but targets one victim account,
     by keying the throttle on the submitted email instead of the client IP.
 
     REQUIRED SETTINGS: add 'login_account_requests' to
