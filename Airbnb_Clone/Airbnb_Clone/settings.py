@@ -256,7 +256,7 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER)
 # you shared — every OTP/password-reset email send would have raised AttributeError at runtime.
 
 
-# ─────────────────── App-specific settings (MISSING) ───────────────────
+# ─────────────────── App-specific settings (MISSING) ────────────────────────────────────────────────────────────────────────────
 # (would-crash-on-first-use bug): otp_logic/utils.py's get_email_context() reads settings.COMPANY_NAME, 
 # settings.SCHOOL_NAME, settings.FRONTEND_URL, settings.BACKEND_URL, settings.SUPPORT_EMAIL,
 # settings.PRIMARY_COLOR, and services.py reads settings.OTP_EXPIRY_MINUTES NONE of these existed anywhere 
