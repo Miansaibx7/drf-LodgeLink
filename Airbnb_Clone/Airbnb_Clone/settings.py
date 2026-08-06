@@ -252,7 +252,7 @@ EMAIL_USE_TLS = True # Enable TLS encryption.
 EMAIL_HOST_USER = config('EMAIL_HOST_USER') # Your Gmail address (from .env).
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD') # Your Gmail App Password (from .env).
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER)
-# DEFAULT_FROM_EMAIL is used by otp_logic/utils.py's _send_email() but was never defined in the settings 
+# DEFAULT_FROM_EMAIL is used by otp_logic/utils.py  _send_email() but was never defined in the settings 
 # you shared — every OTP/password-reset email send would have raised AttributeError at runtime.
 
 
