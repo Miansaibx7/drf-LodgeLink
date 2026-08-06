@@ -3,9 +3,8 @@ Provides:
 - TOTP secret generation and QR-code provisioning
 - Two-step enable flow (generate secret -> confirm with a live code)
 - Backup codes (one-time-use, human-typeable, case-insensitive on input)
-- Disable / regenerate-backup-codes flows all require password re-entry
+- Disable / regenerate-backup-codes flows (all require password re-entry)
 - Login-time 2FA challenge (requires BOTH password and a TOTP/backup code). """
-
 import logging
 import pyotp
 import secrets
