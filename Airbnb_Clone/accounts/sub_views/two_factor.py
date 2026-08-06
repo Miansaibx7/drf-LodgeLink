@@ -209,7 +209,7 @@ class TwoFactorService:
     @staticmethod
     def disable_2fa(user: User, password: str, request_data: dict) -> None:
         """ Turn off 2FA for the user. Requires password re-entry since disabling 2FA is a security-downgrading action.
-        Logs a TWO_FA_DISABLED AuditLog entry on both success and failure."""
+        Logs a TWO_FA_DISABLED AuditLog entry on both success and failure. """
         try:
             TwoFactorService._verify_password(user, password)
             with transaction.atomic():
