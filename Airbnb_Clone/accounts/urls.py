@@ -1,12 +1,11 @@
 from django.urls import path
 
 from .views import (RegisterView, LoginView, LogoutView,EmailOTPSendView, EmailOTPVerifyView, ResendEmailOTPView,
-    PasswordResetOTPSendView, PasswordResetOTPVerifyView, ChangePasswordView,
-    GoogleLoginView, GitHubLoginView, FacebookLoginView, LinkedInLoginView )
+    PasswordResetOTPSendView, PasswordResetOTPVerifyView, ChangePasswordView, GoogleLoginView, GitHubLoginView, 
+    FacebookLoginView, LinkedInLoginView )
 
 # Account Deletion Views
 from .sub_views.account_deletion import AccountDeletionRequestView, AccountDeletionCancelView, AccountDeletionStatusView
-
 # Two-Factor Auth Views 
 from .sub_views.two_factor import (TwoFactorSetupView, TwoFactorVerifyView, TwoFactorDisableView,
     TwoFactorBackupCodesView, TwoFactorLoginView)
