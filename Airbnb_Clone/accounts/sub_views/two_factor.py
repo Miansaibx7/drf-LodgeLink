@@ -40,14 +40,13 @@ class TwoFactorIPThrottle(AnonRateThrottle):
     If this key is missing, DRF silently disables throttling for this scope entirely (no error raised).
     this is the exact same failure mode that once left TwoFactorLoginView completely unthrottled earlier in this
     codebase's history, so it's called out explicitly here. """
-    
+
     scope = 'login_ip_requests'
 
 
 class TwoFactorAccountThrottle(SimpleRateThrottle):
-    """Prevents a distributed/botnet attack that spreads requests across
-    many IPs but targets one victim account, by keying the throttle on
-    the submitted email instead of the client IP.
+    """Prevents a distributed/botnet attack that spreads requests across many IPs but targets one victim account,
+    by keying the throttle on the submitted email instead of the client IP.
 
     REQUIRED SETTINGS: add 'login_account_requests' to
     REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] in settings.py -- same
