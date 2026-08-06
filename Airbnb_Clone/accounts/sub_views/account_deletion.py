@@ -121,6 +121,7 @@ class AccountDeletionRequestView(APIView):
             'scheduled_for': deletion_request.scheduled_for}, status=status.HTTP_201_CREATED)
 
 
+
 class AccountDeletionCancelView(APIView):
     """ Cancel a pending deletion request. """
     permission_classes = [IsAuthenticated]
