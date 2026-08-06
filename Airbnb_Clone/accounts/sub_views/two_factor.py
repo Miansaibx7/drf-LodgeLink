@@ -147,7 +147,7 @@ class TwoFactorService:
 
     @staticmethod
     def get_provisioning_uri(user: User, secret: str) -> str:
-        """ Build the URI used to render the QR code the user scans into their authenticator app during setup."""
+        """ Build the URI used to render the QR code the user scans into their authenticator app during setup. """
         return pyotp.totp.TOTP(secret).provisioning_uri(name=user.email, issuer_name="Airbnb_Clone")
 
     @staticmethod
