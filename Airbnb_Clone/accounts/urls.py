@@ -12,7 +12,7 @@ from .sub_views.two_factor import (TwoFactorSetupView, TwoFactorVerifyView, TwoF
     TwoFactorBackupCodesView, TwoFactorLoginView)
 
 urlpatterns = [
-    # ---------------------- Register, Login & Logout ----------------------------------------
+    # ---------------------- Register, Login & Logout ------------------------------------------
     path("register/", RegisterView.as_view(), name="register"),
     path("login/", LoginView.as_view(), name="login"),
     path("logout/", LogoutView.as_view(), name="logout"),
