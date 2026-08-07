@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
+    'django_browser_reload',
 
     # Local apps
     'accounts',
@@ -171,6 +172,7 @@ SIMPLE_JWT = {
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware', # Keep this at the top of the middleware stack for corsheaders
+    
     
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
