@@ -12,4 +12,7 @@ urlpatterns = [
 
     # SimpleJWT native endpoint for refreshing tokens
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+
+    # django-browser-reload URL pattern
+    path("__reload__/", include("django_browser_reload.urls")),
 ]
