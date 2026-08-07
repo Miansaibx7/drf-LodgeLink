@@ -137,7 +137,6 @@ CACHES = {
 # }
 
 
-
 # Production Security Headers (Ensure these are True in production)
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
