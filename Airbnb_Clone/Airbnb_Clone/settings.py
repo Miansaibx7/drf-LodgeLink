@@ -171,8 +171,8 @@ SIMPLE_JWT = {
 }
 
 MIDDLEWARE = [
+    # Third Party Middleware
     'corsheaders.middleware.CorsMiddleware', # Keep this at the top of the middleware stack for corsheaders
-    
     "django_browser_reload.middleware.BrowserReloadMiddleware", # django-browser-reload 
     
     'django.middleware.security.SecurityMiddleware',
