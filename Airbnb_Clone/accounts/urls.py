@@ -17,17 +17,17 @@ urlpatterns = [
     path("login/", LoginView.as_view(), name="login"),
     path("logout/", LogoutView.as_view(), name="logout"),
 
-    # ----------------------- Email OTP ------------------------------------------------------
+    # ----------------------- Email OTP --------------------------------------------------------
     path("otp/send/", EmailOTPSendView.as_view(), name="email_otp_send"),
     path("otp/verify/", EmailOTPVerifyView.as_view(), name="email_otp_verify"),
     path("otp/resend/", ResendEmailOTPView.as_view(), name="email_otp_resend"),
 
-    # ------------------------ Password Management ---------------------------------------------
+    # ------------------------ Password Management ------------------------------------------------
     path("password-reset/send/", PasswordResetOTPSendView.as_view(), name="password_reset_send"),
     path("password-reset/verify/", PasswordResetOTPVerifyView.as_view(), name="password_reset_verify"),
     path("change-password/", ChangePasswordView.as_view(), name="change_password"),
 
-    # ------------------------- OAuth Paths -----------------------------------------------------
+    # ------------------------- OAuth Paths ------------------------------------------------------
     path("oauth/google/", GoogleLoginView.as_view(), name="google_login"),
     path("oauth/github/", GitHubLoginView.as_view(), name="github_login"),
     path("oauth/facebook/", FacebookLoginView.as_view(), name="facebook_login"),
