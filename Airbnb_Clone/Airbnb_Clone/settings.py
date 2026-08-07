@@ -201,6 +201,7 @@ TEMPLATES = [
     },
 ]
 
+
 WSGI_APPLICATION = 'Airbnb_Clone.wsgi.application'
 
 # Database
