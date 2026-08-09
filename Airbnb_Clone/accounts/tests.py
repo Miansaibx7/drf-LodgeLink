@@ -259,8 +259,7 @@ class RegistrationTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
-# =============================Login
-# ============================================================
+# =============================Login==================================================================================
 @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": PERMISSIVE_THROTTLES})
 class LoginTests(APITestCase):
     url = "/api/accounts/login/"
