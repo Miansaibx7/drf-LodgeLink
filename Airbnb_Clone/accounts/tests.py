@@ -35,8 +35,7 @@ from rest_framework.test import APITestCase
 from rest_framework import status
 
 from .models import (EmailOTP, UserProfile, UserSession,
-    AuditLog, LoginAttempt, TwoFactorAuth, AccountDeletionRequest,
-)
+    AuditLog, LoginAttempt, TwoFactorAuth, AccountDeletionRequest)
 
 User = get_user_model()
 
