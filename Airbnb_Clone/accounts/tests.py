@@ -1,5 +1,4 @@
-"""
-Test suite for the `accounts` app.
+""" Test suite for the `accounts` app.
 
 Covers:
 - User model / manager
