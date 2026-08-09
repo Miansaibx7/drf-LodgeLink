@@ -9,7 +9,7 @@ Contains:
 
 import logging
 import secrets
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from rest_framework.request import Request
 from rest_framework.response import Response
 
@@ -20,6 +20,13 @@ from django.template.loader import render_to_string
 
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
+
+# Type-safe dynamic user model loading
+if TYPE_CHECKING:
+    from django.contrib.auth.models import AbstractBaseUser
+    UserType = AbstractBaseUser
+else:
+    UserType = get_user_model()
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -131,7 +138,7 @@ def send_password_reset_email(*, email: str, otp: str) -> bool:
 
 
 # JWT Token Generator
-def get_tokens_for_user(user: "User") -> dict[str, str]: 
+def get_tokens_for_user(user: UserType) -> dict[str, str]: 
     """ Generate JWT tokens for a user. The JTI is stored in UserSession so a
     refresh token can later be revoked individually."""
 
