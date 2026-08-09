@@ -63,7 +63,6 @@ def make_user(email="user@example.com", password="StrongPassw0rd!99", **extra):
 
 # ============================================================
 # Model / Manager tests
-# ============================================================
 class UserModelTests(TestCase):
     def test_create_user_normalizes_and_lowercases_email(self):
         user = User.objects.create_user(email="  Test@Example.COM ", password="pw")
