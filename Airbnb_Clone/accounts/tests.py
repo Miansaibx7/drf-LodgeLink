@@ -34,7 +34,7 @@ from django.core.cache import cache
 from rest_framework.test import APITestCase
 from rest_framework import status
 
-from .models import (EmailOTP, PasswordResetOTP, UserProfile, UserSession,
+from .models import (EmailOTP, UserProfile, UserSession,
     AuditLog, LoginAttempt, TwoFactorAuth, AccountDeletionRequest,
 )
 
