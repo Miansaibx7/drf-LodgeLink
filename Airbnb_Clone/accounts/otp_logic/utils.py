@@ -19,8 +19,9 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import get_user_model
 
-
+User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
@@ -130,7 +131,7 @@ def send_password_reset_email(*, email: str, otp: str) -> bool:
 
 
 # JWT Token Generator
-def get_tokens_for_user(user: User) -> dict[str, str]: # type: ignore
+def get_tokens_for_user(user: "User") -> dict[str, str]: 
     """Generate JWT tokens for a user. The JTI is stored in UserSession so a
     refresh token can later be revoked individually."""
 
