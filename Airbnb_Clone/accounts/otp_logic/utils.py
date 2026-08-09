@@ -132,7 +132,7 @@ def send_password_reset_email(*, email: str, otp: str) -> bool:
 
 # JWT Token Generator
 def get_tokens_for_user(user: "User") -> dict[str, str]: 
-    """Generate JWT tokens for a user. The JTI is stored in UserSession so a
+    """ Generate JWT tokens for a user. The JTI is stored in UserSession so a
     refresh token can later be revoked individually."""
 
     refresh = RefreshToken.for_user(user)
