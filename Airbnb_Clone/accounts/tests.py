@@ -1,5 +1,4 @@
 """ Test suite for the `accounts` app.
-
 Covers:
 - User model / manager
 - Registration (including the duplicate-email race path)
