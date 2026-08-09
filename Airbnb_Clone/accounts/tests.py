@@ -21,8 +21,7 @@ Notes:
   `register_requests`, `login_ip_requests`, `login_account_requests`,
   `user`) are overridden to very high limits for most tests so throttling
   doesn't interfere with test isolation, except in the dedicated
-  throttling test classes, which intentionally use the real low rates.
-"""
+  throttling test classes, which intentionally use the real low rates. """
 import pyotp
 from datetime import timedelta
 from unittest.mock import patch
