@@ -11,6 +11,9 @@ from .sub_views.account_deletion import AccountDeletionRequestView, AccountDelet
 from .sub_views.two_factor import (TwoFactorSetupView, TwoFactorVerifyView, TwoFactorDisableView,
     TwoFactorBackupCodesView, TwoFactorLoginView)
 
+
+app_name = "accounts"
+
 urlpatterns = [
     # ---------------------- Register, Login & Logout ------------------------------------------
     path("register/", RegisterView.as_view(), name="register"),
