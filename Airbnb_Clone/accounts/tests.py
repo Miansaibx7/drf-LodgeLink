@@ -201,9 +201,8 @@ class TwoFactorAuthModelTests(TestCase):
 class RegistrationTests(APITestCase):
 
     def setUp(self):
-        # Use hardcoded URL to avoid any slash/namespace issues.
-        # This matches the project's root URLconf: path("api/auth/", include("accounts.urls"))
-        self.url = '/api/auth/register/'
+        # Generate the URL once using reverse
+        self.url = reverse('accounts:register')  # assumes app_name = 'accounts' in urls.py
 
     @patch("accounts.otp_logic.services.send_registration_otp", return_value=True)
     def test_register_success_creates_inactive_unverified_user(self, mock_send):
