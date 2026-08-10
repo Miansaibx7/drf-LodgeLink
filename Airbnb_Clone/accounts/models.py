@@ -208,7 +208,6 @@ class BaseOTP(models.Model):
     
                 if check_password(raw_otp, obj.otp_hash):
                     obj.delete() # one‑time use
-
                     # Standard Django method for marking an instance as deleted in memory.
                     self.pk = None 
                     return True
@@ -217,12 +216,13 @@ class BaseOTP(models.Model):
                 obj.attempts += 1
                 if obj.attempts >= self.MAX_ATTEMPTS and not obj.blocked_until:
                     obj.blocked_until = timezone.now() + timedelta(minutes=self.BLOCK_MINUTES)
-                    obj.save(update_fields=["attempts", "blocked_until"])
+                obj.save(update_fields=["attempts", "blocked_until"])
                 
                 # Only refresh if the object wasn't deleted (pk is not None)
                 if self.pk is not None:
                     self.refresh_from_db()
                 return False
+               
 
     def increment_attempts(self) -> None:
         """ Atomically increment attempts and apply a block if threshold reached.
