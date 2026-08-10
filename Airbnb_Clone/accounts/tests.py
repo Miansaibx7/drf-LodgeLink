@@ -37,6 +37,8 @@ from rest_framework import status
 from .models import (EmailOTP, UserProfile, UserSession,
     AuditLog, LoginAttempt, TwoFactorAuth, AccountDeletionRequest)
 
+from django.urls import reverse
+
 User = get_user_model()
 
 # High-limit throttle rates so functional tests aren't rate-limited
@@ -197,7 +199,10 @@ class TwoFactorAuthModelTests(TestCase):
 # ============================================================
 @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": PERMISSIVE_THROTTLES})
 class RegistrationTests(APITestCase):
-    url = "/api/accounts/register/"  # adjust prefix to match your urls.py include()
+
+    def setUp(self):
+        # Generate the URL once using reverse
+        self.url = reverse('accounts:register')  # assumes app_name = 'accounts' in urls.py
 
     @patch("accounts.otp_logic.services.send_registration_otp", return_value=True)
     def test_register_success_creates_inactive_unverified_user(self, mock_send):
@@ -257,7 +262,6 @@ class RegistrationTests(APITestCase):
         }
         response = self.client.post(self.url, payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
 
 # =============================Login==================================================================================
 @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": PERMISSIVE_THROTTLES})
