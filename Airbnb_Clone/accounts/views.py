@@ -75,93 +75,47 @@ class RegisterView(APIView):
 
 
       
-# class LoginView(APIView):
-#     permission_classes = [AllowAny]
-#     throttle_classes = [LoginRateThrottle]
-
-#     def post(self, request: Request) -> Response:
-#         serializer = LoginSerializer(data=request.data, context={"request": request})
-
-#         #  This automatically handles invalid credentials and unverified users.
-#         serializer.is_valid(raise_exception=True) # It will throw a 400 Bad Request if anything fails.
-
-#         email = serializer.validated_data['email']
-#         password = serializer.validated_data['password']
-#         request_data = extract_request_data(request)
-
-#         # Service layer handles brute-force protection and authentication
-#         user = authenticate_user(email, password, request_data)
-    
-#         # Route 2FA users to the correct secondary verification endpoint
-#         tfa = getattr(user, 'two_factor_auth', None)
-#         if tfa is not None and tfa.enabled:
-#             return Response({"success": True, "message": "Password verified. Two-factor authentication code required.",
-#                     "requires_2fa": True, "email": user.email},
-#                 status=status.HTTP_200_OK
-#             )
-
-#         tokens = get_tokens_for_user(user) # Generate JWT Tokens and log success
-#         refresh_jti = tokens['jti']
-        
-#         handle_successful_login(user, request_data, refresh_jti) # Create session, update device, log login
-#         update_last_login(None, user) # Update last login time
-
-#         logger.info("User %s logged in successfully.", user.email)
-
-#         return Response({"success": True, "message": "Login successful.", "tokens": tokens,
-#                 "user": {
-#                     "id": user.id,
-#                     "email": user.email,
-#                     "name": user.get_full_name() or user.email,
-#                     "is_verified": user.is_verified
-#                 }
-#             },status=status.HTTP_200_OK)
-
 class LoginView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [LoginRateThrottle]
 
     def post(self, request: Request) -> Response:
         serializer = LoginSerializer(data=request.data, context={"request": request})
-        # FIX (context): this now ONLY validates that email/password are
-        # present and well-formed — it can no longer short-circuit real
-        # authentication, since that logic was removed from the serializer.
-        serializer.is_valid(raise_exception=True)
+
+        #  This automatically handles invalid credentials and unverified users.
+        serializer.is_valid(raise_exception=True) # It will throw a 400 Bad Request if anything fails.
 
         email = serializer.validated_data['email']
         password = serializer.validated_data['password']
         request_data = extract_request_data(request)
 
-        # Single source of truth for auth: credential check, active/verified
-        # checks, and brute-force tracking (LoginAttempt) all happen here.
+        # Service layer handles brute-force protection and authentication
         user = authenticate_user(email, password, request_data)
-
+    
+        # Route 2FA users to the correct secondary verification endpoint
         tfa = getattr(user, 'two_factor_auth', None)
         if tfa is not None and tfa.enabled:
-            return Response(
-                {"success": True, "message": "Password verified. Two-factor authentication code required.",
-                 "requires_2fa": True, "email": user.email},
+            return Response({"success": True, "message": "Password verified. Two-factor authentication code required.",
+                    "requires_2fa": True, "email": user.email},
                 status=status.HTTP_200_OK
             )
 
-        tokens = get_tokens_for_user(user)
+        tokens = get_tokens_for_user(user) # Generate JWT Tokens and log success
         refresh_jti = tokens['jti']
-
-        handle_successful_login(user, request_data, refresh_jti)
-        update_last_login(None, user)
+        
+        handle_successful_login(user, request_data, refresh_jti) # Create session, update device, log login
+        update_last_login(None, user) # Update last login time
 
         logger.info("User %s logged in successfully.", user.email)
 
-        return Response(
-            {"success": True, "message": "Login successful.", "tokens": tokens,
-             "user": {
-                 "id": user.id,
-                 "email": user.email,
-                 "name": user.get_full_name() or user.email,
-                 "is_verified": user.is_verified
-             }},
-            status=status.HTTP_200_OK
-        )
+        return Response({"success": True, "message": "Login successful.", "tokens": tokens,
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "name": user.get_full_name() or user.email,
+                    "is_verified": user.is_verified
+                }
+            },status=status.HTTP_200_OK)
 
 
 

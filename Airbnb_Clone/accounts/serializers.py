@@ -88,12 +88,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         is_verified = False # Set the user as unverified until email verification
         )
         return user
-    
 
     
-# class LoginSerializer(serializers.Serializer):
-#     """Authenticates user with email and password.Provides specific error messages for inactive/unverified accounts
-#     without leaking account existence."""
 
 class LoginSerializer(serializers.Serializer):
     """Validates the SHAPE of login input only — a well-formed email and a
@@ -104,8 +100,8 @@ class LoginSerializer(serializers.Serializer):
 
     def validate_email(self, value: str) -> str:
         return value.lower().strip()
-
-    # FIX: removed the validate() override that previously called Django's
+    
+    # Removed the validate() override that previously called Django's
     # authenticate() directly and raised ValidationError on bad credentials
     # / inactive / unverified accounts.
     #
