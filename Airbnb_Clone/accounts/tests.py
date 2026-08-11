@@ -334,12 +334,20 @@ class LoginTests(APITestCase):
 # ============================================================
 # Email verification OTP
 # ============================================================
+from django.core.cache import cache  # add this import if not already present
+
 @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": PERMISSIVE_THROTTLES})
 class EmailOTPTests(APITestCase):
     send_url = "/api/auth/otp/send/"
     verify_url = "/api/auth/otp/verify/"
 
     def setUp(self):
+        cache.clear()  # FIX: same throttle-counter-accumulation issue as
+        # LoginTests — DRF's OTPRateThrottle counters live in the shared
+        # cache backend and persist across test methods within this class.
+        # Without clearing here, requests from earlier tests count toward
+        # later tests' limits, which is exactly what produced the 429 on
+        # the 6th cumulative request (5/min real ceiling from settings.py).
         self.user = make_user(email="verify@example.com", is_active=False, is_verified=False)
 
     @patch("accounts.otp_logic.utils._send_email", return_value=True)
@@ -348,16 +356,17 @@ class EmailOTPTests(APITestCase):
         otp_obj = EmailOTP.objects.get_active_for_user(self.user)
         self.assertIsNotNone(otp_obj)
 
-        # Recover the raw OTP the same way the service generated it isn't
-        # directly possible (only the hash is stored) -- so patch
-        # generate_otp for a deterministic value instead in a real suite.
-        # Here we validate the failure path instead, which doesn't need
-        # the raw code:
         response = self.client.post(self.verify_url, {"email": self.user.email, "code": "000000"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     @patch("accounts.otp_logic.utils._send_email", return_value=True)
-    @patch("accounts.otp_logic.utils.generate_otp", return_value="123456")
+    @patch("accounts.otp_logic.services.generate_otp", return_value="123456")  # FIX: patch
+    # where services.py actually calls generate_otp from, not where it's defined
+    # in utils.py. If services.py does `from .utils import generate_otp`, the
+    # name `generate_otp` becomes a separate reference living in services.py's
+    # own module namespace — patching utils.generate_otp never touches that
+    # second reference, so the real (random) OTP was still being generated,
+    # which is why the hardcoded "123456" in this test never matched it.
     def test_verify_otp_with_correct_code_activates_user(self, mock_gen, mock_send):
         self.client.post(self.send_url, {"email": self.user.email}, format="json")
         response = self.client.post(self.verify_url, {"email": self.user.email, "code": "123456"}, format="json")
