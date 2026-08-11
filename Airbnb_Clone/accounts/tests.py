@@ -263,6 +263,7 @@ class RegistrationTests(APITestCase):
         response = self.client.post(self.url, payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    
 # =============================Login==================================================================================
 @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": PERMISSIVE_THROTTLES})
 class LoginTests(APITestCase):

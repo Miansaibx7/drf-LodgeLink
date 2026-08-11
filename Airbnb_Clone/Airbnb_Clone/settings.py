@@ -144,9 +144,19 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 
 
+
+import sys
+
+# detect Django's test runner explicitly, rather than only checking DEBUG.
+# Without this, DEBUG=False (correct for CI/staging-like local testing) causes
+# SECURE_SSL_REDIRECT=True to fire on every test request, since Django's test
+# client always talks over plain http — this produced the 301-on-everything
+# symptom regardless of what each test actually posted.
+TESTING = "test" in sys.argv
+
 # These were absent entirely. They're no-ops in local DEBUG (no HTTPS locally) but are the standard baseline for any
 # production Django deployment served over HTTPS behind a reverse proxy.
-if not DEBUG:
+if not DEBUG and not TESTING:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
@@ -157,7 +167,6 @@ if not DEBUG:
     # X-Forwarded-Proto; setting it without a trusted proxy in front is itself
     # a spoofing risk.
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-
 
 
 
