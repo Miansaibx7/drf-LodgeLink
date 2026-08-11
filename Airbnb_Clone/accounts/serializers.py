@@ -91,34 +91,36 @@ class RegisterSerializer(serializers.ModelSerializer):
     
 
     
+# class LoginSerializer(serializers.Serializer):
+#     """Authenticates user with email and password.Provides specific error messages for inactive/unverified accounts
+#     without leaking account existence."""
+
 class LoginSerializer(serializers.Serializer):
-    """Authenticates user with email and password.Provides specific error messages for inactive/unverified accounts
-    without leaking account existence."""
+    """Validates the SHAPE of login input only — a well-formed email and a
+    non-empty password. Deliberately does NOT authenticate here."""
 
     email = serializers.EmailField(required=True)
     password = serializers.CharField(write_only=True, required=True, trim_whitespace=False)
 
-    def validate(self, attrs: dict) -> dict:
-        email = attrs.get('email','').lower().strip()
-        password = attrs.get('password')
-        #  Django's default `authenticate()` immediately returns None if `is_active=False`.
-        # We must check the user's database status before calling authenticate() to give 
-        # accurate error messages about verification.
-        try:
-            user_obj = User.objects.get(email=email)
-            if not user_obj.is_active:
-                raise serializers.ValidationError({"detail": "Account is inactive. Please verify your email."})
-            if not getattr(user_obj, 'is_verified', True):
-                raise serializers.ValidationError({"detail": "Email not verified. Please check your inbox for the OTP."})
-        except User.DoesNotExist:
-            pass  # Suppress error to mask account enumeration vectors during auth processing
+    def validate_email(self, value: str) -> str:
+        return value.lower().strip()
 
-        user = authenticate(request=self.context.get('request'), email=email, password=password)
-        if not user:
-            raise serializers.ValidationError({"detail": "Invalid email or password."})
-
-        attrs['user'] = user
-        return attrs
+    # FIX: removed the validate() override that previously called Django's
+    # authenticate() directly and raised ValidationError on bad credentials
+    # / inactive / unverified accounts.
+    #
+    # WHY: LoginView already calls otp_logic.services.authenticate_user(),
+    # which is the function responsible for brute-force tracking via the
+    # LoginAttempt model. Because serializer.is_valid(raise_exception=True)
+    # runs BEFORE that call, the old serializer-level auth check intercepted
+    # every failed login and returned 400 immediately — authenticate_user()
+    # was never reached, so LoginAttempt rows were never created and
+    # brute-force lockout silently never triggered.
+    #
+    # Authentication (credential check, active/verified checks, brute-force
+    # tracking, and account-enumeration-safe error messages) now lives in
+    # exactly ONE place: services.authenticate_user(). This serializer's
+    # only remaining job is request-shape validation.
    
 
 

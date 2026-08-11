@@ -267,9 +267,17 @@ class RegistrationTests(APITestCase):
 # =============================Login==================================================================================
 @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": PERMISSIVE_THROTTLES})
 class LoginTests(APITestCase):
-    url = "/api/accounts/login/"
 
     def setUp(self):
+        cache.clear()  # FIX: DRF's throttle counters live in Django's cache
+        # backend (LocMemCache here). Without clearing it between test
+        # methods, request counts accumulate ACROSS every test in this class
+        # (and any class run before it), since the throttle's cache key is
+        # tied to the test client's fixed IP, not to individual tests. This
+        # is what caused requests to silently start hitting a real 10/min
+        # ceiling partway through the suite, unrelated to any single test's
+        # own logic.
+        self.url = reverse('accounts:login')
         self.password = "StrongPassw0rd!99"
         self.user = make_user(email="login@example.com", password=self.password)
 
@@ -286,7 +294,6 @@ class LoginTests(APITestCase):
     def test_login_nonexistent_email_gives_generic_error(self):
         response = self.client.post(self.url, {"email": "nobody@example.com", "password": "whatever"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        # Should not reveal that the account doesn't exist vs wrong password.
         self.assertIn("Invalid email or password", str(response.data))
 
     def test_login_inactive_account_rejected(self):
@@ -306,7 +313,6 @@ class LoginTests(APITestCase):
         attempt = LoginAttempt.objects.get(email=self.user.email)
         self.assertTrue(attempt.is_blocked())
 
-        # Even the CORRECT password should now be rejected while blocked.
         response = self.client.post(self.url, {"email": self.user.email, "password": self.password}, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -330,8 +336,8 @@ class LoginTests(APITestCase):
 # ============================================================
 @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": PERMISSIVE_THROTTLES})
 class EmailOTPTests(APITestCase):
-    send_url = "/api/accounts/otp/send/"
-    verify_url = "/api/accounts/otp/verify/"
+    send_url = "/api/auth/otp/send/"
+    verify_url = "/api/auth/otp/verify/"
 
     def setUp(self):
         self.user = make_user(email="verify@example.com", is_active=False, is_verified=False)
