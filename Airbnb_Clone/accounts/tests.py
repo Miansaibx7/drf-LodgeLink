@@ -334,8 +334,6 @@ class LoginTests(APITestCase):
 # ============================================================
 # Email verification OTP
 # ============================================================
-from django.core.cache import cache  # add this import if not already present
-
 @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": PERMISSIVE_THROTTLES})
 class EmailOTPTests(APITestCase):
     send_url = "/api/auth/otp/send/"
@@ -390,8 +388,8 @@ class EmailOTPTests(APITestCase):
 # ============================================================
 @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": PERMISSIVE_THROTTLES})
 class PasswordResetTests(APITestCase):
-    send_url = "/api/accounts/password-reset/send/"
-    verify_url = "/api/accounts/password-reset/verify/"
+    send_url = "/api/auth/password-reset/send/"
+    verify_url = "/api/auth/password-reset/verify/"
 
     def setUp(self):
         self.old_password = "OldPassw0rd!99"
