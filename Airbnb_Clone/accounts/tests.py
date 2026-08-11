@@ -360,8 +360,8 @@ class EmailOTPTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     @patch("accounts.otp_logic.utils._send_email", return_value=True)
-    @patch("accounts.otp_logic.services.generate_otp", return_value="123456")  # FIX: patch
-    # where services.py actually calls generate_otp from, not where it's defined
+    @patch("accounts.otp_logic.services.generate_otp", return_value="123456")  
+    # patch where services.py actually calls generate_otp from, not where it's defined
     # in utils.py. If services.py does `from .utils import generate_otp`, the
     # name `generate_otp` becomes a separate reference living in services.py's
     # own module namespace — patching utils.generate_otp never touches that
