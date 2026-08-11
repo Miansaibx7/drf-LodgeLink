@@ -13,6 +13,7 @@ from .sub_views.two_factor import (TwoFactorSetupView, TwoFactorVerifyView, TwoF
 
 app_name = "accounts"
 
+
 urlpatterns = [
     # ---------------------- Register, Login & Logout ------------------------------------------
     path("register/", RegisterView.as_view(), name="register"),
