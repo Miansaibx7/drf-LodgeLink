@@ -430,7 +430,7 @@ class PasswordResetTests(APITestCase):
 # ============================================================
 @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": PERMISSIVE_THROTTLES})
 class ChangePasswordTests(APITestCase):
-    url = "/api/accounts/change-password/"
+    url = "/api/auth/change-password/"
 
     def setUp(self):
         self.old_password = "OldPassw0rd!99"
@@ -471,10 +471,10 @@ class ChangePasswordTests(APITestCase):
 # ============================================================
 @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": PERMISSIVE_THROTTLES})
 class TwoFactorSetupFlowTests(APITestCase):
-    setup_url = "/api/accounts/2fa/setup/"
-    verify_url = "/api/accounts/2fa/verify/"
-    disable_url = "/api/accounts/2fa/disable/"
-    backup_codes_url = "/api/accounts/2fa/backup-codes/"
+    setup_url = "/api/auth/2fa/setup/"
+    verify_url = "/api/auth/2fa/verify/"
+    disable_url = "/api/auth/2fa/disable/"
+    backup_codes_url = "/api/auth/2fa/backup-codes/"
 
     def setUp(self):
         self.password = "StrongPassw0rd!99"
@@ -550,8 +550,8 @@ class TwoFactorSetupFlowTests(APITestCase):
 class TwoFactorLoginChallengeTests(APITestCase):
     """Covers the security-critical login-time 2FA challenge: both
     password AND code must be independently correct."""
-    login_url = "/api/accounts/login/"
-    challenge_url = "/api/accounts/2fa/login/"
+    login_url = "/api/auth/login/"
+    challenge_url = "/api/auth/2fa/login/"
 
     def setUp(self):
         self.password = "StrongPassw0rd!99"
@@ -635,9 +635,9 @@ class TwoFactorLoginChallengeTests(APITestCase):
 # ============================================================
 @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": PERMISSIVE_THROTTLES})
 class AccountDeletionTests(APITestCase):
-    request_url = "/api/accounts/deletion/request/"
-    cancel_url = "/api/accounts/deletion/cancel/"
-    status_url = "/api/accounts/deletion/status/"
+    request_url = "/api/auth/deletion/request/"
+    cancel_url = "/api/auth/deletion/cancel/"
+    status_url = "/api/auth/deletion/status/"
 
     def setUp(self):
         self.user = make_user()
@@ -690,7 +690,7 @@ class ThrottlingTests(APITestCase):
     these tests are slower/stricter by design -- kept separate from the
     functional test classes above, which override throttling off."""
 
-    login_url = "/api/accounts/login/"
+    login_url = "/api/auth/login/"
 
     def setUp(self):
         cache.clear()  # throttle counters live in the default cache
