@@ -1,6 +1,5 @@
 from django.db import models
 from django.conf import settings
-from django.core.validators import MinValueValidator, MaxValueValidator
 from accounts.models import TimeStampedModel  # if you have it there
 
 class Listing(TimeStampedModel):
