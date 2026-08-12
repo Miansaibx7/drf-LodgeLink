@@ -6,11 +6,13 @@
         collectstatic \
         clean
 
+
 # Project Configuration
 PYTHON := uv run python
 MANAGE := $(PYTHON) manage.py
 RUFF := uv run ruff
 PYTEST := uv run pytest
+
 
 # Help
 help:
@@ -50,6 +52,7 @@ help:
 	@echo "  make clean            Remove Python cache files"
 	@echo ""
 
+
 # Environment & Dependencies
 install:
 	uv sync
@@ -61,6 +64,7 @@ update:
 	uv lock --upgrade
 	uv sync
 
+
 # Development
 run:
 	$(MANAGE) runserver
@@ -71,10 +75,8 @@ shell:
 check:
 	$(MANAGE) check
 
-# ==========================================================
-# Database
-# ==========================================================
 
+# Database
 makemigrations:
 	$(MANAGE) makemigrations
 
