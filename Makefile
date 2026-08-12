@@ -6,10 +6,7 @@
         collectstatic \
         clean
 
-# ==========================================================
 # Project Configuration
-# ==========================================================
-
 PYTHON := uv run python
 MANAGE := $(PYTHON) manage.py
 RUFF := uv run ruff
