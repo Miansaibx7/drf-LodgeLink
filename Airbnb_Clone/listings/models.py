@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
-from accounts.models import TimeStampedModel  # if you have it there
+from accounts.models import TimeStampedModel  
+
 
 class Listing(TimeStampedModel):
     """Property / room / experience listing."""
