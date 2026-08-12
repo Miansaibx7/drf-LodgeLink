@@ -50,10 +50,7 @@ help:
 	@echo "  make clean            Remove Python cache files"
 	@echo ""
 
-# ==========================================================
 # Environment & Dependencies
-# ==========================================================
-
 install:
 	uv sync
 
