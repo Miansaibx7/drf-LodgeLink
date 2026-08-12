@@ -110,10 +110,12 @@ REST_FRAMEWORK = {
             # RegisterView now uses its own throttle scope (RegisterRateThrottle in views.py) instead of reusing
             # 'login_requests'; add its rate here.
             'register_requests': '5/min',
-            'user': '100/min', # Limit authenticated users 
+            'user': '100/min', # Limit authenticated users
+            'login_ip_requests': '10/min',
+            'login_account_requests': '5/min', 
         },
 }
-    
+   
 
 
 # DRF's throttle counters use Django's default cache backend. Without an explicit CACHES setting, that's LocMemCache an

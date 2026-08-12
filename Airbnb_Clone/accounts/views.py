@@ -194,7 +194,10 @@ class PasswordResetOTPVerifyView(APIView):
         serializer.is_valid(raise_exception=True)
         
         request_data = extract_request_data(request)
-        OTPService.verify_password_reset_otp(**serializer.validated_data, request_data=request_data)
+        OTPService.verify_password_reset_otp(email=serializer.validated_data['email'],
+            code=serializer.validated_data['code'],new_password=serializer.validated_data['new_password'],
+            request_data=request_data
+        )
 
         return Response({"success": True, "message": "Password reset successfully."}, status=status.HTTP_200_OK)
 

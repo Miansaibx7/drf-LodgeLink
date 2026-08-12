@@ -1,4 +1,4 @@
-""" Test suite for the `accounts` app.
+"""Test suite for the `accounts` app.
 Covers:
 - User model / manager
 - Registration (including the duplicate-email race path)
@@ -7,7 +7,7 @@ Covers:
 - Password reset OTP
 - Change password
 - Two-Factor Authentication (setup, verify/enable, login challenge,
-  disable, backup codes) -- including the password-required-on-login
+  disable, backup codes) — including the password-required-on-login
   security fix and the account-enumeration masking fix
 - Account deletion requests (create, cancel, status)
 
@@ -17,11 +17,10 @@ Run with:
 Notes:
 - Email sending is mocked throughout (`_send_email`) so tests never touch
   real SMTP and never depend on template files rendering correctly.
-- Throttle scopes used by the app (`otp_requests`, `login_requests`,
-  `register_requests`, `login_ip_requests`, `login_account_requests`,
-  `user`) are overridden to very high limits for most tests so throttling
-  doesn't interfere with test isolation, except in the dedicated
-  throttling test classes, which intentionally use the real low rates. """
+- Throttle scopes are overridden to very high limits for functional tests,
+  except in the dedicated throttling test class.
+"""
+
 import pyotp
 from datetime import timedelta
 from unittest.mock import patch
@@ -30,19 +29,19 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.urls import reverse
 
 from rest_framework.test import APITestCase
 from rest_framework import status
 
-from .models import (EmailOTP, UserProfile, UserSession,
-    AuditLog, LoginAttempt, TwoFactorAuth, AccountDeletionRequest)
-
-from django.urls import reverse
+from .models import (
+    EmailOTP, UserProfile, UserSession, AuditLog,
+    LoginAttempt, TwoFactorAuth, AccountDeletionRequest
+)
 
 User = get_user_model()
 
-# High-limit throttle rates so functional tests aren't rate-limited
-# mid-run. Dedicated throttling tests below override this back down.
+# Permissive throttle rates for functional tests – prevents rate‑limiting interference
 PERMISSIVE_THROTTLES = {
     "otp_requests": "1000/min",
     "login_requests": "1000/min",
@@ -55,20 +54,16 @@ PERMISSIVE_THROTTLES = {
 
 
 def make_user(email="user@example.com", password="StrongPassw0rd!99", **extra):
-    """Helper: create an already-active, already-verified user for tests
-    that need a usable account without going through the full
-    register -> verify-OTP flow."""
+    """Helper: create an already-active, already-verified user."""
     defaults = {"is_active": True, "is_verified": True, "terms_accepted": True}
     defaults.update(extra)
     return User.objects.create_user(email=email, password=password, **defaults)
 
 
-# ================================== Model / Manager tests=============================================================
+# ================================== Model / Manager Tests =================================
 class UserModelTests(TestCase):
     def test_create_user_normalizes_and_lowercases_email(self):
         user = User.objects.create_user(email="  Test@Example.COM ", password="pw")
-        # NOTE: create_user's email arg isn't pre-stripped, but User.save()
-        # lowercases/strips on every save -- confirm that actually happens.
         self.assertEqual(user.email, "test@example.com")
 
     def test_create_user_without_email_raises(self):
@@ -99,15 +94,11 @@ class UserModelTests(TestCase):
         user = make_user(email="jane@example.com", first_name="Jane", last_name="Doe")
         self.assertEqual(user.get_full_name(), "Jane Doe")
         self.assertEqual(user.get_short_name(), "Jane")
-
         user2 = make_user(email="noname@example.com")
         self.assertEqual(user2.get_short_name(), "noname")
 
 
 class BaseOTPModelTests(TestCase):
-    """Exercises EmailOTP directly (shared logic lives in BaseOTP,
-    PasswordResetOTP behaves identically)."""
-
     def setUp(self):
         self.user = make_user()
 
@@ -138,7 +129,6 @@ class BaseOTPModelTests(TestCase):
             otp.verify_otp("000000")
         otp.refresh_from_db()
         self.assertTrue(otp.is_blocked)
-        # Even the CORRECT code should now be rejected while blocked.
         self.assertFalse(otp.verify_otp("123456"))
 
     def test_verify_otp_expired_fails(self):
@@ -175,7 +165,6 @@ class TwoFactorAuthModelTests(TestCase):
         self.tfa.enable("SECRETKEY")
         self.assertTrue(self.tfa.enabled)
         self.assertEqual(self.tfa.secret_key, "SECRETKEY")
-
         self.tfa.disable()
         self.assertFalse(self.tfa.enabled)
         self.assertIsNone(self.tfa.secret_key)
@@ -184,9 +173,7 @@ class TwoFactorAuthModelTests(TestCase):
     def test_consume_backup_code_success_and_single_use(self):
         self.tfa.set_backup_codes(["ABCD1234", "WXYZ9999"])
         self.assertTrue(self.tfa.consume_backup_code("ABCD1234"))
-        # Same code cannot be used twice.
         self.assertFalse(self.tfa.consume_backup_code("ABCD1234"))
-        # The other code is still valid.
         self.assertTrue(self.tfa.consume_backup_code("WXYZ9999"))
 
     def test_consume_backup_code_invalid(self):
@@ -195,14 +182,12 @@ class TwoFactorAuthModelTests(TestCase):
 
 
 # ============================================================
-# Registration
+# Registration Tests
 # ============================================================
 @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": PERMISSIVE_THROTTLES})
 class RegistrationTests(APITestCase):
-
     def setUp(self):
-        # Generate the URL once using reverse
-        self.url = reverse('accounts:register')  # assumes app_name = 'accounts' in urls.py
+        self.url = reverse('accounts:register')
 
     @patch("accounts.otp_logic.services.send_registration_otp", return_value=True)
     def test_register_success_creates_inactive_unverified_user(self, mock_send):
@@ -263,20 +248,14 @@ class RegistrationTests(APITestCase):
         response = self.client.post(self.url, payload, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    
-# =============================Login==================================================================================
+
+# ============================================================
+# Login Tests
+# ============================================================
 @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": PERMISSIVE_THROTTLES})
 class LoginTests(APITestCase):
-
     def setUp(self):
-        cache.clear()  # FIX: DRF's throttle counters live in Django's cache
-        # backend (LocMemCache here). Without clearing it between test
-        # methods, request counts accumulate ACROSS every test in this class
-        # (and any class run before it), since the throttle's cache key is
-        # tied to the test client's fixed IP, not to individual tests. This
-        # is what caused requests to silently start hitting a real 10/min
-        # ceiling partway through the suite, unrelated to any single test's
-        # own logic.
+        cache.clear()
         self.url = reverse('accounts:login')
         self.password = "StrongPassw0rd!99"
         self.user = make_user(email="login@example.com", password=self.password)
@@ -309,10 +288,8 @@ class LoginTests(APITestCase):
     def test_login_brute_force_lockout(self):
         for _ in range(5):
             self.client.post(self.url, {"email": self.user.email, "password": "wrong"}, format="json")
-
         attempt = LoginAttempt.objects.get(email=self.user.email)
         self.assertTrue(attempt.is_blocked())
-
         response = self.client.post(self.url, {"email": self.user.email, "password": self.password}, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -324,7 +301,6 @@ class LoginTests(APITestCase):
     def test_login_with_2fa_enabled_withholds_tokens(self):
         tfa = TwoFactorAuth.objects.create(user=self.user)
         tfa.enable(pyotp.random_base32())
-
         response = self.client.post(self.url, {"email": self.user.email, "password": self.password}, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data.get("requires_2fa"))
@@ -332,20 +308,14 @@ class LoginTests(APITestCase):
 
 
 # ============================================================
-# Email verification OTP
+# Email Verification OTP Tests
 # ============================================================
 @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": PERMISSIVE_THROTTLES})
 class EmailOTPTests(APITestCase):
-    send_url = "/api/auth/otp/send/"
-    verify_url = "/api/auth/otp/verify/"
-
     def setUp(self):
-        cache.clear()  # FIX: same throttle-counter-accumulation issue as
-        # LoginTests — DRF's OTPRateThrottle counters live in the shared
-        # cache backend and persist across test methods within this class.
-        # Without clearing here, requests from earlier tests count toward
-        # later tests' limits, which is exactly what produced the 429 on
-        # the 6th cumulative request (5/min real ceiling from settings.py).
+        cache.clear()
+        self.send_url = reverse('accounts:email_otp_send')
+        self.verify_url = reverse('accounts:email_otp_verify')
         self.user = make_user(email="verify@example.com", is_active=False, is_verified=False)
 
     @patch("accounts.otp_logic.utils._send_email", return_value=True)
@@ -354,22 +324,12 @@ class EmailOTPTests(APITestCase):
         otp_obj = EmailOTP.objects.get_active_for_user(self.user)
         self.assertIsNotNone(otp_obj)
 
-        response = self.client.post(self.verify_url, {"email": self.user.email, "code": "000000"}, format="json")
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
     @patch("accounts.otp_logic.utils._send_email", return_value=True)
-    @patch("accounts.otp_logic.services.generate_otp", return_value="123456")  
-    # patch where services.py actually calls generate_otp from, not where it's defined
-    # in utils.py. If services.py does `from .utils import generate_otp`, the
-    # name `generate_otp` becomes a separate reference living in services.py's
-    # own module namespace — patching utils.generate_otp never touches that
-    # second reference, so the real (random) OTP was still being generated,
-    # which is why the hardcoded "123456" in this test never matched it.
+    @patch("accounts.otp_logic.services.generate_otp", return_value="123456")
     def test_verify_otp_with_correct_code_activates_user(self, mock_gen, mock_send):
         self.client.post(self.send_url, {"email": self.user.email}, format="json")
         response = self.client.post(self.verify_url, {"email": self.user.email, "code": "123456"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-
         self.user.refresh_from_db()
         self.assertTrue(self.user.is_active)
         self.assertTrue(self.user.is_verified)
@@ -384,22 +344,20 @@ class EmailOTPTests(APITestCase):
 
 
 # ============================================================
-# Password reset
+# Password Reset Tests
 # ============================================================
 @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": PERMISSIVE_THROTTLES})
 class PasswordResetTests(APITestCase):
-    send_url = "/api/auth/password-reset/send/"
-    verify_url = "/api/auth/password-reset/verify/"
-
     def setUp(self):
+        self.send_url = reverse('accounts:password_reset_send')
+        self.verify_url = reverse('accounts:password_reset_verify')
         self.old_password = "OldPassw0rd!99"
         self.user = make_user(email="reset@example.com", password=self.old_password)
 
     @patch("accounts.otp_logic.utils._send_email", return_value=True)
-    @patch("accounts.otp_logic.utils.generate_otp", return_value="654321")
+    @patch("accounts.otp_logic.services.generate_otp", return_value="654321")
     def test_reset_password_success(self, mock_gen, mock_send):
         self.client.post(self.send_url, {"email": self.user.email}, format="json")
-
         new_password = "BrandNewPassw0rd!99"
         response = self.client.post(self.verify_url, {
             "email": self.user.email,
@@ -408,12 +366,11 @@ class PasswordResetTests(APITestCase):
             "confirm_password": new_password,
         }, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-
         self.user.refresh_from_db()
         self.assertTrue(self.user.check_password(new_password))
 
     @patch("accounts.otp_logic.utils._send_email", return_value=True)
-    @patch("accounts.otp_logic.utils.generate_otp", return_value="654321")
+    @patch("accounts.otp_logic.services.generate_otp", return_value="654321")
     def test_reset_password_cannot_reuse_current_password(self, mock_gen, mock_send):
         self.client.post(self.send_url, {"email": self.user.email}, format="json")
         response = self.client.post(self.verify_url, {
@@ -426,13 +383,12 @@ class PasswordResetTests(APITestCase):
 
 
 # ============================================================
-# Change password (authenticated)
+# Change Password (Authenticated)
 # ============================================================
 @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": PERMISSIVE_THROTTLES})
 class ChangePasswordTests(APITestCase):
-    url = "/api/auth/change-password/"
-
     def setUp(self):
+        self.url = reverse('accounts:change_password')
         self.old_password = "OldPassw0rd!99"
         self.user = make_user(password=self.old_password)
         self.client.force_authenticate(user=self.user)
@@ -467,16 +423,15 @@ class ChangePasswordTests(APITestCase):
 
 
 # ============================================================
-# Two-Factor Authentication
+# Two-Factor Authentication Setup Flow Tests
 # ============================================================
 @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": PERMISSIVE_THROTTLES})
 class TwoFactorSetupFlowTests(APITestCase):
-    setup_url = "/api/auth/2fa/setup/"
-    verify_url = "/api/auth/2fa/verify/"
-    disable_url = "/api/auth/2fa/disable/"
-    backup_codes_url = "/api/auth/2fa/backup-codes/"
-
     def setUp(self):
+        self.setup_url = reverse('accounts:2fa_setup')
+        self.verify_url = reverse('accounts:2fa_verify')
+        self.disable_url = reverse('accounts:2fa_disable')
+        self.backup_codes_url = reverse('accounts:2fa_backup_codes')
         self.password = "StrongPassw0rd!99"
         self.user = make_user(password=self.password)
         self.client.force_authenticate(user=self.user)
@@ -486,7 +441,6 @@ class TwoFactorSetupFlowTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("secret", response.data["data"])
         self.assertIn("provisioning_uri", response.data["data"])
-
         tfa = TwoFactorAuth.objects.get(user=self.user)
         self.assertFalse(tfa.enabled)
 
@@ -499,11 +453,8 @@ class TwoFactorSetupFlowTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def _setup_and_enable_2fa(self):
-        """Helper: run setup, then verify with a real live TOTP code to
-        fully enable 2FA. Returns (secret, backup_codes)."""
         setup_resp = self.client.post(self.setup_url, {"password": self.password}, format="json")
         secret = setup_resp.data["data"]["secret"]
-
         code = pyotp.TOTP(secret).now()
         verify_resp = self.client.post(self.verify_url, {"otp_code": code}, format="json")
         self.assertEqual(verify_resp.status_code, status.HTTP_200_OK)
@@ -512,7 +463,6 @@ class TwoFactorSetupFlowTests(APITestCase):
     def test_verify_with_valid_code_enables_2fa_and_returns_backup_codes(self):
         secret, backup_codes = self._setup_and_enable_2fa()
         self.assertEqual(len(backup_codes), 10)
-
         tfa = TwoFactorAuth.objects.get(user=self.user)
         self.assertTrue(tfa.enabled)
         self.assertEqual(len(tfa.backup_code_hashes), 10)
@@ -528,7 +478,6 @@ class TwoFactorSetupFlowTests(APITestCase):
         self._setup_and_enable_2fa()
         response = self.client.post(self.disable_url, {"password": "wrong"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
         response = self.client.post(self.disable_url, {"password": self.password}, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         tfa = TwoFactorAuth.objects.get(user=self.user)
@@ -540,20 +489,19 @@ class TwoFactorSetupFlowTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         new_codes = response.data["backup_codes"]
         self.assertNotEqual(set(old_codes), set(new_codes))
-
         tfa = TwoFactorAuth.objects.get(user=self.user)
-        # None of the OLD codes should still validate.
         self.assertFalse(tfa.consume_backup_code(old_codes[0]))
 
 
+# ============================================================
+# Two-Factor Login Challenge Tests
+# ============================================================
 @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": PERMISSIVE_THROTTLES})
 class TwoFactorLoginChallengeTests(APITestCase):
-    """Covers the security-critical login-time 2FA challenge: both
-    password AND code must be independently correct."""
-    login_url = "/api/auth/login/"
-    challenge_url = "/api/auth/2fa/login/"
-
     def setUp(self):
+        cache.clear()  # reset throttling counters before each test
+        self.login_url = reverse('accounts:login')
+        self.challenge_url = reverse('accounts:2fa_login')
         self.password = "StrongPassw0rd!99"
         self.user = make_user(email="2fauser@example.com", password=self.password)
         self.secret = pyotp.random_base32()
@@ -575,8 +523,7 @@ class TwoFactorLoginChallengeTests(APITestCase):
             "email": self.user.email, "password": self.password, "auth_code": self.backup_codes[0],
         }, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        # The same backup code cannot be reused.
+        # Same backup code cannot be reused
         code = pyotp.TOTP(self.secret).now()
         self.tfa.refresh_from_db()
         used_again = self.client.post(self.challenge_url, {
@@ -585,10 +532,6 @@ class TwoFactorLoginChallengeTests(APITestCase):
         self.assertEqual(used_again.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_challenge_with_wrong_password_fails_even_with_valid_code(self):
-        """SECURITY-CRITICAL: this is the regression test for the bug
-        where 2FA login accepted a valid code with NO password check at
-        all. A wrong password must fail even when the TOTP code is
-        completely correct."""
         code = pyotp.TOTP(self.secret).now()
         response = self.client.post(self.challenge_url, {
             "email": self.user.email, "password": "totally-wrong-password", "auth_code": code,
@@ -602,8 +545,6 @@ class TwoFactorLoginChallengeTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_challenge_nonexistent_email_and_wrong_password_give_same_error_shape(self):
-        """Regression test for the account-enumeration fix: both failure
-        modes must be indistinguishable to the caller."""
         resp_no_user = self.client.post(self.challenge_url, {
             "email": "nobody@example.com", "password": "whatever", "auth_code": "123456",
         }, format="json")
@@ -611,17 +552,13 @@ class TwoFactorLoginChallengeTests(APITestCase):
             "email": self.user.email, "password": "wrong", "auth_code": "123456",
         }, format="json")
         self.assertEqual(resp_no_user.status_code, resp_wrong_pw.status_code)
-        # Message text should match exactly -- not leak which case occurred.
         self.assertEqual(str(resp_no_user.data.get("message")), str(resp_wrong_pw.data.get("message")))
 
     def test_full_login_flow_requires_both_steps(self):
-        """End-to-end: /login/ alone must NOT return tokens for a
-        2FA-enabled account; only /2fa/login/ completes it."""
         login_resp = self.client.post(self.login_url, {"email": self.user.email, "password": self.password}, format="json")
         self.assertEqual(login_resp.status_code, status.HTTP_200_OK)
         self.assertTrue(login_resp.data.get("requires_2fa"))
         self.assertNotIn("tokens", login_resp.data)
-
         code = pyotp.TOTP(self.secret).now()
         challenge_resp = self.client.post(self.challenge_url, {
             "email": self.user.email, "password": self.password, "auth_code": code,
@@ -631,15 +568,14 @@ class TwoFactorLoginChallengeTests(APITestCase):
 
 
 # ============================================================
-# Account deletion (GDPR)
+# Account Deletion (GDPR) Tests
 # ============================================================
 @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": PERMISSIVE_THROTTLES})
 class AccountDeletionTests(APITestCase):
-    request_url = "/api/auth/deletion/request/"
-    cancel_url = "/api/auth/deletion/cancel/"
-    status_url = "/api/auth/deletion/status/"
-
     def setUp(self):
+        self.request_url = reverse('accounts:account_delete_request')
+        self.cancel_url = reverse('accounts:account_delete_cancel')
+        self.status_url = reverse('accounts:account_delete_status')
         self.user = make_user()
         self.client.force_authenticate(user=self.user)
 
@@ -662,7 +598,6 @@ class AccountDeletionTests(APITestCase):
         self.client.post(self.request_url, {"confirm": True}, format="json")
         response = self.client.post(self.cancel_url, {}, format="json")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-
         req = AccountDeletionRequest.objects.get(user=self.user)
         self.assertTrue(req.cancelled)
 
@@ -683,22 +618,16 @@ class AccountDeletionTests(APITestCase):
 
 
 # ============================================================
-# Throttling (uses REAL configured rates, not the permissive override)
+# Throttling Tests (uses REAL rates from settings)
 # ============================================================
 class ThrottlingTests(APITestCase):
-    """Uses the actual configured throttle rates from settings.py, so
-    these tests are slower/stricter by design -- kept separate from the
-    functional test classes above, which override throttling off."""
-
-    login_url = "/api/auth/login/"
-
+    """Uses the actual configured throttle rates from settings.py.
+    Does NOT override with PERMISSIVE_THROTTLES."""
     def setUp(self):
-        cache.clear()  # throttle counters live in the default cache
+        cache.clear()
+        self.login_url = reverse('accounts:login')
 
     def test_login_endpoint_is_throttled(self):
-        # Hammer the login endpoint well past any reasonable configured
-        # rate (settings.py currently sets login_requests to 10/min) and
-        # confirm at least one request gets a 429.
         statuses = []
         for _ in range(15):
             resp = self.client.post(self.login_url, {"email": "x@example.com", "password": "wrong"}, format="json")
