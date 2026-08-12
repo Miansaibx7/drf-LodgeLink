@@ -113,10 +113,8 @@ format-check:
 collectstatic:
 	$(MANAGE) collectstatic --noinput
 
-# ==========================================================
-# Maintenance
-# ==========================================================
 
+# Maintenance
 clean:
 	@echo "Removing Python cache files..."
 	find . -type d -name "__pycache__" -prune -exec rm -rf {} \;
