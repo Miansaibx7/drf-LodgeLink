@@ -88,8 +88,7 @@ REST_FRAMEWORK = {
 
         # Throttling / Rate Limiting (Added to protect OTP and Login endpoints)
         'DEFAULT_THROTTLE_RATES': {
-            # (security gap): the previous rates dict had NO 'anon' entry.
-            # DRF's SimpleRateThrottle.get_rate() returns None for a scope that
+            # (security gap): DRF's SimpleRateThrottle.get_rate() returns None for a scope that
             # isn't in this dict, and get_cache_key() returns None whenever the
             # resolved rate is None — which means the throttle silently allows
             # ALL requests through, with no error, no log line, nothing. Any view

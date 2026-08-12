@@ -34,12 +34,7 @@ logger = logging.getLogger(__name__)
 # ===================== Throttles =====================================================================================
 class TwoFactorIPThrottle(AnonRateThrottle):
     """Prevents volumetric brute-force attacks from a single IP address
-    hammering the unauthenticated 2FA login-challenge endpoint.
-
-    REQUIRED SETTINGS: add 'login_ip_requests' to REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] in settings.py.
-    If this key is missing, DRF silently disables throttling for this scope entirely (no error raised).
-    this is the exact same failure mode that once left TwoFactorLoginView completely unthrottled earlier in this
-    codebase's history, so it's called out explicitly here. """
+    hammering the unauthenticated 2FA login-challenge endpoint."""
 
     scope = 'login_ip_requests'
 
