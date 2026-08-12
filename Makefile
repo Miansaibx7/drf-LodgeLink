@@ -108,10 +108,8 @@ format:
 format-check:
 	$(RUFF) format --check .
 
-# ==========================================================
-# Production
-# ==========================================================
 
+# Production
 collectstatic:
 	$(MANAGE) collectstatic --noinput
 
