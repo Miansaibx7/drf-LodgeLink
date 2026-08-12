@@ -89,10 +89,8 @@ showmigrations:
 superuser:
 	$(MANAGE) createsuperuser
 
-# ==========================================================
-# Testing
-# ==========================================================
 
+# Testing
 test:
 	$(PYTEST)
 
