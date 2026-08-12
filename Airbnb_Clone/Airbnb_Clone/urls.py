@@ -10,6 +10,9 @@ urlpatterns = [
     # Main Authentication Router (Includes Login, Register, OTP, OAuth, 2FA, Deletion)
     path("api/auth/", include("accounts.urls")),
 
+    # Listings app router
+    path("api/listings/", include("listings.urls")),
+
     # SimpleJWT native endpoint for refreshing tokens
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
 
