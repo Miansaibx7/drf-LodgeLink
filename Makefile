@@ -106,7 +106,6 @@ format-check:
 collectstatic:
 	$(MANAGE) collectstatic --noinput
 
-
 # Maintenance
 clean:
 	@echo "Removing Python cache files..."
