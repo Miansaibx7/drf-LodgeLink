@@ -102,7 +102,6 @@ format:
 format-check:
 	$(RUFF) format --check .
 
-
 # Production
 collectstatic:
 	$(MANAGE) collectstatic --noinput
