@@ -721,8 +721,8 @@ class UtilsTests(TestCase):
             text_template="dummy.txt",
             context={}
         )
-        # It should return False instead of raising a 500 server error
-        self.assertFalse(result)
+        
+        self.assertFalse(result) # It should return False instead of raising a 500 server error
 
     def test_send_password_reset_email(self):
         """Test the password reset specific email sender."""
