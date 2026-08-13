@@ -54,14 +54,13 @@ help:
 # Environment & Dependencies
 install:
 	uv sync
-	
+
 sync:
 	uv sync --locked
 
 update:
 	uv lock --upgrade
 	uv sync
-
 
 # Development
 run:
