@@ -255,7 +255,7 @@ class EmailOTP(BaseOTP):
 
 
 class PasswordResetOTP(BaseOTP):
-    # Inherits BaseOTP.Meta to ensure ordering=["-created_at"] isn't lost
+    # Same for this class. Inherits BaseOTP.Meta to ensure ordering=["-created_at"] isn't lost
     class Meta(BaseOTP.Meta):
         verbose_name = "Password Reset OTP"
         verbose_name_plural = "Password Reset OTPs"
