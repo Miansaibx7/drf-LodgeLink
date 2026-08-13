@@ -6,7 +6,6 @@ from .views import (RegisterView, LoginView, LogoutView,EmailOTPSendView, EmailO
 
 # Account Deletion Views
 from .sub_views.account_deletion import AccountDeletionRequestView, AccountDeletionCancelView, AccountDeletionStatusView
-
 # Two-Factor Auth Views 
 from .sub_views.two_factor import (TwoFactorSetupView, TwoFactorVerifyView, TwoFactorDisableView,
     TwoFactorBackupCodesView, TwoFactorLoginView)
