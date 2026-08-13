@@ -92,7 +92,6 @@ test:
 test-app:
 	$(PYTEST) $(APP)
 
-
 # Code Quality
 lint:
 	$(RUFF) check .
