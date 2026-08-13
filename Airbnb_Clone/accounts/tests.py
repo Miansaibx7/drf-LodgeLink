@@ -724,6 +724,7 @@ class UtilsTests(TestCase):
         
         self.assertFalse(result) # It should return False instead of raising a 500 server error
 
+
     def test_send_password_reset_email(self):
         """Test the password reset specific email sender."""
         success = send_password_reset_email(email="reset@example.com", otp="654321")
@@ -733,6 +734,7 @@ class UtilsTests(TestCase):
         self.assertEqual(mail.outbox[0].to, ["reset@example.com"])
         self.assertIn("654321", mail.outbox[0].body)
         self.assertIn("Password Reset", mail.outbox[0].subject)
+
 
     def test_get_tokens_for_user(self):
         """Test JWT generation contains required keys."""
@@ -747,6 +749,7 @@ class UtilsTests(TestCase):
         
         self.assertTrue(isinstance(tokens["access"], str))
         self.assertTrue(len(tokens["jti"]) > 0)
+
 
     def test_get_client_ip_without_proxy(self):
         """Test IP extraction during local development (no X-Forwarded-For)."""
@@ -781,6 +784,7 @@ class UtilsTests(TestCase):
         self.assertEqual(result['user_agent'], 'Mozilla/5.0 (Windows NT 10.0)')
         self.assertEqual(result['device_name'], 'Desktop PC')
         self.assertEqual(result['location'], 'Peshawar')
+
 
     def test_api_success(self):
         """Test API standard response generator."""
