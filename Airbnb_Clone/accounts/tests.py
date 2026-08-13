@@ -672,17 +672,17 @@ class UtilsTests(TestCase):
         self.assertEqual(len(mail.outbox), 1) # Verify an email was actually added to Django's outbox
         self.assertEqual(mail.outbox[0].to, ["test@example.com"])
         self.assertIn("123456", mail.outbox[0].body)
-        
+
+    # Create a mock DRF request object  
     def test_get_client_ip_with_proxy(self):
-        # Create a mock DRF request object
+        
         class MockRequest:
             META = {'HTTP_X_FORWARDED_FOR': '192.168.1.100, 10.0.0.1'}
             
         request = MockRequest()
         ip = get_client_ip(request)
         
-        # It should extract the first IP in the chain
-        self.assertEqual(ip, '192.168.1.100')
+        self.assertEqual(ip, '192.168.1.100')  # It should extract the first IP in the chain
 
     # ---------------------------------------------------------
     # New Tests
