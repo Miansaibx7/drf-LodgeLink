@@ -656,17 +656,15 @@ from rest_framework.response import Response
 
 
 class UtilsTests(TestCase):
-    
-    # ---------------------------------------------------------
+
     # Existing Tests
-    # ---------------------------------------------------------
     def test_generate_otp_is_secure_and_correct_length(self):
         otp = generate_otp()
         self.assertEqual(len(otp), 6)
         self.assertTrue(otp.isdigit())
 
+    # Send the email
     def test_send_email_otp_actually_generates_email(self):
-        # Send the email
         success = send_email_otp(email="test@example.com", otp="123456")
         
         # Verify function returned True
