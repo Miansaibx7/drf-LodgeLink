@@ -115,7 +115,7 @@ def send_email_otp(*, email: str, otp: str) -> bool:
 
 # Password Reset Email
 def send_password_reset_email(*, email: str, otp: str) -> bool:
-    """Send password reset OTP email.
+    """ Send password reset OTP email.
     Args:
         email: Recipient email.
         otp: Generated OTP.
