@@ -633,3 +633,171 @@ class ThrottlingTests(APITestCase):
             resp = self.client.post(self.login_url, {"email": "x@example.com", "password": "wrong"}, format="json")
             statuses.append(resp.status_code)
         self.assertIn(status.HTTP_429_TOO_MANY_REQUESTS, statuses)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#=================================== utils.py tests ============================================================================
+from django.core import mail
+from accounts.otp_logic.utils import (get_email_context,generate_otp,_send_email, send_email_otp,
+        send_password_reset_email,get_tokens_for_user, get_client_ip,extract_request_data,api_success)
+
+from rest_framework.response import Response
+
+
+class UtilsTests(TestCase):
+
+    # Existing Tests
+    def test_generate_otp_is_secure_and_correct_length(self):
+        otp = generate_otp()
+        self.assertEqual(len(otp), 6)
+        self.assertTrue(otp.isdigit())
+
+    # Send the email
+    def test_send_email_otp_actually_generates_email(self):
+        success = send_email_otp(email="test@example.com", otp="123456")
+        
+        self.assertTrue(success) # Verify function returned True
+        
+        self.assertEqual(len(mail.outbox), 1) # Verify an email was actually added to Django's outbox
+        self.assertEqual(mail.outbox[0].to, ["test@example.com"])
+        self.assertIn("123456", mail.outbox[0].body)
+
+    # Create a mock DRF request object  
+    def test_get_client_ip_with_proxy(self):
+        
+        class MockRequest:
+            META = {'HTTP_X_FORWARDED_FOR': '192.168.1.100, 10.0.0.1'}
+            
+        request = MockRequest()
+        ip = get_client_ip(request)
+        self.assertEqual(ip, '192.168.1.100')  # It should extract the first IP in the chain
+
+    # New Tests
+    @override_settings(
+        COMPANY_NAME="TestCompany",
+        SCHOOL_NAME="TestSchool",
+        FRONTEND_URL="http://localhost:3000",
+        BACKEND_URL="http://localhost:8000",
+        SUPPORT_EMAIL="support@test.com",
+        PRIMARY_COLOR="#FFFFFF",
+        LOGO_URL="http://logo.com/test.png"
+    )
+
+
+    def test_get_email_context(self):
+        """Test that settings are correctly mapped to the email context."""
+        context = get_email_context()
+        self.assertEqual(context['company_name'], "TestCompany")
+        self.assertEqual(context['school_name'], "TestSchool")
+        self.assertEqual(context['support_email'], "support@test.com")
+        self.assertEqual(context['logo_url'], "http://logo.com/test.png")
+
+
+    @patch('accounts.otp_logic.utils.EmailMultiAlternatives')
+    @patch('accounts.otp_logic.utils.render_to_string')
+    def test_send_email_failure_handling(self, mock_render_to_string, mock_email_class):
+        """Test that _send_email gracefully returns False if SMTP crashes."""
+        # Setup mock to avoid needing real HTML templates for this test
+        mock_render_to_string.return_value = "mocked HTML string"
+        
+        mock_instance = mock_email_class.return_value  # Force the send() method to raise an Exception
+        mock_instance.send.side_effect = Exception("SMTP connection refused")
+
+        result = _send_email(
+            email="crash@example.com",
+            subject="Will Fail",
+            html_template="dummy.html",
+            text_template="dummy.txt",
+            context={}
+        )
+        
+        self.assertFalse(result) # It should return False instead of raising a 500 server error
+
+
+    def test_send_password_reset_email(self):
+        """Test the password reset specific email sender."""
+        success = send_password_reset_email(email="reset@example.com", otp="654321")
+        
+        self.assertTrue(success)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["reset@example.com"])
+        self.assertIn("654321", mail.outbox[0].body)
+        self.assertIn("Password Reset", mail.outbox[0].subject)
+
+
+    def test_get_tokens_for_user(self):
+        """Test JWT generation contains required keys."""
+        # Create a temporary user in the test database
+        user = User.objects.create_user(email="jwt@example.com", password="testpassword123")
+        
+        tokens = get_tokens_for_user(user)
+        
+        self.assertIn("access", tokens)
+        self.assertIn("refresh", tokens)
+        self.assertIn("jti", tokens)
+        
+        self.assertTrue(isinstance(tokens["access"], str))
+        self.assertTrue(len(tokens["jti"]) > 0)
+
+
+    def test_get_client_ip_without_proxy(self):
+        """Test IP extraction during local development (no X-Forwarded-For)."""
+        class MockRequest:
+            META = {'REMOTE_ADDR': '127.0.0.1'}
+            
+        request = MockRequest()
+        ip = get_client_ip(request)
+        
+        self.assertEqual(ip, '127.0.0.1')
+
+    def test_extract_request_data(self):
+        """Test extraction of user device and location metadata."""
+        class MockRequest:
+            META = {
+                'HTTP_USER_AGENT': 'Mozilla/5.0 (Windows NT 10.0)',
+                'REMOTE_ADDR': '192.168.1.55'
+            }
+            # Simulate parsed JSON body
+            data = {
+                'device_name': 'Desktop PC',
+                'browser': 'Chrome',
+                'operating_system': 'Windows 11',
+                'location': 'Peshawar',
+                'device_id': 'device-xyz-123'
+            }
+            
+        request = MockRequest()
+        result = extract_request_data(request)
+        
+        self.assertEqual(result['ip_address'], '192.168.1.55')
+        self.assertEqual(result['user_agent'], 'Mozilla/5.0 (Windows NT 10.0)')
+        self.assertEqual(result['device_name'], 'Desktop PC')
+        self.assertEqual(result['location'], 'Peshawar')
+
+
+    def test_api_success(self):
+        """Test API standard response generator."""
+        # Test with custom data and status code
+        response = api_success(message="Login successful", data={"user_id": 1}, status_code=201)
+        
+        self.assertIsInstance(response, Response)
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(response.data['success'])
+        self.assertEqual(response.data['message'], "Login successful")
+        self.assertEqual(response.data['data']['user_id'], 1)
+        
+        # Test with default arguments
+        response_default = api_success(message="Logged out")
+        self.assertEqual(response_default.status_code, 200)
+        self.assertEqual(response_default.data['data'], {})
