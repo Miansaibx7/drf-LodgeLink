@@ -667,11 +667,9 @@ class UtilsTests(TestCase):
     def test_send_email_otp_actually_generates_email(self):
         success = send_email_otp(email="test@example.com", otp="123456")
         
-        # Verify function returned True
-        self.assertTrue(success)
+        self.assertTrue(success) # Verify function returned True
         
-        # Verify an email was actually added to Django's outbox
-        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(len(mail.outbox), 1) # Verify an email was actually added to Django's outbox
         self.assertEqual(mail.outbox[0].to, ["test@example.com"])
         self.assertIn("123456", mail.outbox[0].body)
         
