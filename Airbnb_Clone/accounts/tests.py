@@ -694,7 +694,7 @@ class UtilsTests(TestCase):
         LOGO_URL="http://logo.com/test.png"
     )
 
-    
+
     def test_get_email_context(self):
         """Test that settings are correctly mapped to the email context."""
         context = get_email_context()
@@ -703,6 +703,7 @@ class UtilsTests(TestCase):
         self.assertEqual(context['support_email'], "support@test.com")
         self.assertEqual(context['logo_url'], "http://logo.com/test.png")
 
+
     @patch('accounts.otp_logic.utils.EmailMultiAlternatives')
     @patch('accounts.otp_logic.utils.render_to_string')
     def test_send_email_failure_handling(self, mock_render_to_string, mock_email_class):
@@ -710,8 +711,7 @@ class UtilsTests(TestCase):
         # Setup mock to avoid needing real HTML templates for this test
         mock_render_to_string.return_value = "mocked HTML string"
         
-        # Force the send() method to raise an Exception
-        mock_instance = mock_email_class.return_value
+        mock_instance = mock_email_class.return_value  # Force the send() method to raise an Exception
         mock_instance.send.side_effect = Exception("SMTP connection refused")
 
         result = _send_email(
