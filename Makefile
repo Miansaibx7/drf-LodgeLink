@@ -13,7 +13,6 @@ MANAGE := $(PYTHON) manage.py
 RUFF := uv run ruff
 PYTEST := uv run pytest
 
-
 # Help
 help:
 	@echo ""
