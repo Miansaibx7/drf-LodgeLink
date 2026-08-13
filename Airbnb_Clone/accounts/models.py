@@ -111,7 +111,7 @@ class ActiveOTPManager(models.Manager):
         )
 
     def get_active_for_user(self, user):
-        """ Return the latest active OTP for a given user."""
+        """ Return the latest active OTP for a given user. """
         return self.get_queryset().filter(user=user).order_by('-created_at').first()
 
 
