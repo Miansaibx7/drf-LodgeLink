@@ -633,3 +633,37 @@ class ThrottlingTests(APITestCase):
             resp = self.client.post(self.login_url, {"email": "x@example.com", "password": "wrong"}, format="json")
             statuses.append(resp.status_code)
         self.assertIn(status.HTTP_429_TOO_MANY_REQUESTS, statuses)
+
+
+#=================================== utils.py tests ============================================================================
+from django.core import mail
+from accounts.otp_logic.utils import generate_otp, send_email_otp, get_client_ip
+
+class UtilsTests(TestCase):
+    def test_generate_otp_is_secure_and_correct_length(self):
+        otp = generate_otp()
+        self.assertEqual(len(otp), 6)
+        self.assertTrue(otp.isdigit())
+
+    def test_send_email_otp_actually_generates_email(self):
+        # Send the email
+        success = send_email_otp(email="test@example.com", otp="123456")
+        
+        # Verify function returned True
+        self.assertTrue(success)
+        
+        # Verify an email was actually added to Django's outbox
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["test@example.com"])
+        self.assertIn("123456", mail.outbox[0].body)
+        
+    def test_get_client_ip_with_proxy(self):
+        # Create a mock DRF request object
+        class MockRequest:
+            META = {'HTTP_X_FORWARDED_FOR': '192.168.1.100, 10.0.0.1'}
+            
+        request = MockRequest()
+        ip = get_client_ip(request)
+        
+        # It should extract the first IP in the chain
+        self.assertEqual(ip, '192.168.1.100')
