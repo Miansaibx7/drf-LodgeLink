@@ -72,7 +72,6 @@ shell:
 check:
 	$(MANAGE) check
 
-
 # Database
 makemigrations:
 	$(MANAGE) makemigrations
@@ -85,7 +84,6 @@ showmigrations:
 
 superuser:
 	$(MANAGE) createsuperuser
-
 
 # Testing
 test:
