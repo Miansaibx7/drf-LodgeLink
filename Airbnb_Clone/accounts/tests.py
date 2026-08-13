@@ -681,12 +681,9 @@ class UtilsTests(TestCase):
             
         request = MockRequest()
         ip = get_client_ip(request)
-        
         self.assertEqual(ip, '192.168.1.100')  # It should extract the first IP in the chain
 
-    # ---------------------------------------------------------
     # New Tests
-    # ---------------------------------------------------------
     @override_settings(
         COMPANY_NAME="TestCompany",
         SCHOOL_NAME="TestSchool",
@@ -696,6 +693,8 @@ class UtilsTests(TestCase):
         PRIMARY_COLOR="#FFFFFF",
         LOGO_URL="http://logo.com/test.png"
     )
+
+    
     def test_get_email_context(self):
         """Test that settings are correctly mapped to the email context."""
         context = get_email_context()
