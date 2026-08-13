@@ -6,7 +6,6 @@
         collectstatic \
         clean
 
-
 # Project Configuration
 PYTHON := uv run python
 MANAGE := $(PYTHON) manage.py
@@ -55,7 +54,7 @@ help:
 # Environment & Dependencies
 install:
 	uv sync
-
+	
 sync:
 	uv sync --locked
 
