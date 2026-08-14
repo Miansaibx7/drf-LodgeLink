@@ -36,10 +36,10 @@ from rest_framework import status
 
 from .models import (
     EmailOTP, UserProfile, UserSession, AuditLog,
-    LoginAttempt, TwoFactorAuth, AccountDeletionRequest
-)
+    LoginAttempt, TwoFactorAuth, AccountDeletionRequest)
 
 User = get_user_model()
+
 
 # Permissive throttle rates for functional tests – prevents rate‑limiting interference
 PERMISSIVE_THROTTLES = {
