@@ -1,1 +1,1 @@
-### WIP: This project and file are currently under development.
+### WIP: This project are currently under development.
