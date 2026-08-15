@@ -9,7 +9,7 @@ SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 
-# (security bug): DEBUG was hardcoded to True. Shipping DEBUG=True to
+# (security): DEBUG was hardcoded to True. Shipping DEBUG=True to
 # production leaks full stack traces, local file paths, settings values, and
 # SQL queries to anyone who can trigger a 500 — a critical info-disclosure
 # risk. It must be driven by the environment and default to False.
