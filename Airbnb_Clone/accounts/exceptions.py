@@ -52,7 +52,7 @@ def custom_global_exception_handler(exc, context):
     Success:
         { "success": True, ... }
     Error:
-        {"success": False, "message": "...", "errors": {...} | None} """
+        {"success": False, "message": "...", "errors": {...} | None}. """
     
     response = exception_handler(exc, context)
 
