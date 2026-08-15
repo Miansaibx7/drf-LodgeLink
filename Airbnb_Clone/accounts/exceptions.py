@@ -6,7 +6,6 @@ from rest_framework import status
 from rest_framework.exceptions import (APIException, AuthenticationFailed, MethodNotAllowed,
     NotAuthenticated, NotFound, ParseError, PermissionDenied, Throttled)
 
-
 logger = logging.getLogger(__name__)
 
 
