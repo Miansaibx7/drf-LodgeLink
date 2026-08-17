@@ -130,7 +130,7 @@ class SoftDeleteModel(models.Model):
 # ============================================================================
 class PropertyCategory(models.Model):
     """Browse-by-category tags shown as icons in the search filter bar."""
-    
+
     name = models.CharField(max_length=100, unique=True)
     slug = models.SlugField(max_length=120, unique=True, blank=True)
     icon = models.ImageField(upload_to='categories/icons/', blank=True, null=True)
@@ -156,7 +156,6 @@ class PropertyCategory(models.Model):
 # ============================================================================
 # AMENITIES  (grouped into sections, exactly like Airbnb's listing page)
 # ============================================================================
-
 class AmenityCategory(models.Model):
     """Groups amenities into sections: Essentials, Features, Safety, Location…"""
 
