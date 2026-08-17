@@ -386,37 +386,28 @@ class Property(UUIDModel, TimeStampedModel, SoftDeleteModel):
 
     @property
     def cover_image(self):
-        """
-        Returns the photo flagged as cover, falling back to the first
+        """Returns the photo flagged as cover, falling back to the first
         uploaded image. Used as the thumbnail in search results.
-        Return type: PropertyImage | None
-        """
+        Return type: PropertyImage | None"""
         return self.images.filter(is_cover=True).first() or self.images.first()
 
     @property
     def is_bookable(self):
-        """
-        A listing is bookable only if published, active, not soft-deleted,
+        """A listing is bookable only if published, active, not soft-deleted,
         and has at least one photo (Airbnb enforces a 5-photo minimum in
         production — enforce that in the serializer's validate()).
-        Return type: bool
-        """
-        return (
-            self.status == self.Status.PUBLISHED
-            and self.is_active
-            and not self.is_deleted
-            and self.images.exists()
-        )
+        Return type: bool """
+        return (self.status == self.Status.PUBLISHED and self.is_active
+            and not self.is_deleted and self.images.exists())
 
     def total_price_for_stay(self, nights: int, guests: int = 1) -> Decimal:
-        """
-        Quick price estimate for `nights` nights and `guests` guests.
-        NOTE: This is a convenience calculator for listing pages/search
+        """Quick price estimate for `nights` nights and `guests` guests.
+        This is a convenience calculator for listing pages/search
         previews. The bookings app should own the authoritative,
         tax-inclusive checkout total (using PropertyAvailability price
         overrides date-by-date) once that branch is built.
-        Return type: Decimal (rounded to 2 dp)
-        """
+        Return type: Decimal (rounded to 2 dp)"""
+
         if nights <= 0:
             return Decimal('0.00')
 
@@ -436,21 +427,15 @@ class Property(UUIDModel, TimeStampedModel, SoftDeleteModel):
         return total.quantize(Decimal('0.01'))
 
     def generate_availability(self, days: int = 365):
-        """
-        Bulk-creates `PropertyAvailability` rows for the next `days` days,
+        """Bulk-creates `PropertyAvailability` rows for the next `days` days,
         defaulting to AVAILABLE. Call this right after a listing is
         published so the calendar has data to render immediately.
-        Return type: int (number of rows created)
-        """
-        existing_dates = set(
-            self.availability.values_list('date', flat=True)
-        )
+        Return type: int (number of rows created)"""
+        existing_dates = set(self.availability.values_list('date', flat=True))
         today = timezone.localdate()
-        new_rows = [
-            PropertyAvailability(property=self, date=today + timezone.timedelta(days=i))
+        new_rows = [PropertyAvailability(property=self, date=today + timezone.timedelta(days=i))
             for i in range(days)
-            if (today + timezone.timedelta(days=i)) not in existing_dates
-        ]
+            if (today + timezone.timedelta(days=i)) not in existing_dates]
         created = PropertyAvailability.objects.bulk_create(new_rows)
         return len(created)
 
@@ -458,25 +443,16 @@ class Property(UUIDModel, TimeStampedModel, SoftDeleteModel):
 # ============================================================================
 # PROPERTY IMAGES  ("Upload multiple images")
 # ============================================================================
-
 class PropertyImage(UUIDModel, TimeStampedModel):
-    """
-    One row per photo. A one-to-many table (rather than a JSON list field)
+    """One row per photo. A one-to-many table (rather than a JSON list field)
     so DRF nested serializers can add/reorder/delete individual images and
-    the frontend gallery can request a specific display order.
-    """
+    the frontend gallery can request a specific display order."""
 
-    property = models.ForeignKey(
-        Property, related_name='images', on_delete=models.CASCADE
-    )
-    image = models.ImageField(
-        upload_to=property_image_upload_path,
-        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])],
-    )
+    property = models.ForeignKey(Property, related_name='images', on_delete=models.CASCADE)
+    image = models.ImageField(upload_to=property_image_upload_path,
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])])
     caption = models.CharField(max_length=255, blank=True)
-    is_cover = models.BooleanField(
-        default=False, help_text="Main thumbnail shown in search results & listing header"
-    )
+    is_cover = models.BooleanField(default=False, help_text="Main thumbnail shown in search results & listing header")
     order = models.PositiveIntegerField(default=0, help_text="Controls gallery display order")
 
     class Meta:
@@ -498,33 +474,23 @@ class PropertyImage(UUIDModel, TimeStampedModel):
 # ============================================================================
 # AVAILABILITY CALENDAR
 # ============================================================================
-
 class PropertyAvailability(models.Model):
-    """
-    One row per (property, date). This is the real, queryable calendar that
+    """One row per (property, date). This is the real, queryable calendar that
     powers 1) the date-picker on the listing page and 2) per-date price
-    overrides (weekends/holidays) — not just a min/max-nights rule.
-    """
+    overrides (weekends/holidays) — not just a min/max-nights rule."""
 
     class DayStatus(models.TextChoices):
         AVAILABLE = 'available', 'Available'
         BOOKED = 'booked', 'Booked'
         BLOCKED = 'blocked', 'Blocked by host'
 
-    property = models.ForeignKey(
-        Property, related_name='availability', on_delete=models.CASCADE
-    )
+    property = models.ForeignKey(Property, related_name='availability', on_delete=models.CASCADE)
     date = models.DateField()
-    status = models.CharField(
-        max_length=10, choices=DayStatus.choices, default=DayStatus.AVAILABLE
-    )
-    price_override = models.DecimalField(
-        max_digits=10, decimal_places=2, null=True, blank=True,
-        help_text="Custom nightly price for this date; falls back to base_price if empty"
-    )
-    minimum_stay_override = models.PositiveSmallIntegerField(
-        null=True, blank=True, help_text="Overrides Property.min_nights for this specific date"
-    )
+    status = models.CharField(max_length=10, choices=DayStatus.choices, default=DayStatus.AVAILABLE)
+    price_override = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True,
+        help_text="Custom nightly price for this date; falls back to base_price if empty")
+    minimum_stay_override = models.PositiveSmallIntegerField(null=True, blank=True,
+        help_text="Overrides Property.min_nights for this specific date")
     note = models.CharField(max_length=255, blank=True)
 
     class Meta:
@@ -538,11 +504,10 @@ class PropertyAvailability(models.Model):
 
     @property
     def effective_price(self) -> Decimal:
-        """
-        Return type: Decimal
+        """Return type: Decimal
         The price actually charged for this date — the override if one is
-        set, otherwise the property's standard nightly base_price.
-        """
+        set, otherwise the property's standard nightly base_price."""
+
         return self.price_override if self.price_override is not None else self.property.base_price
 
     @property
