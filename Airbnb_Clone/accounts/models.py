@@ -326,7 +326,7 @@ class UserSession(TimeStampedModel):
 
 
 class AuditLog(models.Model):
-    """Log all important user actions."""
+    """Log all important user actions"""
 
     class Action(models.TextChoices):
         REGISTER = "REGISTER", "Register"
