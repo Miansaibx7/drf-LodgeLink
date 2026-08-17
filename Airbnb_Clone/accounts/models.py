@@ -117,6 +117,7 @@ class ActiveOTPManager(models.Manager):
 
 
 class BaseOTP(models.Model):
+    
     OTP_LENGTH = 6
     OTP_EXPIRY_MINUTES = 10
     MAX_ATTEMPTS = 5
@@ -342,7 +343,6 @@ class AuditLog(models.Model):
         BACKUP_CODES_REGENERATED = "BACKUP_CODES_REGENERATED", "BACKUP_CODES_REGENERATED"
     
     user = models.ForeignKey(User,on_delete=models.SET_NULL,null=True,related_name='audit_logs')
-
     action = models.CharField(max_length=50, choices=Action.choices)
     
     ip_address = models.GenericIPAddressField(null=True,blank=True)
