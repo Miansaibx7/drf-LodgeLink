@@ -128,7 +128,6 @@ class SoftDeleteModel(models.Model):
 # ============================================================================
 # CATEGORIES  (Airbnb's homepage filter icons: Beachfront, Cabins, Trending…)
 # ============================================================================
-
 class PropertyCategory(models.Model):
     """Browse-by-category tags shown as icons in the search filter bar."""
 
@@ -175,14 +174,10 @@ class AmenityCategory(models.Model):
 class Amenity(models.Model):
     """A single amenity, e.g. 'Wifi', 'Pool', 'Smoke alarm'."""
 
-    category = models.ForeignKey(
-        AmenityCategory, related_name='amenities', on_delete=models.CASCADE
-    )
+    category = models.ForeignKey(AmenityCategory, related_name='amenities', on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
-    icon = models.CharField(
-        max_length=100, blank=True,
-        help_text="Icon key for the frontend icon library, e.g. 'wifi', 'pool'"
-    )
+    icon = models.CharField(max_length=100, blank=True,
+        help_text="Icon key for the frontend icon library, e.g. 'wifi', 'pool'")
     is_active = models.BooleanField(default=True)
 
     class Meta:
