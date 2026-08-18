@@ -366,7 +366,7 @@ class AuditLog(models.Model):
 
 
 class LoginAttempt(models.Model):
-    """Track failed login attempts per email and IP."""
+    """Track failed login attempts per email and IP"""
 
     email = models.EmailField()
     ip_address = models.GenericIPAddressField()
