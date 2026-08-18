@@ -318,7 +318,7 @@ class UserSession(TimeStampedModel):
         return f"{self.user.email} - {self.device_name or 'Unknown Device'}"
 
     def logout(self)-> None:
-        """Mark session as inactive and set logout time."""
+        """Mark session as inactive and set logout time"""
         self.is_active = False
         self.logout_at = timezone.now()
         self.save(update_fields=["is_active", "logout_at"])
