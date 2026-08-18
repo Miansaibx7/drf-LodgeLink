@@ -412,7 +412,7 @@ class TwoFactorAuth(models.Model):
         PLAINTEXT. TOTP secrets are long-lived credentials; anyone with read
         access to the DB (a backup, a leaked dump, a compromised replica) can
         generate valid codes forever. Before production, encrypt this field at
-        rest — e.g. `django-encrypted-model-fields`'s EncryptedCharField. """
+        rest — e.g. `django-encrypted-model-fields`'s EncryptedCharField"""
 
     user = models.OneToOneField(User,on_delete=models.CASCADE,related_name='two_factor_auth')
 
