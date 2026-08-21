@@ -90,11 +90,9 @@ class SoftDeleteModel(models.Model):
         abstract = True
 
     def delete(self, using=None, keep_parents=False, hard_delete=False):
-        """
-        Soft-deletes by default (sets is_deleted=True).
+        """Soft-deletes by default (sets is_deleted=True).
         Pass hard_delete=True to actually remove the row from the DB
-        (e.g. admin cleanup jobs / right-to-erasure requests).
-        """
+        (admin cleanup jobs / right-to-erasure requests)."""
         if hard_delete:
             return super().delete(using=using, keep_parents=keep_parents)
         self.is_deleted = True
