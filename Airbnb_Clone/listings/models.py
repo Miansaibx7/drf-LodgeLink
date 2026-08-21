@@ -77,11 +77,9 @@ class SoftDeleteManager(models.Manager):
 
 
 class SoftDeleteModel(models.Model):
-    """
-    Gives a model "Delete property" behaviour without losing history.
+    """Gives a model "Delete property" behaviour without losing history.
     `Property.objects` -> only live listings.
-    `Property.all_objects` -> everything, including deleted (for admin/audit).
-    """
+    `Property.all_objects` -> everything, including deleted (for admin/audit)."""
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
 
