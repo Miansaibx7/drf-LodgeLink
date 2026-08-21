@@ -1,13 +1,4 @@
 """
-listings/serializers.py
-
-Airbnb Clone — LISTINGS APP (DRF Serializers)
-============================================================================
-Pairs with listings/models.py. Every serializer below documents its
-`create()` / `update()` / `validate()` / SerializerMethodField return types
-in a docstring comment, as requested, so the next dev (or you in 6 months)
-knows exactly what a view gets back without re-reading the implementation.
-
 Serializer map
 ----------------------------------------------------------------------------
 Read-only / reference data:
@@ -29,7 +20,6 @@ only pays for the fields it actually needs:
     PropertyMapSerializer      -> map pins (minimal — "Location map" feature)
     PropertyDetailSerializer   -> single listing page (full, read-only)
     PropertyCreateUpdateSerializer -> Add property / Edit property (write)
-============================================================================
 """
 
 from typing import Optional
