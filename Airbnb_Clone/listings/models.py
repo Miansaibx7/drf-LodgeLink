@@ -1,13 +1,6 @@
 """
-listings/models.py
-
-Airbnb Clone — LISTINGS APP
-============================================================================
-Author   : Senior Django / DRF Developer
-Scope    : "Second stage — Listings branch"
-Covers   : Add / Edit / Delete property, multiple image uploads, property
-           categories, pricing engine, availability calendar, amenities,
-           and location data for map rendering.
+Covers : Add / Edit / Delete property, multiple image uploads, property
+    categories, pricing engine, availability calendar, amenities, and location data for map rendering.
 
 Design notes (read before wiring up serializers/views):
 ----------------------------------------------------------------------------
@@ -44,19 +37,13 @@ Design notes (read before wiring up serializers/views):
    left out of this app (no Booking/Review models here) to keep listings
    decoupled — but `average_rating`, `review_count`, and `booking_count`
    are kept as denormalized counters on Property, updated via signals from
-   those apps later, so listing search/serialization stays fast.
-============================================================================
-"""
+   those apps later, so listing search/serialization stays fast."""
 
 import uuid
 from decimal import Decimal
 
 from django.conf import settings
-from django.core.validators import (
-    FileExtensionValidator,
-    MaxValueValidator,
-    MinValueValidator,
-)
+from django.core.validators import (FileExtensionValidator,MaxValueValidator,MinValueValidator)
 from django.db import models
 from django.utils import timezone
 from django.utils.text import slugify
@@ -65,7 +52,6 @@ from django.utils.text import slugify
 # ============================================================================
 # ABSTRACT BASE MODELS (reused across the app — DRY)
 # ============================================================================
-
 class UUIDModel(models.Model):
     """Swaps the default auto-increment PK for a UUID (safer to expose via API)."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
