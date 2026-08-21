@@ -40,10 +40,8 @@ User = get_user_model()
 # ============================================================================
 
 class HostMiniSerializer(serializers.ModelSerializer):
-    """
-    Lightweight read-only host card nested inside listing responses.
-    Adjust the field list if your custom User model uses different names.
-    """
+    """ Lightweight read-only host card nested inside listing responses.
+    Adjust the field list if your custom User model uses different names."""
     full_name = serializers.SerializerMethodField()
 
     class Meta:
