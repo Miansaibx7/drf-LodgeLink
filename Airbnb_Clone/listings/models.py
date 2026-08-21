@@ -173,17 +173,14 @@ class Amenity(models.Model):
 # ============================================================================
 # PROPERTY  (the core "listing")
 # ============================================================================
-
 def property_image_upload_path(instance, filename):
     """Keeps uploaded photos organised per-property and collision-free."""
     return f'properties/{instance.property.id}/images/{uuid.uuid4()}_{filename}'
 
 
 class Property(UUIDModel, TimeStampedModel, SoftDeleteModel):
-    """
-    The main listing model. Everything a host fills in during
-    'Add property' / 'Edit property' lives here or on a related model.
-    """
+    """The main listing model. Everything a host fills in during
+    'Add property' / 'Edit property' lives here or on a related model."""
 
     # ---- Choice sets ----------------------------------------------------
     class PropertyType(models.TextChoices):
