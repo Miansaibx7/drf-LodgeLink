@@ -38,7 +38,6 @@ User = get_user_model()
 # ============================================================================
 # HOST  (minimal, read-only, safe to nest inside listing responses)
 # ============================================================================
-
 class HostMiniSerializer(serializers.ModelSerializer):
     """ Lightweight read-only host card nested inside listing responses.
     Adjust the field list if your custom User model uses different names."""
