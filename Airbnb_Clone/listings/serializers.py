@@ -98,7 +98,6 @@ class AmenityCategorySerializer(serializers.ModelSerializer):
 # ============================================================================
 # PROPERTY IMAGES  ("Upload multiple images")
 # ============================================================================
-
 class PropertyImageSerializer(serializers.ModelSerializer):
     """
     Represents a single gallery photo.
