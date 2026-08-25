@@ -481,13 +481,11 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
         """
         Return type: dict — the validated attrs (or raises ValidationError).
         Business rules that depend on more than one field at once."""
-        
+
         min_nights = attrs.get('min_nights', getattr(self.instance, 'min_nights', 1))
         max_nights = attrs.get('max_nights', getattr(self.instance, 'max_nights', 365))
         if min_nights > max_nights:
-            raise serializers.ValidationError(
-                {'min_nights': 'min_nights cannot be greater than max_nights.'}
-            )
+            raise serializers.ValidationError({'min_nights': 'min_nights cannot be greater than max_nights.'})
 
         included_guests = attrs.get('included_guests', getattr(self.instance, 'included_guests', 1))
         max_guests = attrs.get('max_guests', getattr(self.instance, 'max_guests', 1))
