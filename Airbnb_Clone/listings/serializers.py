@@ -80,6 +80,7 @@ class AmenitySerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
 
+
 class AmenityCategorySerializer(serializers.ModelSerializer):
     """
     Read-only, grouped output for a listing's amenities section — exactly
