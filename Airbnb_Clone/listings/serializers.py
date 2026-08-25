@@ -421,8 +421,8 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
       uploads, prefer PropertyImageBulkUploadSerializer — see the note on
       PropertyImageSerializer above.
     - On success, to_representation() returns the same rich payload as
-      PropertyDetailSerializer, so the client doesn't need a second GET.
-    """
+      PropertyDetailSerializer, so the client doesn't need a second GET."""
+    
     categories = serializers.PrimaryKeyRelatedField(
         many=True, queryset=PropertyCategory.objects.all(), required=False
     )
@@ -453,7 +453,7 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
 
     def validate_base_price(self, value):
         """Return type: Decimal — must be a positive nightly price."""
-        
+
         if value <= 0:
             raise serializers.ValidationError('Base price must be greater than 0.')
         return value
