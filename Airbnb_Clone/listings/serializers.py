@@ -1,6 +1,4 @@
 """
-Serializer map
-----------------------------------------------------------------------------
 Read-only / reference data:
     PropertyCategorySerializer        -> category filter chips
     AmenitySerializer                 -> single amenity
