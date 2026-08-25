@@ -216,11 +216,11 @@ class PropertyAvailabilitySerializer(serializers.ModelSerializer):
 
     def get_effective_price(self, obj) -> str:
         """
-        Return type: str
+         Return type: str
         The actual nightly price for this date (override, or the listing's
         base_price as fallback). Returned as a string for safe JSON
-        transport of Decimal values.
-        """
+        transport of Decimal values."""
+        
         return str(obj.effective_price)
 
 
