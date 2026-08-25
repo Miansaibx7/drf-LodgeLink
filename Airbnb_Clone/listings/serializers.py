@@ -19,7 +19,6 @@ only pays for the fields it actually needs:
     PropertyDetailSerializer   -> single listing page (full, read-only)
     PropertyCreateUpdateSerializer -> Add property / Edit property (write)
 """
-
 from typing import Optional
 
 from django.contrib.auth import get_user_model
