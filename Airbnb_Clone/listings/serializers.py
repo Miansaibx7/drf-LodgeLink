@@ -116,10 +116,9 @@ class PropertyImageSerializer(serializers.ModelSerializer):
         extra_kwargs = {'property': {'write_only': True, 'required': False}}
 
     def validate_image(self, value):
-        """
-        Return type: UploadedFile
-        Rejects oversized files before they ever hit storage/S3.
-        """
+        """ Return type: UploadedFile
+        Rejects oversized files before they ever hit storage/S3. """
+        
         max_size_mb = 8
         if value.size > max_size_mb * 1024 * 1024:
             raise serializers.ValidationError(f'Image file too large. Max size is {max_size_mb}MB.')
