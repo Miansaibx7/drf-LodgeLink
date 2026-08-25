@@ -299,8 +299,7 @@ class PropertyAvailabilityBulkUpdateSerializer(serializers.Serializer):
 # PROPERTY — LIST (search results / browse grid)
 # ============================================================================
 class PropertyListSerializer(serializers.ModelSerializer):
-    """
-    Lightweight serializer for search results / browse grids. Deliberately
+    """ Lightweight serializer for search results / browse grids. Deliberately
     excludes heavy fields (full description, house_rules, full gallery,
     all amenities) so list endpoints stay fast under pagination."""
     cover_image = serializers.SerializerMethodField()
