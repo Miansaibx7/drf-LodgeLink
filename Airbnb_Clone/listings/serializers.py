@@ -146,14 +146,13 @@ class PropertyImageBulkUploadSerializer(serializers.Serializer):
 
     images = serializers.ListField(child=serializers.ImageField(), allow_empty=False, write_only=True,
         help_text='One or more image files sent as repeated multipart fields.')
-
+    
     MAX_IMAGES_PER_REQUEST = 20
 
     def validate_images(self, value):
-        """
-        Return type: list[UploadedFile]
-        Caps the batch size so one request can't flood storage/queue workers.
-        """
+        """ Return type: list[UploadedFile]
+        Caps the batch size so one request can't flood storage/queue workers. """
+        
         if len(value) > self.MAX_IMAGES_PER_REQUEST:
             raise serializers.ValidationError(
                 f'You can upload at most {self.MAX_IMAGES_PER_REQUEST} images per request.'
