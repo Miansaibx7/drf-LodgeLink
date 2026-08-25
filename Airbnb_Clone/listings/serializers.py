@@ -296,7 +296,7 @@ class PropertyAvailabilityBulkUpdateSerializer(serializers.Serializer):
 
 
 # ============================================================================
-# PROPERTY — LIST (search results / browse grid)
+# PROPERTY — LIST (search result / browse grid)
 # ============================================================================
 class PropertyListSerializer(serializers.ModelSerializer):
     """ Lightweight serializer for search results / browse grids. Deliberately
