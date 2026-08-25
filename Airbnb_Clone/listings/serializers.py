@@ -302,8 +302,7 @@ class PropertyListSerializer(serializers.ModelSerializer):
     """
     Lightweight serializer for search results / browse grids. Deliberately
     excludes heavy fields (full description, house_rules, full gallery,
-    all amenities) so list endpoints stay fast under pagination.
-    """
+    all amenities) so list endpoints stay fast under pagination."""
     cover_image = serializers.SerializerMethodField()
     category_names = serializers.SerializerMethodField()
 
@@ -366,7 +365,7 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
     Nests host info, categories, amenities, and the complete photo gallery
     in one response so the frontend needs exactly one API call to render
     the page."""
-    
+
     host = HostMiniSerializer(read_only=True)
     categories = PropertyCategorySerializer(many=True, read_only=True)
     amenities = AmenitySerializer(many=True, read_only=True)
