@@ -118,18 +118,17 @@ class PropertyImageSerializer(serializers.ModelSerializer):
     def validate_image(self, value):
         """ Return type: UploadedFile
         Rejects oversized files before they ever hit storage/S3. """
-        
+
         max_size_mb = 8
         if value.size > max_size_mb * 1024 * 1024:
             raise serializers.ValidationError(f'Image file too large. Max size is {max_size_mb}MB.')
         return value
 
     def update(self, instance, validated_data):
-        """
-        Return type: PropertyImage
+        """ Return type: PropertyImage
         Allows flipping is_cover from the gallery manager UI; the model's
-        own save() already guarantees only one cover image per property.
-        """
+        own save() already guarantees only one cover image per property."""
+
         for field, value in validated_data.items():
             setattr(instance, field, value)
         instance.save()
@@ -137,21 +136,16 @@ class PropertyImageSerializer(serializers.ModelSerializer):
 
 
 class PropertyImageBulkUploadSerializer(serializers.Serializer):
-    """
-    Dedicated serializer for the "Upload multiple images" endpoint, e.g.:
+    """ Dedicated serializer for the "Upload multiple images" endpoint, e.g.:
         POST /api/properties/{id}/images/
         multipart/form-data with repeated `images` fields (images=file1,
         images=file2, images=file3 ...)
 
     Not a ModelSerializer, by design — this is the reliable way to accept
-    N files under one field name in DRF.
-    """
-    images = serializers.ListField(
-        child=serializers.ImageField(),
-        allow_empty=False,
-        write_only=True,
-        help_text='One or more image files sent as repeated multipart fields.',
-    )
+    N files under one field name in DRF. """
+
+    images = serializers.ListField(child=serializers.ImageField(), allow_empty=False, write_only=True,
+        help_text='One or more image files sent as repeated multipart fields.')
 
     MAX_IMAGES_PER_REQUEST = 20
 
