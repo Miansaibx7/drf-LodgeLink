@@ -38,7 +38,7 @@ User = get_user_model()
 class HostMiniSerializer(serializers.ModelSerializer):
     """ Lightweight read-only host card nested inside listing responses.
     Adjust the field list if your custom User model uses different names."""
-    
+
     full_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -70,7 +70,6 @@ class PropertyCategorySerializer(serializers.ModelSerializer):
 # ============================================================================
 # AMENITIES
 # ============================================================================
-
 class AmenitySerializer(serializers.ModelSerializer):
     """A single amenity, e.g. 'Wifi'. `category` accepts a category ID on write."""
 
