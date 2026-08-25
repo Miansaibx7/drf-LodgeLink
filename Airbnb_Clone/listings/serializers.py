@@ -480,8 +480,8 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         """
         Return type: dict — the validated attrs (or raises ValidationError).
-        Business rules that depend on more than one field at once.
-        """
+        Business rules that depend on more than one field at once."""
+        
         min_nights = attrs.get('min_nights', getattr(self.instance, 'min_nights', 1))
         max_nights = attrs.get('max_nights', getattr(self.instance, 'max_nights', 365))
         if min_nights > max_nights:
@@ -519,7 +519,7 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
         request, applies M2M relations, creates any inline photos, and
         pre-seeds a year of calendar rows so the listing is immediately
         manageable/bookable."""
-        
+
         categories = validated_data.pop('categories', [])
         amenities = validated_data.pop('amenities', [])
         images_data = validated_data.pop('images', [])
