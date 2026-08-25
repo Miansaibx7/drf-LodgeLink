@@ -107,8 +107,7 @@ class PropertyImageSerializer(serializers.ModelSerializer):
     NOTE: for uploading several NEW files in one request, use
     PropertyImageBulkUploadSerializer below instead — DRF's nested
     writable nested serializers don't handle multiple files under one
-    multipart field cleanly, so that's handled with a dedicated serializer.
-    """
+    multipart field cleanly, so that's handled with a dedicated serializer."""
 
     class Meta:
         model = PropertyImage
