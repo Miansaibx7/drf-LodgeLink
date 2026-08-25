@@ -192,10 +192,9 @@ class PropertyImageBulkUploadSerializer(serializers.Serializer):
         """
         Return type: dict
         `instance` is the list[PropertyImage] returned by create(); this
-        re-serializes each row with PropertyImageSerializer for the response.
-        """
-        return {
-            'uploaded_count': len(instance),
+        re-serializes each row with PropertyImageSerializer for the response."""
+        
+        return {'uploaded_count': len(instance),
             'images': PropertyImageSerializer(instance, many=True, context=self.context).data,
         }
 
