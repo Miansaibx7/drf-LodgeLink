@@ -365,8 +365,8 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
     Full, read-heavy representation for the single listing detail page.
     Nests host info, categories, amenities, and the complete photo gallery
     in one response so the frontend needs exactly one API call to render
-    the page.
-    """
+    the page."""
+    
     host = HostMiniSerializer(read_only=True)
     categories = PropertyCategorySerializer(many=True, read_only=True)
     amenities = AmenitySerializer(many=True, read_only=True)
