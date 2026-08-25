@@ -54,10 +54,10 @@ class HostMiniSerializer(serializers.ModelSerializer):
         return full_name or getattr(obj, 'username', str(obj))
 
 
+
 # ============================================================================
 # CATEGORIES
 # ============================================================================
-
 class PropertyCategorySerializer(serializers.ModelSerializer):
     """Read/write serializer for the homepage category filter chips."""
 
@@ -65,6 +65,7 @@ class PropertyCategorySerializer(serializers.ModelSerializer):
         model = PropertyCategory
         fields = ['id', 'name', 'slug', 'icon', 'description', 'is_active', 'order']
         read_only_fields = ['id', 'slug']
+
 
 
 # ============================================================================
