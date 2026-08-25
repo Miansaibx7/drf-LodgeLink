@@ -193,7 +193,7 @@ class PropertyImageBulkUploadSerializer(serializers.Serializer):
         Return type: dict
         `instance` is the list[PropertyImage] returned by create(); this
         re-serializes each row with PropertyImageSerializer for the response."""
-        
+
         return {'uploaded_count': len(instance),
             'images': PropertyImageSerializer(instance, many=True, context=self.context).data,
         }
@@ -202,7 +202,6 @@ class PropertyImageBulkUploadSerializer(serializers.Serializer):
 # ============================================================================
 # AVAILABILITY CALENDAR
 # ============================================================================
-
 class PropertyAvailabilitySerializer(serializers.ModelSerializer):
     """Represents a single day on a listing's availability calendar."""
     effective_price = serializers.SerializerMethodField()
