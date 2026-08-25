@@ -490,9 +490,7 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
         included_guests = attrs.get('included_guests', getattr(self.instance, 'included_guests', 1))
         max_guests = attrs.get('max_guests', getattr(self.instance, 'max_guests', 1))
         if included_guests > max_guests:
-            raise serializers.ValidationError(
-                {'included_guests': 'included_guests cannot exceed max_guests.'}
-            )
+            raise serializers.ValidationError({'included_guests': 'included_guests cannot exceed max_guests.'})
 
         # Publishing requires a minimum photo gallery, exactly like Airbnb
         # (which enforces 5 photos minimum before a listing can go live).
