@@ -220,7 +220,7 @@ class PropertyAvailabilitySerializer(serializers.ModelSerializer):
         The actual nightly price for this date (override, or the listing's
         base_price as fallback). Returned as a string for safe JSON
         transport of Decimal values."""
-        
+
         return str(obj.effective_price)
 
 
@@ -298,7 +298,6 @@ class PropertyAvailabilityBulkUpdateSerializer(serializers.Serializer):
 # ============================================================================
 # PROPERTY — LIST (search results / browse grid)
 # ============================================================================
-
 class PropertyListSerializer(serializers.ModelSerializer):
     """
     Lightweight serializer for search results / browse grids. Deliberately
