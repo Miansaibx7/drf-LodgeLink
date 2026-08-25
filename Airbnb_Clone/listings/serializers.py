@@ -150,9 +150,9 @@ class PropertyImageBulkUploadSerializer(serializers.Serializer):
     MAX_IMAGES_PER_REQUEST = 20
 
     def validate_images(self, value):
-        """ Return type: list[UploadedFile]
-        Caps the batch size so one request can't flood storage/queue workers. """
-        
+        """Return type: list[UploadedFile]
+        Caps the batch size so one request can't flood storage/queue workers."""
+
         if len(value) > self.MAX_IMAGES_PER_REQUEST:
             raise serializers.ValidationError(
                 f'You can upload at most {self.MAX_IMAGES_PER_REQUEST} images per request.'
