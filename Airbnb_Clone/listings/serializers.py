@@ -331,10 +331,10 @@ class PropertyListSerializer(serializers.ModelSerializer):
         return [category.name for category in obj.categories.all()]
 
 
+
 # ============================================================================
 # PROPERTY — MAP  ("Location map" feature)
 # ============================================================================
-
 class PropertyMapSerializer(serializers.ModelSerializer):
     """
     Minimal payload for rendering pins on the search-results map — just
@@ -356,10 +356,10 @@ class PropertyMapSerializer(serializers.ModelSerializer):
         return request.build_absolute_uri(image.image.url) if request else image.image.url
 
 
+
 # ============================================================================
 # PROPERTY — DETAIL  (single listing page, read-only / rich)
 # ============================================================================
-
 class PropertyDetailSerializer(serializers.ModelSerializer):
     """
     Full, read-heavy representation for the single listing detail page.
