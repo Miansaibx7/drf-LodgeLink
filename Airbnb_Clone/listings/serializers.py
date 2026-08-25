@@ -453,6 +453,7 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
 
     def validate_base_price(self, value):
         """Return type: Decimal — must be a positive nightly price."""
+        
         if value <= 0:
             raise serializers.ValidationError('Base price must be greater than 0.')
         return value
@@ -465,7 +466,7 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
 
     def validate_latitude(self, value):
         """Return type: Decimal — sanity-checks the map pin coordinates."""
-        
+
         if not (-90 <= value <= 90):
             raise serializers.ValidationError('Latitude must be between -90 and 90.')
         return value
