@@ -518,8 +518,8 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
         Creates the listing, attaches the host from the authenticated
         request, applies M2M relations, creates any inline photos, and
         pre-seeds a year of calendar rows so the listing is immediately
-        manageable/bookable.
-        """
+        manageable/bookable."""
+        
         categories = validated_data.pop('categories', [])
         amenities = validated_data.pop('amenities', [])
         images_data = validated_data.pop('images', [])
@@ -584,5 +584,5 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
         After a successful create/update, respond with the rich
         PropertyDetailSerializer payload (resolved host, categories,
         amenities, image URLs) instead of echoing back raw write input."""
-        
+
         return PropertyDetailSerializer(instance, context=self.context).data
