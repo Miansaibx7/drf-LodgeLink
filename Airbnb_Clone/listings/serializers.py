@@ -190,7 +190,7 @@ class PropertyImageBulkUploadSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         """
-        Return type: dict
+         Return type: dict
         `instance` is the list[PropertyImage] returned by create(); this
         re-serializes each row with PropertyImageSerializer for the response."""
 
