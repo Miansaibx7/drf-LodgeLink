@@ -467,7 +467,7 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
         return value
 
     def validate_longitude(self, value):
-        """Return type: Decimal — sanity-checks the map pin coordinates."""
+        """Return type: Decimal sanity-checks the map pin coordinates."""
 
         if not (-180 <= value <= 180):
             raise serializers.ValidationError('Longitude must be between -180 and 180.')
