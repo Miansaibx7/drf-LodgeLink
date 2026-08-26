@@ -332,7 +332,7 @@ class PropertyListSerializer(serializers.ModelSerializer):
 # ============================================================================
 class PropertyMapSerializer(serializers.ModelSerializer):
     """
-    Minimal payload for rendering pins on the search-results map — just
+     Minimal payload for rendering pins on the search-results map — just
     enough to draw a marker and a small hover-preview card."""
 
     cover_image = serializers.SerializerMethodField()
