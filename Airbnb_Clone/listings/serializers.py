@@ -247,7 +247,7 @@ class PropertyAvailabilityBulkUpdateSerializer(serializers.Serializer):
          Return type: dict — the validated attrs.
         Ensures the range is logical, bounded, and that at least one
         updatable field was actually supplied."""
-        
+
         if attrs['end_date'] < attrs['start_date']:
             raise serializers.ValidationError('end_date must be on or after start_date.')
 
@@ -259,17 +259,14 @@ class PropertyAvailabilityBulkUpdateSerializer(serializers.Serializer):
 
         updatable_fields = {'status', 'price_override', 'minimum_stay_override'}
         if not updatable_fields.intersection(attrs.keys()):
-            raise serializers.ValidationError(
-                'Provide at least one of: status, price_override, minimum_stay_override.'
-            )
+            raise serializers.ValidationError('Provide at least one of: status, price_override, minimum_stay_override.')
         return attrs
 
     def save(self, **kwargs):
-        """
-        Return type: int — number of PropertyAvailability rows written.
+        """Return type: int — number of PropertyAvailability rows written.
         Upserts one row per date in [start_date, end_date], applying only
-        the fields the host actually sent (partial update semantics).
-        """
+        the fields the host actually sent (partial update semantics)."""
+
         property_instance = self.context['property']
         start_date = self.validated_data['start_date']
         end_date = self.validated_data['end_date']
