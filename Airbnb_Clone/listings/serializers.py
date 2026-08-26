@@ -166,7 +166,7 @@ class PropertyImageBulkUploadSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         """
-        Return type: list[PropertyImage]
+         Return type: list[PropertyImage]
         Bulk-creates one PropertyImage row per uploaded file against the
         `property` instance passed in via serializer context (the view is
         responsible for permission-checking that the requester owns it).
