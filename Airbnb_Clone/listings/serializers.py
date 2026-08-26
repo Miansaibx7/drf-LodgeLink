@@ -226,7 +226,7 @@ class PropertyAvailabilitySerializer(serializers.ModelSerializer):
 
 class PropertyAvailabilityBulkUpdateSerializer(serializers.Serializer):
     """
-    Powers calendar bulk-actions: "block these dates", "set weekend
+     Powers calendar bulk-actions: "block these dates", "set weekend
     pricing for this range", etc.
         POST /api/properties/{id}/availability/bulk-update/
         { "start_date": "2026-12-20", "end_date": "2027-01-02",
@@ -244,10 +244,10 @@ class PropertyAvailabilityBulkUpdateSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         """
-        Return type: dict — the validated attrs.
+         Return type: dict — the validated attrs.
         Ensures the range is logical, bounded, and that at least one
-        updatable field was actually supplied.
-        """
+        updatable field was actually supplied."""
+        
         if attrs['end_date'] < attrs['start_date']:
             raise serializers.ValidationError('end_date must be on or after start_date.')
 
