@@ -479,7 +479,7 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         """
          Return type: dict — the validated attrs (or raises ValidationError).
-        Business rules that depend on more than one field at once."""
+        Business rules that depend on more than one field at once"""
 
         min_nights = attrs.get('min_nights', getattr(self.instance, 'min_nights', 1))
         max_nights = attrs.get('max_nights', getattr(self.instance, 'max_nights', 365))
