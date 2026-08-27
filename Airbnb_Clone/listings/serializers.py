@@ -473,6 +473,7 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Longitude must be between -180 and 180.')
         return value
 
+
     # -------------- Cross-field validation ----------------------------------------
 
     def validate(self, attrs):
