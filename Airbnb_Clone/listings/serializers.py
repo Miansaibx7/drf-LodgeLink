@@ -474,8 +474,7 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
         return value
 
 
-    # -------------- Cross-field validation ----------------------------------------
-
+    # -------------- Cross-field validation --------------------------------------------------------------------
     def validate(self, attrs):
         """
          Return type: dict the validated attrs (or raises ValidationError).
