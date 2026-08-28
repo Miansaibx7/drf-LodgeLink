@@ -482,6 +482,7 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
 
         min_nights = attrs.get('min_nights', getattr(self.instance, 'min_nights', 1))
         max_nights = attrs.get('max_nights', getattr(self.instance, 'max_nights', 365))
+        
         if min_nights > max_nights:
             raise serializers.ValidationError({'min_nights': 'min_nights cannot be greater than max_nights.'})
 
