@@ -498,9 +498,7 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
             existing_images = self.instance.images.count() if self.instance else 0
             incoming_images = len(attrs.get('images', []))
             if existing_images + incoming_images < 5:
-                raise serializers.ValidationError(
-                    {'status': 'A listing needs at least 5 photos before it can be published.'}
-                )
+                raise serializers.ValidationError({'status': 'A listing needs at least 5 photos before it can be published.'})
 
         return attrs
 
