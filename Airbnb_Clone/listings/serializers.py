@@ -540,13 +540,13 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def update(self, instance, validated_data):
         """
-        Return type: Property
+         Return type: Property
         Updates scalar fields in place, replaces M2M sets only when the
         client actually sent them (so a PATCH without 'amenities' doesn't
         wipe existing amenities), and appends any newly-included inline
         images. Existing photos are managed via PropertyImageViewSet, not
-        overwritten here.
-        """
+        overwritten here."""
+        
         categories = validated_data.pop('categories', None)
         amenities = validated_data.pop('amenities', None)
         images_data = validated_data.pop('images', None)
