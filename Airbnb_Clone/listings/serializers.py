@@ -502,12 +502,12 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
 
         return attrs
 
-    # ---- Create / Update (nested writes) -------------------------------
+    # ------------- Create / Update (nested writes) ----------------------------------------------------------------------------
 
     @transaction.atomic
     def create(self, validated_data):
         """
-        Return type: Property
+         Return type: Property
         Creates the listing, attaches the host from the authenticated
         request, applies M2M relations, creates any inline photos, and
         pre-seeds a year of calendar rows so the listing is immediately
