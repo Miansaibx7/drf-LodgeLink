@@ -546,7 +546,7 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
         wipe existing amenities), and appends any newly-included inline
         images. Existing photos are managed via PropertyImageViewSet, not
         overwritten here."""
-        
+
         categories = validated_data.pop('categories', None)
         amenities = validated_data.pop('amenities', None)
         images_data = validated_data.pop('images', None)
@@ -573,7 +573,7 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         """
-        Return type: dict
+         Return type: dict
         After a successful create/update, respond with the rich
         PropertyDetailSerializer payload (resolved host, categories,
         amenities, image URLs) instead of echoing back raw write input."""
