@@ -545,7 +545,7 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
         client actually sent them (so a PATCH without 'amenities' doesn't
         wipe existing amenities), and appends any newly-included inline
         images. Existing photos are managed via PropertyImageViewSet, not
-        overwritten here."""
+        overwritten here.."""
 
         categories = validated_data.pop('categories', None)
         amenities = validated_data.pop('amenities', None)
@@ -576,6 +576,6 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
          Return type: dict
         After a successful create/update, respond with the rich
         PropertyDetailSerializer payload (resolved host, categories,
-        amenities, image URLs) instead of echoing back raw write input"""
+        amenities, image URLs) instead of echoing back raw write input..."""
 
         return PropertyDetailSerializer(instance, context=self.context).data
