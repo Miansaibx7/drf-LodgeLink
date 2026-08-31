@@ -576,6 +576,6 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
          Return type: dict
         After a successful create/update, respond with the rich
         PropertyDetailSerializer payload (resolved host, categories,
-        amenities, image URLs) instead of echoing back raw write input..."""
+        amenities, image URLs) instead of echoing back raw write input"""
 
         return PropertyDetailSerializer(instance, context=self.context).data
