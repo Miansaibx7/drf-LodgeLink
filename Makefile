@@ -92,7 +92,7 @@ test:
 test-app:
 	$(PYTEST) $(APP)
 
-# Code Quality
+# Code Quality...
 lint:
 	$(RUFF) check .
 
@@ -102,11 +102,11 @@ format:
 format-check:
 	$(RUFF) format --check .
 
-# Production
+# Production...
 collectstatic:
 	$(MANAGE) collectstatic --noinput
 
-# Maintenance
+# Maintenance...
 clean:
 	@echo "Removing Python cache files..."
 	find . -type d -name "__pycache__" -prune -exec rm -rf {} \;
