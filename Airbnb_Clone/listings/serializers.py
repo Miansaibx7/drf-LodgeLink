@@ -573,7 +573,7 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         """
-         Return type: dict
+         Return Type: dict
         After a successful create/update, respond with the rich
         PropertyDetailSerializer payload (resolved host, categories,
         amenities, image URLs) instead of echoing back raw write input"""
