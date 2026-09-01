@@ -361,7 +361,7 @@ class Property(UUIDModel, TimeStampedModel, SoftDeleteModel):
     def cover_image(self):
         """Returns the photo flagged as cover, falling back to the first
         uploaded image. Used as the thumbnail in search results.
-        Return type: PropertyImage | None"""
+        Return type: PropertyImage | None."""
         return self.images.filter(is_cover=True).first() or self.images.first()
 
     @property
