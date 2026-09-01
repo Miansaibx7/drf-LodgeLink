@@ -369,7 +369,7 @@ class Property(UUIDModel, TimeStampedModel, SoftDeleteModel):
         """A listing is bookable only if published, active, not soft-deleted,
         and has at least one photo (Airbnb enforces a 5-photo minimum in
         production — enforce that in the serializer's validate()).
-        Return type: bool """
+        Return type: bool."""
         return (self.status == self.Status.PUBLISHED and self.is_active
             and not self.is_deleted and self.images.exists())
 
@@ -379,7 +379,7 @@ class Property(UUIDModel, TimeStampedModel, SoftDeleteModel):
         previews. The bookings app should own the authoritative,
         tax-inclusive checkout total (using PropertyAvailability price
         overrides date-by-date) once that branch is built.
-        Return type: Decimal (rounded to 2 dp)"""
+        Return type: Decimal (rounded to 2 dp)."""
 
         if nights <= 0:
             return Decimal('0.00')
