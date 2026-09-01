@@ -307,9 +307,7 @@ class Property(UUIDModel, TimeStampedModel, SoftDeleteModel):
     max_nights = models.PositiveSmallIntegerField(default=365)
     check_in_time = models.TimeField(default='15:00')
     check_out_time = models.TimeField(default='11:00')
-    instant_book = models.BooleanField(
-        default=False, help_text="If True, guests can book without host approval"
-    )
+    instant_book = models.BooleanField(default=False, help_text="If True, guests can book without host approval")
     cancellation_policy = models.CharField(
         max_length=20, choices=CancellationPolicy.choices, default=CancellationPolicy.MODERATE
     )
