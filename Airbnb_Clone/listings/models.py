@@ -478,8 +478,8 @@ class PropertyAvailability(models.Model):
     @property
     def effective_price(self) -> Decimal:
         """Return type: Decimal
-        The price actually charged for this date — the override if one is
-        set, otherwise the property's standard nightly base_price."""
+         The price actually charged for this date — the override if one is
+         set, otherwise the property's standard nightly base_price."""
 
         return self.price_override if self.price_override is not None else self.property.base_price
 
