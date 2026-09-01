@@ -320,9 +320,7 @@ class Property(UUIDModel, TimeStampedModel, SoftDeleteModel):
 
     # ---- Status / visibility --------------------------------------------
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
-    is_active = models.BooleanField(
-        default=True, help_text="Host quick-toggle to hide/show without changing status"
-    )
+    is_active = models.BooleanField(default=True, help_text="Host quick-toggle to hide/show without changing status")
 
     # ---- Denormalized stats (kept in sync via signals from other apps) --
     average_rating = models.DecimalField(max_digits=3, decimal_places=2, default=Decimal('0.00'))
