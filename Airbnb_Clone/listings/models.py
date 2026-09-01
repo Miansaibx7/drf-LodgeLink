@@ -450,7 +450,7 @@ class PropertyImage(UUIDModel, TimeStampedModel):
 class PropertyAvailability(models.Model):
     """One row per (property, date). This is the real, queryable calendar that
     powers 1) the date-picker on the listing page and 2) per-date price
-    overrides (weekends/holidays) — not just a min/max-nights rule."""
+    overrides (weekends/holidays) not just a min/max-nights rule."""
 
     class DayStatus(models.TextChoices):
         AVAILABLE = 'available', 'Available'
