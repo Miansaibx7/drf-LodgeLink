@@ -485,5 +485,5 @@ class PropertyAvailability(models.Model):
 
     @property
     def is_available(self) -> bool:
-        """Return type: bool — True only if bookable on this exact date."""
+        """Return type: bool True only if bookable on this exact date."""
         return self.status == self.DayStatus.AVAILABLE
