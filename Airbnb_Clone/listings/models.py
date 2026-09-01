@@ -403,7 +403,7 @@ class Property(UUIDModel, TimeStampedModel, SoftDeleteModel):
         """Bulk-creates `PropertyAvailability` rows for the next `days` days,
         defaulting to AVAILABLE. Call this right after a listing is
         published so the calendar has data to render immediately.
-        Return type: int (number of rows created)"""
+        Return type: int (number of rows created)."""
         existing_dates = set(self.availability.values_list('date', flat=True))
         today = timezone.localdate()
         new_rows = [PropertyAvailability(property=self, date=today + timezone.timedelta(days=i))
