@@ -302,7 +302,7 @@ class Property(UUIDModel, TimeStampedModel, SoftDeleteModel):
     )
     security_deposit = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
 
-    # ----------- Stay rules -----------------------------------------------------
+    # ------ Stay rules -----------------------------------------------------
     min_nights = models.PositiveSmallIntegerField(default=1)
     max_nights = models.PositiveSmallIntegerField(default=365)
     check_in_time = models.TimeField(default='15:00')
