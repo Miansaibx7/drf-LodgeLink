@@ -6,13 +6,13 @@
         collectstatic \
         clean
 
-# Project Configuration
+# Project Configuration...
 PYTHON := uv run python
 MANAGE := $(PYTHON) manage.py
 RUFF := uv run ruff
 PYTEST := uv run pytest
 
-# Help
+# Help...
 help:
 	@echo ""
 	@echo "Django REST Framework Project"
