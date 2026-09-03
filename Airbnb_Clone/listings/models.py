@@ -316,7 +316,7 @@ class Property(UUIDModel, TimeStampedModel, SoftDeleteModel):
     pets_allowed = models.BooleanField(default=False)
     parties_allowed = models.BooleanField(default=False)
 
-    # ---- Status / visibility --------------------------------------------
+    # ---- Status / visibility ------------------------------------------
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     is_active = models.BooleanField(default=True, help_text="Host quick-toggle to hide/show without changing status")
 
