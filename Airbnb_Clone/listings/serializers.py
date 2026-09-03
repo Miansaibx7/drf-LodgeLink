@@ -396,9 +396,9 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
         return obj.is_bookable
 
 
-# ============================================================================
+# ===========================================================================
 # PROPERTY — CREATE / UPDATE  ("Add property" / "Edit property")
-# ============================================================================
+# ===========================================================================
 class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
     """
     Handles:
