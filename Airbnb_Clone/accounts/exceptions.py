@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class ServiceLayerError(APIException):
-    """ Custom exception raised by the service layer.
+    """ Custom exception raised by the service layer..
     Purpose:
     - Keeps the service layer independent of DRF serializers/views.
     - Allows services.py to raise business-logic errors without importing DRF ValidationError.
