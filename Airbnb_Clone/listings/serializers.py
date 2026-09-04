@@ -1,4 +1,15 @@
 """
+listings/serializers.py
+
+Airbnb Clone — LISTINGS APP (DRF Serializers)
+============================================================================
+Pairs with listings/models.py. Every serializer below documents its
+`create()` / `update()` / `validate()` / SerializerMethodField return types
+in a docstring comment, as requested, so the next dev (or you in 6 months)
+knows exactly what a view gets back without re-reading the implementation.
+
+Serializer map
+----------------------------------------------------------------------------
 Read-only / reference data:
     PropertyCategorySerializer        -> category filter chips
     AmenitySerializer                 -> single amenity
@@ -18,7 +29,9 @@ only pays for the fields it actually needs:
     PropertyMapSerializer      -> map pins (minimal — "Location map" feature)
     PropertyDetailSerializer   -> single listing page (full, read-only)
     PropertyCreateUpdateSerializer -> Add property / Edit property (write)
+============================================================================
 """
+
 from typing import Optional
 
 from django.contrib.auth import get_user_model
@@ -26,8 +39,14 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import (Amenity,AmenityCategory,Property,PropertyAvailability,
-    PropertyCategory,PropertyImage)
+from .models import (
+    Amenity,
+    AmenityCategory,
+    Property,
+    PropertyAvailability,
+    PropertyCategory,
+    PropertyImage,
+)
 
 User = get_user_model()
 
@@ -35,10 +54,12 @@ User = get_user_model()
 # ============================================================================
 # HOST  (minimal, read-only, safe to nest inside listing responses)
 # ============================================================================
-class HostMiniSerializer(serializers.ModelSerializer):
-    """ Lightweight read-only host card nested inside listing responses.
-    Adjust the field list if your custom User model uses different names."""
 
+class HostMiniSerializer(serializers.ModelSerializer):
+    """
+    Lightweight read-only host card nested inside listing responses.
+    Adjust the field list if your custom User model uses different names.
+    """
     full_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -54,10 +75,10 @@ class HostMiniSerializer(serializers.ModelSerializer):
         return full_name or getattr(obj, 'username', str(obj))
 
 
-
 # ============================================================================
 # CATEGORIES
 # ============================================================================
+
 class PropertyCategorySerializer(serializers.ModelSerializer):
     """Read/write serializer for the homepage category filter chips."""
 
@@ -67,10 +88,10 @@ class PropertyCategorySerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'slug']
 
 
-
 # ============================================================================
 # AMENITIES
 # ============================================================================
+
 class AmenitySerializer(serializers.ModelSerializer):
     """A single amenity, e.g. 'Wifi'. `category` accepts a category ID on write."""
 
@@ -78,7 +99,6 @@ class AmenitySerializer(serializers.ModelSerializer):
         model = Amenity
         fields = ['id', 'name', 'icon', 'category', 'is_active']
         read_only_fields = ['id']
-
 
 
 class AmenityCategorySerializer(serializers.ModelSerializer):
@@ -98,6 +118,7 @@ class AmenityCategorySerializer(serializers.ModelSerializer):
 # ============================================================================
 # PROPERTY IMAGES  ("Upload multiple images")
 # ============================================================================
+
 class PropertyImageSerializer(serializers.ModelSerializer):
     """
     Represents a single gallery photo.
@@ -107,7 +128,8 @@ class PropertyImageSerializer(serializers.ModelSerializer):
     NOTE: for uploading several NEW files in one request, use
     PropertyImageBulkUploadSerializer below instead — DRF's nested
     writable nested serializers don't handle multiple files under one
-    multipart field cleanly, so that's handled with a dedicated serializer."""
+    multipart field cleanly, so that's handled with a dedicated serializer.
+    """
 
     class Meta:
         model = PropertyImage
@@ -116,19 +138,21 @@ class PropertyImageSerializer(serializers.ModelSerializer):
         extra_kwargs = {'property': {'write_only': True, 'required': False}}
 
     def validate_image(self, value):
-        """ Return type: UploadedFile
-        Rejects oversized files before they ever hit storage/S3. """
-
+        """
+        Return type: UploadedFile
+        Rejects oversized files before they ever hit storage/S3.
+        """
         max_size_mb = 8
         if value.size > max_size_mb * 1024 * 1024:
             raise serializers.ValidationError(f'Image file too large. Max size is {max_size_mb}MB.')
         return value
 
     def update(self, instance, validated_data):
-        """ Return type: PropertyImage
+        """
+        Return type: PropertyImage
         Allows flipping is_cover from the gallery manager UI; the model's
-        own save() already guarantees only one cover image per property."""
-
+        own save() already guarantees only one cover image per property.
+        """
         for field, value in validated_data.items():
             setattr(instance, field, value)
         instance.save()
@@ -136,23 +160,29 @@ class PropertyImageSerializer(serializers.ModelSerializer):
 
 
 class PropertyImageBulkUploadSerializer(serializers.Serializer):
-    """ Dedicated serializer for the "Upload multiple images" endpoint, e.g.:
+    """
+    Dedicated serializer for the "Upload multiple images" endpoint, e.g.:
         POST /api/properties/{id}/images/
         multipart/form-data with repeated `images` fields (images=file1,
         images=file2, images=file3 ...)
 
     Not a ModelSerializer, by design — this is the reliable way to accept
-    N files under one field name in DRF. """
+    N files under one field name in DRF.
+    """
+    images = serializers.ListField(
+        child=serializers.ImageField(),
+        allow_empty=False,
+        write_only=True,
+        help_text='One or more image files sent as repeated multipart fields.',
+    )
 
-    images = serializers.ListField(child=serializers.ImageField(), allow_empty=False, write_only=True,
-        help_text='One or more image files sent as repeated multipart fields.')
-    
     MAX_IMAGES_PER_REQUEST = 20
 
     def validate_images(self, value):
-        """Return type: list[UploadedFile]
-        Caps the batch size so one request can't flood storage/queue workers."""
-
+        """
+        Return type: list[UploadedFile]
+        Caps the batch size so one request can't flood storage/queue workers.
+        """
         if len(value) > self.MAX_IMAGES_PER_REQUEST:
             raise serializers.ValidationError(
                 f'You can upload at most {self.MAX_IMAGES_PER_REQUEST} images per request.'
@@ -166,7 +196,7 @@ class PropertyImageBulkUploadSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         """
-         Return type: list [PropertyImage]
+        Return type: list[PropertyImage]
         Bulk-creates one PropertyImage row per uploaded file against the
         `property` instance passed in via serializer context (the view is
         responsible for permission-checking that the requester owns it).
@@ -190,11 +220,12 @@ class PropertyImageBulkUploadSerializer(serializers.Serializer):
 
     def to_representation(self, instance):
         """
-         Return type: dict
+        Return type: dict
         `instance` is the list[PropertyImage] returned by create(); this
-        re-serializes each row with PropertyImageSerializer for the response."""
-
-        return {'uploaded_count': len(instance),
+        re-serializes each row with PropertyImageSerializer for the response.
+        """
+        return {
+            'uploaded_count': len(instance),
             'images': PropertyImageSerializer(instance, many=True, context=self.context).data,
         }
 
@@ -202,6 +233,7 @@ class PropertyImageBulkUploadSerializer(serializers.Serializer):
 # ============================================================================
 # AVAILABILITY CALENDAR
 # ============================================================================
+
 class PropertyAvailabilitySerializer(serializers.ModelSerializer):
     """Represents a single day on a listing's availability calendar."""
     effective_price = serializers.SerializerMethodField()
@@ -216,17 +248,17 @@ class PropertyAvailabilitySerializer(serializers.ModelSerializer):
 
     def get_effective_price(self, obj) -> str:
         """
-         Return type: str
+        Return type: str
         The actual nightly price for this date (override, or the listing's
         base_price as fallback). Returned as a string for safe JSON
-        transport of Decimal values."""
-
+        transport of Decimal values.
+        """
         return str(obj.effective_price)
 
 
 class PropertyAvailabilityBulkUpdateSerializer(serializers.Serializer):
     """
-     Powers calendar bulk-actions: "block these dates", "set weekend
+    Powers calendar bulk-actions: "block these dates", "set weekend
     pricing for this range", etc.
         POST /api/properties/{id}/availability/bulk-update/
         { "start_date": "2026-12-20", "end_date": "2027-01-02",
@@ -244,10 +276,10 @@ class PropertyAvailabilityBulkUpdateSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         """
-         Return type: dict — the validated attrs.
+        Return type: dict — the validated attrs.
         Ensures the range is logical, bounded, and that at least one
-        updatable field was actually supplied."""
-
+        updatable field was actually supplied.
+        """
         if attrs['end_date'] < attrs['start_date']:
             raise serializers.ValidationError('end_date must be on or after start_date.')
 
@@ -259,14 +291,17 @@ class PropertyAvailabilityBulkUpdateSerializer(serializers.Serializer):
 
         updatable_fields = {'status', 'price_override', 'minimum_stay_override'}
         if not updatable_fields.intersection(attrs.keys()):
-            raise serializers.ValidationError('Provide at least one of: status, price_override, minimum_stay_override.')
+            raise serializers.ValidationError(
+                'Provide at least one of: status, price_override, minimum_stay_override.'
+            )
         return attrs
 
     def save(self, **kwargs):
-        """Return type: int — number of PropertyAvailability rows written.
+        """
+        Return type: int — number of PropertyAvailability rows written.
         Upserts one row per date in [start_date, end_date], applying only
-        the fields the host actually sent (partial update semantics)."""
-
+        the fields the host actually sent (partial update semantics).
+        """
         property_instance = self.context['property']
         start_date = self.validated_data['start_date']
         end_date = self.validated_data['end_date']
@@ -293,12 +328,15 @@ class PropertyAvailabilityBulkUpdateSerializer(serializers.Serializer):
 
 
 # ============================================================================
-# PROPERTY — LIST (search result / browse grid)
+# PROPERTY — LIST (search results / browse grid)
 # ============================================================================
+
 class PropertyListSerializer(serializers.ModelSerializer):
-    """ Lightweight serializer for search results / browse grids. Deliberately
+    """
+    Lightweight serializer for search results / browse grids. Deliberately
     excludes heavy fields (full description, house_rules, full gallery,
-    all amenities) so list endpoints stay fast under pagination."""
+    all amenities) so list endpoints stay fast under pagination.
+    """
     cover_image = serializers.SerializerMethodField()
     category_names = serializers.SerializerMethodField()
 
@@ -326,15 +364,15 @@ class PropertyListSerializer(serializers.ModelSerializer):
         return [category.name for category in obj.categories.all()]
 
 
-
 # ============================================================================
 # PROPERTY — MAP  ("Location map" feature)
 # ============================================================================
+
 class PropertyMapSerializer(serializers.ModelSerializer):
     """
-     Minimal payload for rendering pins on the search-results map — just
-    enough to draw a marker and a small hover-preview card."""
-
+    Minimal payload for rendering pins on the search-results map — just
+    enough to draw a marker and a small hover-preview card.
+    """
     cover_image = serializers.SerializerMethodField()
 
     class Meta:
@@ -351,17 +389,17 @@ class PropertyMapSerializer(serializers.ModelSerializer):
         return request.build_absolute_uri(image.image.url) if request else image.image.url
 
 
-
 # ============================================================================
 # PROPERTY — DETAIL  (single listing page, read-only / rich)
 # ============================================================================
+
 class PropertyDetailSerializer(serializers.ModelSerializer):
     """
-     Full, read-heavy representation for the single listing detail page.
+    Full, read-heavy representation for the single listing detail page.
     Nests host info, categories, amenities, and the complete photo gallery
     in one response so the frontend needs exactly one API call to render
-    the page."""
-
+    the page.
+    """
     host = HostMiniSerializer(read_only=True)
     categories = PropertyCategorySerializer(many=True, read_only=True)
     amenities = AmenitySerializer(many=True, read_only=True)
@@ -396,9 +434,10 @@ class PropertyDetailSerializer(serializers.ModelSerializer):
         return obj.is_bookable
 
 
-# ===========================================================================
+# ============================================================================
 # PROPERTY — CREATE / UPDATE  ("Add property" / "Edit property")
-# ===========================================================================
+# ============================================================================
+
 class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
     """
     Handles:
@@ -416,8 +455,8 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
       uploads, prefer PropertyImageBulkUploadSerializer — see the note on
       PropertyImageSerializer above.
     - On success, to_representation() returns the same rich payload as
-      PropertyDetailSerializer, so the client doesn't need a second GET."""
-    
+      PropertyDetailSerializer, so the client doesn't need a second GET.
+    """
     categories = serializers.PrimaryKeyRelatedField(
         many=True, queryset=PropertyCategory.objects.all(), required=False
     )
@@ -448,7 +487,6 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
 
     def validate_base_price(self, value):
         """Return type: Decimal — must be a positive nightly price."""
-
         if value <= 0:
             raise serializers.ValidationError('Base price must be greater than 0.')
         return value
@@ -461,35 +499,36 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
 
     def validate_latitude(self, value):
         """Return type: Decimal — sanity-checks the map pin coordinates."""
-
         if not (-90 <= value <= 90):
             raise serializers.ValidationError('Latitude must be between -90 and 90.')
         return value
 
     def validate_longitude(self, value):
-        """Return type: Decimal sanity-checks the map pin coordinates."""
-
+        """Return type: Decimal — sanity-checks the map pin coordinates."""
         if not (-180 <= value <= 180):
             raise serializers.ValidationError('Longitude must be between -180 and 180.')
         return value
 
+    # ---- Cross-field validation ----------------------------------------
 
-    # -------------- Cross-field validation --------------------------------------------------------------------
     def validate(self, attrs):
         """
-         Return type: dict the validated attrs (or raises ValidationError).
-        Business rules that depend on more than one field at once"""
-
+        Return type: dict — the validated attrs (or raises ValidationError).
+        Business rules that depend on more than one field at once.
+        """
         min_nights = attrs.get('min_nights', getattr(self.instance, 'min_nights', 1))
         max_nights = attrs.get('max_nights', getattr(self.instance, 'max_nights', 365))
-        
         if min_nights > max_nights:
-            raise serializers.ValidationError({'min_nights': 'min_nights cannot be greater than max_nights.'})
+            raise serializers.ValidationError(
+                {'min_nights': 'min_nights cannot be greater than max_nights.'}
+            )
 
         included_guests = attrs.get('included_guests', getattr(self.instance, 'included_guests', 1))
         max_guests = attrs.get('max_guests', getattr(self.instance, 'max_guests', 1))
         if included_guests > max_guests:
-            raise serializers.ValidationError({'included_guests': 'included_guests cannot exceed max_guests.'})
+            raise serializers.ValidationError(
+                {'included_guests': 'included_guests cannot exceed max_guests.'}
+            )
 
         # Publishing requires a minimum photo gallery, exactly like Airbnb
         # (which enforces 5 photos minimum before a listing can go live).
@@ -498,21 +537,23 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
             existing_images = self.instance.images.count() if self.instance else 0
             incoming_images = len(attrs.get('images', []))
             if existing_images + incoming_images < 5:
-                raise serializers.ValidationError({'status': 'A listing needs at least 5 photos before it can be published.'})
+                raise serializers.ValidationError(
+                    {'status': 'A listing needs at least 5 photos before it can be published.'}
+                )
 
         return attrs
 
-    # ------------- Create / Update (nested writes) ----------------------------------------------------------------------------
+    # ---- Create / Update (nested writes) -------------------------------
 
     @transaction.atomic
     def create(self, validated_data):
         """
-         Return type: Property
+        Return type: Property
         Creates the listing, attaches the host from the authenticated
         request, applies M2M relations, creates any inline photos, and
         pre-seeds a year of calendar rows so the listing is immediately
-        manageable/bookable."""
-
+        manageable/bookable.
+        """
         categories = validated_data.pop('categories', [])
         amenities = validated_data.pop('amenities', [])
         images_data = validated_data.pop('images', [])
@@ -540,13 +581,13 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def update(self, instance, validated_data):
         """
-         Return type: Property
+        Return type: Property
         Updates scalar fields in place, replaces M2M sets only when the
         client actually sent them (so a PATCH without 'amenities' doesn't
         wipe existing amenities), and appends any newly-included inline
         images. Existing photos are managed via PropertyImageViewSet, not
-        overwritten here.."""
-
+        overwritten here.
+        """
         categories = validated_data.pop('categories', None)
         amenities = validated_data.pop('amenities', None)
         images_data = validated_data.pop('images', None)
@@ -573,9 +614,9 @@ class PropertyCreateUpdateSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         """
-         Return Type: dict
+        Return type: dict
         After a successful create/update, respond with the rich
         PropertyDetailSerializer payload (resolved host, categories,
-        amenities, image URLs) instead of echoing back raw write input.."""
-
+        amenities, image URLs) instead of echoing back raw write input.
+        """
         return PropertyDetailSerializer(instance, context=self.context).data
