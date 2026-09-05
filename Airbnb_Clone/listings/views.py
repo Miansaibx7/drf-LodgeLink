@@ -10,7 +10,6 @@ Requires:
     pip install drf-nested-routers    # Only if you wire PropertyImageViewSet
                                     # As a nested route (see note at the
                                     # Bottom of this file for urls.py).
-
 Endpoint map
 ----------------------------------------------------------------------------
 PropertyViewSet          (router-registered at /api/properties/)
