@@ -35,7 +35,7 @@ PropertyCategoryViewSet, AmenityCategoryViewSet, AmenityViewSet
     Public read for everyone; write access restricted to staff — these
     are reference/lookup data used to populate the listing wizard's
     category picker and amenities checklist.
-============================================================================
+==========================================================================
 """
 
 from django_filters import rest_framework as django_filters
