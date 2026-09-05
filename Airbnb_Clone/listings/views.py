@@ -6,10 +6,10 @@ Airbnb Clone — LISTINGS APP (DRF Views)
 Pairs with listings/models.py and listings/serializers.py.
 
 Requires:
-    pip install django-filter          # search/filter backend used below
-    pip install drf-nested-routers     # only if you wire PropertyImageViewSet
-                                        # as a nested route (see note at the
-                                        # bottom of this file for urls.py).
+    pip install django-filter         # search/filter backend used below
+    pip install drf-nested-routers    # only if you wire PropertyImageViewSet
+                                    # as a nested route (see note at the
+                                    # bottom of this file for urls.py).
 
 Endpoint map
 ----------------------------------------------------------------------------
