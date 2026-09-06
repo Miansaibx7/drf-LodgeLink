@@ -50,18 +50,9 @@ from rest_framework.response import Response
 
 from .models import (Amenity,AmenityCategory,Property,PropertyCategory,PropertyImage,)
 
-from .serializers import (AmenityCategorySerializer,
-    AmenitySerializer,
-    PropertyAvailabilityBulkUpdateSerializer,
-    PropertyAvailabilitySerializer,
-    PropertyCategorySerializer,
-    PropertyCreateUpdateSerializer,
-    PropertyDetailSerializer,
-    PropertyImageBulkUploadSerializer,
-    PropertyImageSerializer,
-    PropertyListSerializer,
-    PropertyMapSerializer,
-)
+from .serializers import (AmenityCategorySerializer,AmenitySerializer,PropertyAvailabilityBulkUpdateSerializer,
+    PropertyAvailabilitySerializer,PropertyCategorySerializer,PropertyCreateUpdateSerializer,
+    PropertyDetailSerializer,PropertyImageBulkUploadSerializer,PropertyImageSerializer,PropertyListSerializer,PropertyMapSerializer)
 
 
 # ============================================================================
