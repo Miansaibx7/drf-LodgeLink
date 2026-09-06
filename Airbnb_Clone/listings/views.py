@@ -18,11 +18,11 @@ PropertyViewSet          (router-registered at/api/properties/)
     GET    /properties/{id}/                  retrieve
     PUT    /properties/{id}/                  update -> "Edit property"
     PATCH  /properties/{id}/                  partial update
-    DELETE /properties/{id}/                  destroy  -> "Delete property" (soft)
+    DELETE /properties/{id}/                  destroy -> "Delete property" (soft)
     GET    /properties/map/                   lightweight pins for map search
     GET    /properties/mine/                  the logged-in host's own listings
-    POST   /properties/{id}/publish/          shortcut: status -> published
-    POST   /properties/{id}/archive/          shortcut: status -> archived
+    POST   /properties/{id}/publish/          Shortcut: status -> published
+    POST   /properties/{id}/archive/          Shortcut: status -> archived
     POST   /properties/{id}/images/           "Upload multiple images"
     GET    /properties/{id}/availability/     read the calendar
     POST   /properties/{id}/availability/bulk-update/   block/price a range
