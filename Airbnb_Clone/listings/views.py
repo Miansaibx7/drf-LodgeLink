@@ -11,7 +11,7 @@ Requires:
                                     # As a nested route (see note at the
                                     # Bottom of this file for urls.py).
 Endpoint map
-----------------------------------------------------------------------------
+-------------------------------------------------------------------------
 PropertyViewSet          (router-registered at/api/properties/)
     GET    /properties/                       list (public, published only)
     POST   /properties/                       create -> "Add property"
