@@ -2,7 +2,7 @@
 listings/views.py
 
 Airbnb Clone — LISTINGS APP (DRF Views)
-============================================================================
+=======================================================================
 Pairs with listings/models.py and listings/serializers.py.
 
 Requires:
