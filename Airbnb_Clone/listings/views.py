@@ -63,7 +63,7 @@ class IsHostOrReadOnly(permissions.BasePermission):
     """
     Anyone (including anonymous users) can browse listings.
     Only the listing's own host — or staff — may create/edit/delete it.
-    """
+"""
 
     def has_permission(self, request, view):
         """Return type: bool — must be authenticated to write; open to read."""
