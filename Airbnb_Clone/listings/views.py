@@ -48,7 +48,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from .models import (Amenity,AmenityCategory,Property,PropertyCategory,PropertyImage,)
+from .models import (Amenity,AmenityCategory,Property,PropertyCategory,PropertyImage)
 
 from .serializers import (AmenityCategorySerializer,AmenitySerializer,PropertyAvailabilityBulkUpdateSerializer,
     PropertyAvailabilitySerializer,PropertyCategorySerializer,PropertyCreateUpdateSerializer,
