@@ -14,9 +14,9 @@ Endpoint map
 ------------------------------------------------------------------------------------
 PropertyViewSet          (router-registered at/api/properties/)
     GET    /properties/                       list (public, published only)
-    POST   /properties/                       create -> "Add property"
+    POST   /properties/                       create --> "Add property"
     GET    /properties/{id}/                  retrieve
-    PUT    /properties/{id}/                  update -> "Edit property"
+    PUT    /properties/{id}/                  update --> "Edit property"
     PATCH  /properties/{id}/                  partial update
     DELETE /properties/{id}/                  destroy -> "Delete property" (soft)
     GET    /properties/map/                   lightweight pins for map search
