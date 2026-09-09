@@ -18,7 +18,7 @@ PropertyViewSet          (router-registered at/api/properties/)
     GET    /properties/{id}/                  retrieve
     PUT    /properties/{id}/                  update --> "Edit property"
     PATCH  /properties/{id}/                  partial update
-    DELETE /properties/{id}/                  destroy -> "Delete property" (soft)
+    DELETE /properties/{id}/                  destroy --> "Delete property" (soft)
     GET    /properties/map/                   lightweight pins for map search
     GET    /properties/mine/                  the logged-in host's own listings
     POST   /properties/{id}/publish/          Shortcut: status -> published
