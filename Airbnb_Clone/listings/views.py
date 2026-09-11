@@ -70,7 +70,7 @@ class IsHostOrReadOnly(permissions.BasePermission):
         return bool(request.user and request.user.is_authenticated)
 
     def has_object_permission(self, request, view, obj):
-        """Return type: bool — object-level check: only the owning host (or staff) may modify."""
+        """Return type: bool object-level check: only the owning host (or staff) may modify."""
         if request.method in permissions.SAFE_METHODS:
             return True
         return obj.host_id == request.user.id or request.user.is_staff
