@@ -64,7 +64,7 @@ class IsHostOrReadOnly(permissions.BasePermission):
     Only the listing's own host or staff may create/edit/delete it."""
 
     def has_permission(self, request, view):
-        """Return type: bool — must be authenticated to write; open to read."""
+        """Return type: bool  must be authenticated to write; open to read."""
         if request.method in permissions.SAFE_METHODS:
             return True
         return bool(request.user and request.user.is_authenticated)
