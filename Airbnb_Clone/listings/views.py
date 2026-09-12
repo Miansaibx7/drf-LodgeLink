@@ -57,7 +57,7 @@ from .serializers import (AmenityCategorySerializer,AmenitySerializer,PropertyAv
 
 # ======================================================================
 # PERMISSIONS
-# ======================================================================
+# ====================================================================
 class IsHostOrReadOnly(permissions.BasePermission):
     """
     Anyone (including anonymous users) can browse listings.
