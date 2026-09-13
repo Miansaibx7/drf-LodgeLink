@@ -55,9 +55,9 @@ from .serializers import (AmenityCategorySerializer,AmenitySerializer,PropertyAv
     PropertyDetailSerializer,PropertyImageBulkUploadSerializer,PropertyImageSerializer,PropertyListSerializer,PropertyMapSerializer)
 
 
-# ====================================================================
+# ==================================================================
 # PERMISSIONS
-# ====================================================================
+# ==================================================================
 class IsHostOrReadOnly(permissions.BasePermission):
     """
     Anyone (including anonymous users) can browse listings.
