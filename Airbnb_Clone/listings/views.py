@@ -3,7 +3,7 @@ listings/views.py
 
 Airbnb Clone LISTINGS APP (DRF Views)
 ================================================================================
-Pairs with listings/models.py and listings/serializers.py
+Pairs with listings/models.py and listing serializers.py
 
 Requires:
     pip install django-filter         # Search/filter backend used below
