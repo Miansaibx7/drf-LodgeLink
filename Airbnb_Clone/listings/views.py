@@ -20,7 +20,7 @@ PropertyViewSet          (router-registered at/api/properties/)
     PATCH  /properties/{id}/                  partial update
     DELETE /properties/{id}/                  destroy --> "Delete property" (soft)
     GET    /properties/map/                   lightweight pins for map search
-    GET    /properties/mine/                  the logged-in host's own listings
+    GET    /properties/mine/                  the logged-in host own listings
     POST   /properties/{id}/publish/          Shortcut: status --> published
     POST   /properties/{id}/archive/          Shortcut: status --> archived
     POST   /properties/{id}/images/           "Upload multiple images"
