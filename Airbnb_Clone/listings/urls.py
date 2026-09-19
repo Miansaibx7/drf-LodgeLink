@@ -21,14 +21,14 @@ from rest_framework_nested.routers import NestedDefaultRouter
 
 from . import views
 
-# ---------------------------- Top-level resources ---------------------------------------------------
+# ---------------------------- Top-level resources --------------------------------------------
 router = DefaultRouter()
 router.register('properties', views.PropertyViewSet, basename='property')
 router.register('categories', views.PropertyCategoryViewSet, basename='category')
 router.register('amenity-categories', views.AmenityCategoryViewSet, basename='amenity-category')
 router.register('amenities', views.AmenityViewSet, basename='amenity')
 
-# -------------------------- Nested resource: /properties/{property_pk}/photos/{id}/ -------------------
+# ---------------------- Nested resource: /properties/{property_pk}/photos/{id}/ -------------------
 properties_router = NestedDefaultRouter(router, 'properties', lookup='property')
 properties_router.register('photos', views.PropertyImageViewSet, basename='property-photos')
 
