@@ -47,7 +47,7 @@ urlpatterns = router.urls + properties_router.urls
 #   GET            /properties/{id}/availability/
 #   POST           /properties/{id}/availability/bulk-update/
 
-# ------------ GET/PATCH/DELETE  /properties/{property_pk}/photos/{id}--------------------------
+# ------------ GET/PATCH/DELETE  /properties/{property_pk}/photos/{id} --------------------------
 #   GET/POST      /categories/               GET/PUT/PATCH/DELETE /categories/{id}/
 #   GET           /amenity-categories/        GET /amenity-categories/{id}/
 #   GET/POST      /amenities/                 GET/PUT/PATCH/DELETE /amenities/{id}/
